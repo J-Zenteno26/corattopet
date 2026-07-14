@@ -54,6 +54,16 @@ function env(string $name, ?string $default = null): ?string
     return $value === false ? $default : $value;
 }
 
+/**
+ * Construye una URL absoluta independiente de la carpeta de publicación.
+ */
+function appUrl(string $path = ''): string
+{
+    $baseUrl = rtrim((string) env('APP_URL', 'http://localhost:8000'), '/');
+
+    return $baseUrl . '/' . ltrim($path, '/');
+}
+
 loadEnvironment(dirname(__DIR__) . '/.env');
 
 $timezone = env('APP_TIMEZONE', 'America/Santiago');
@@ -65,4 +75,5 @@ return [
     'environment' => env('APP_ENV', 'production'),
     'debug' => filter_var(env('APP_DEBUG', 'false'), FILTER_VALIDATE_BOOL),
     'timezone' => $timezone,
+    'url' => env('APP_URL', 'http://localhost:8000'),
 ];

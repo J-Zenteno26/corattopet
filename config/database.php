@@ -31,11 +31,23 @@ function database(): PDO
         throw new RuntimeException('SSL is required for the database connection.');
     }
 
+    $endpointId = env('DB_ENDPOINT_ID');
+
+    if ($endpointId === null || trim($endpointId) === '') {
+        throw new RuntimeException('Database endpoint ID is missing.');
+    }
+
+    $databaseName = sprintf(
+        '%s options=endpoint=%s',
+        $values['DB_NAME'],
+        trim($endpointId)
+    );
+
     $dsn = sprintf(
         'pgsql:host=%s;port=%s;dbname=%s;sslmode=require',
         $values['DB_HOST'],
         $values['DB_PORT'],
-        $values['DB_NAME']
+        $databaseName
     );
 
     $connection = new PDO(
