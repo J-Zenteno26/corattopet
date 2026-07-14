@@ -6,23 +6,22 @@ require_once dirname(__DIR__, 2) . '/shared/seguridad.php';
 
 requireAuthentication();
 $csrfToken = csrfToken();
+$pageTitle = 'Dashboard';
+$activeSection = 'dashboard';
+
+require dirname(__DIR__, 2) . '/shared/admin-header.php';
+require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Panel administrativo | Coratto Pet</title>
-</head>
-<body>
-    <main>
-        <h1>Acceso correcto</h1>
-        <p>Usuario: <?= escape((string) $_SESSION['nombre']) ?></p>
-        <p>Rol: <?= escape((string) $_SESSION['rol']) ?></p>
-        <form method="post" action="<?= escape(appUrl('admin/auth/cerrar-sesion.php')) ?>">
-            <input type="hidden" name="csrf_token" value="<?= escape($csrfToken) ?>">
-            <button type="submit">Cerrar sesión</button>
-        </form>
-    </main>
-</body>
-</html>
+<main class="admin-main" id="contenido-principal">
+    <header class="admin-page-header">
+        <div>
+            <h1>Dashboard</h1>
+            <p>Bienvenido al panel administrativo de Coratto Pet.</p>
+        </div>
+    </header>
+
+    <section class="admin-welcome" aria-labelledby="welcome-title">
+        <h2 id="welcome-title">Hola, <?= escape((string) $_SESSION['nombre']) ?></h2>
+        <p>Los módulos administrativos se encuentran en construcción.</p>
+    </section>
+<?php require dirname(__DIR__, 2) . '/shared/admin-footer.php'; ?>
