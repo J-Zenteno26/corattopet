@@ -1,0 +1,22 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data
+storage/importaciones/*
+!storage/importaciones/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+public/uploads/productos/*
+!public/uploads/productos/.gitkeep
+
+# Dependencies and tooling
+/vendor/
+/.idea/
+/.vscode/
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
