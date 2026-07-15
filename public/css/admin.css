@@ -846,8 +846,6 @@
     border-top: 1px solid var(--admin-border-soft);
 }
 .admin-status-control {
-    min-height: 100%;
-
     display: flex;
     align-items: center;
     justify-content: space-between;

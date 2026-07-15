@@ -10,21 +10,30 @@ function valoresInicialesProducto(): array
         'subcategoria' => '', 'formato' => '', 'peso_contenido' => '', 'unidad' => '',
         'stock_minimo' => '5', 'descripcion' => '', 'ingredientes_materiales' => '',
         'analisis_caracteristicas' => '', 'etapa_vida_tamano' => '', 'pais_origen' => '',
-        'fraccionadora_importador' => '', 'datos_reglamentarios' => '',
+        'fraccionadora_importador' => '', 'datos_reglamentarios' => '', 'activo' => true,
+        'cantidad_actual' => '0',
     ];
 }
 
-function obtenerOpcionesProducto(PDO $connection): array
+function obtenerOpcionesProducto(PDO $connection, ?int $currentCategoryId = null, ?int $currentBrandId = null): array
 {
-    $categories = $connection->prepare(
-        'SELECT id_categoria, nombre FROM categorias WHERE activo = TRUE ORDER BY orden, nombre'
-    );
-    $categories->execute();
+    $categorySql = 'SELECT id_categoria, nombre, activo FROM categorias WHERE activo = TRUE';
+    $categoryParameters = [];
+    if ($currentCategoryId !== null) {
+        $categorySql .= ' OR id_categoria = :current_category_id';
+        $categoryParameters['current_category_id'] = $currentCategoryId;
+    }
+    $categories = $connection->prepare($categorySql . ' ORDER BY orden, nombre');
+    $categories->execute($categoryParameters);
 
-    $brands = $connection->prepare(
-        'SELECT id_marca, nombre FROM marcas WHERE activo = TRUE ORDER BY nombre'
-    );
-    $brands->execute();
+    $brandSql = 'SELECT id_marca, nombre, activo FROM marcas WHERE activo = TRUE';
+    $brandParameters = [];
+    if ($currentBrandId !== null) {
+        $brandSql .= ' OR id_marca = :current_brand_id';
+        $brandParameters['current_brand_id'] = $currentBrandId;
+    }
+    $brands = $connection->prepare($brandSql . ' ORDER BY nombre');
+    $brands->execute($brandParameters);
 
     return ['categorias' => $categories->fetchAll(), 'marcas' => $brands->fetchAll()];
 }
@@ -42,15 +51,51 @@ function validarReferenciasProducto(PDO $connection, int $categoryId, int $brand
     return is_array($result) ? $result : ['categoria_valida' => false, 'marca_valida' => false];
 }
 
-function validarDuplicadosProducto(PDO $connection, ?string $sku, ?string $barcode): array
+function validarReferenciasProductoEdicion(
+    PDO $connection,
+    int $productId,
+    int $categoryId,
+    int $brandId
+): array {
+    $statement = $connection->prepare(
+        'SELECT
+            EXISTS(
+                SELECT 1 FROM categorias
+                WHERE id_categoria = :category_id
+                AND (activo = TRUE OR id_categoria = (
+                    SELECT id_categoria FROM productos WHERE id_producto = :category_product_id
+                ))
+            ) AS categoria_valida,
+            EXISTS(
+                SELECT 1 FROM marcas
+                WHERE id_marca = :brand_id
+                AND (activo = TRUE OR id_marca = (
+                    SELECT id_marca FROM productos WHERE id_producto = :brand_product_id
+                ))
+            ) AS marca_valida'
+    );
+    $statement->execute([
+        'category_id' => $categoryId,
+        'category_product_id' => $productId,
+        'brand_id' => $brandId,
+        'brand_product_id' => $productId,
+    ]);
+    $result = $statement->fetch();
+
+    return is_array($result) ? $result : ['categoria_valida' => false, 'marca_valida' => false];
+}
+
+function validarDuplicadosProducto(PDO $connection, ?string $sku, ?string $barcode, ?int $excludedId = null): array
 {
+    $skuExclusion = $excludedId === null ? '' : ' AND id_producto <> :sku_excluded_id';
+    $barcodeExclusion = $excludedId === null ? '' : ' AND id_producto <> :barcode_excluded_id';
     $statement = $connection->prepare(
         'SELECT
             CASE WHEN CAST(:sku_check AS text) IS NULL THEN FALSE ELSE EXISTS(
-                SELECT 1 FROM productos WHERE LOWER(TRIM(sku)) = LOWER(TRIM(:sku_value))
+                SELECT 1 FROM productos WHERE LOWER(TRIM(sku)) = LOWER(TRIM(:sku_value))' . $skuExclusion . '
             ) END AS sku_duplicado,
             CASE WHEN CAST(:barcode_check AS text) IS NULL THEN FALSE ELSE EXISTS(
-                SELECT 1 FROM productos WHERE TRIM(codigo_barras) = TRIM(:barcode_value)
+                SELECT 1 FROM productos WHERE TRIM(codigo_barras) = TRIM(:barcode_value)' . $barcodeExclusion . '
             ) END AS codigo_duplicado'
     );
     $statement->execute([
@@ -58,6 +103,10 @@ function validarDuplicadosProducto(PDO $connection, ?string $sku, ?string $barco
         'sku_value' => $sku,
         'barcode_check' => $barcode,
         'barcode_value' => $barcode,
+        ...($excludedId === null ? [] : [
+            'sku_excluded_id' => $excludedId,
+            'barcode_excluded_id' => $excludedId,
+        ]),
     ]);
     $result = $statement->fetch();
 
@@ -78,13 +127,17 @@ function generarSlugBase(string $name): string
     return $slug !== '' ? $slug : 'producto';
 }
 
-function generarSlugUnico(PDO $connection, string $name): string
+function generarSlugUnico(PDO $connection, string $name, ?int $excludedId = null): string
 {
     $base = generarSlugBase($name);
-    $statement = $connection->prepare(
-        "SELECT slug FROM productos WHERE LOWER(slug) = :base OR LOWER(slug) LIKE :pattern ESCAPE '\\'"
-    );
-    $statement->execute(['base' => $base, 'pattern' => $base . '-%']);
+    $sql = "SELECT slug FROM productos WHERE (LOWER(slug) = :base OR LOWER(slug) LIKE :pattern ESCAPE '\\')";
+    $parameters = ['base' => $base, 'pattern' => $base . '-%'];
+    if ($excludedId !== null) {
+        $sql .= ' AND id_producto <> :excluded_id';
+        $parameters['excluded_id'] = $excludedId;
+    }
+    $statement = $connection->prepare($sql);
+    $statement->execute($parameters);
     $existing = array_fill_keys(array_map('strtolower', $statement->fetchAll(PDO::FETCH_COLUMN)), true);
 
     if (!isset($existing[$base])) {
@@ -124,19 +177,57 @@ function construirDetallesOpcionales(array $values): array
     return $details;
 }
 
-function guardarEstadoFormularioProducto(array $values, array $errors, ?string $generalError = null): void
+function valoresEdicionProducto(array $product): array
 {
-    $_SESSION['producto_formulario'] = [
+    $details = json_decode((string) $product['detalles_opcionales'], true, 512, JSON_THROW_ON_ERROR);
+    $recognizedDetails = array_intersect_key(
+        is_array($details) ? $details : [],
+        array_flip([
+            'subcategoria', 'formato', 'peso_contenido', 'unidad', 'descripcion',
+            'ingredientes_materiales', 'analisis_caracteristicas', 'etapa_vida_tamano',
+            'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios',
+        ])
+    );
+
+    return array_merge(valoresInicialesProducto(), $recognizedDetails, [
+        'nombre' => (string) $product['nombre'],
+        'id_categoria' => (string) $product['id_categoria'],
+        'id_marca' => (string) $product['id_marca'],
+        'tipo_mascota' => (string) $product['tipo_mascota'],
+        'sku' => $product['sku'] === null ? '' : (string) $product['sku'],
+        'codigo_barras' => $product['codigo_barras'] === null ? '' : (string) $product['codigo_barras'],
+        'precio_venta' => (string) ((int) $product['precio_venta']),
+        'stock_minimo' => (string) $product['stock_minimo'],
+        'cantidad_actual' => (string) $product['cantidad_actual'],
+        'activo' => $product['estado'] === 'activo',
+    ]);
+}
+
+function idPositivoProducto(mixed $value): ?int
+{
+    $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+    return $id === false ? null : $id;
+}
+
+function guardarEstadoFormularioProducto(
+    array $values,
+    array $errors,
+    ?string $generalError = null,
+    string $key = 'producto_formulario'
+): void
+{
+    $_SESSION[$key] = [
         'valores' => $values,
         'errores' => $errors,
         'error_general' => $generalError,
     ];
 }
 
-function consumirEstadoFormularioProducto(): array
+function consumirEstadoFormularioProducto(string $key = 'producto_formulario'): array
 {
-    $state = $_SESSION['producto_formulario'] ?? [];
-    unset($_SESSION['producto_formulario']);
+    $state = $_SESSION[$key] ?? [];
+    unset($_SESSION[$key]);
 
     return is_array($state) ? $state : [];
 }

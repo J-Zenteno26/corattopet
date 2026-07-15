@@ -67,6 +67,19 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
             <strong>El producto fue registrado correctamente.</strong>
         </div>
     <?php endif; ?>
+    <?php if (($_GET['mensaje'] ?? null) === 'actualizado'): ?>
+        <div class="admin-alert admin-alert--success" role="status">
+            <strong>El producto fue actualizado correctamente.</strong>
+        </div>
+    <?php elseif (($_GET['mensaje'] ?? null) === 'no_encontrado'): ?>
+        <div class="admin-alert admin-alert--error" role="alert">
+            <strong>No fue posible encontrar el producto solicitado.</strong>
+        </div>
+    <?php elseif (($_GET['mensaje'] ?? null) === 'error'): ?>
+        <div class="admin-alert admin-alert--error" role="alert">
+            <strong>No fue posible cargar el producto solicitado.</strong>
+        </div>
+    <?php endif; ?>
 
     <section class="admin-summary-grid" aria-label="Resumen del inventario">
         <article class="admin-summary-card">
@@ -204,7 +217,14 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                             <td><?= escape((string) ((int) $product['cantidad_disponible'])) ?></td>
                             <td><?= escape(textoEstadoStock($product['estado_stock'])) ?></td>
                             <td><?= escape(formatearFechaInventario($product['actualizado_en'])) ?></td>
-                            <td><button class="admin-button" type="button" disabled>Ver</button></td>
+                            <td>
+                                <div class="admin-actions-inline">
+                                    <a
+                                        class="admin-button admin-button--small admin-button--primary"
+                                        href="<?= escape(appUrl('admin/inventario/productos/editar.php?id=' . $product['id_producto'])) ?>"
+                                    >Editar</a>
+                                </div>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
 

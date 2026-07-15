@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function validarDatosProducto(array $input): array
+function validarDatosProducto(array $input, bool $editing = false): array
 {
     $values = normalizarValoresProducto($input);
     $errors = [];
@@ -16,13 +16,15 @@ function validarDatosProducto(array $input): array
     }
 
     $normalizedPrice = preg_replace('/[$.\s,]/u', '', $values['precio_venta']) ?? '';
-    if ($normalizedPrice === '' || !ctype_digit($normalizedPrice) || (int) $normalizedPrice <= 0) {
-        $errors['precio_venta'] = 'Ingresa un precio entero mayor que 0.';
+    if ($normalizedPrice === '' || !ctype_digit($normalizedPrice) || (!$editing && (int) $normalizedPrice <= 0)) {
+        $errors['precio_venta'] = $editing
+            ? 'Ingresa un precio entero igual o mayor que 0.'
+            : 'Ingresa un precio entero mayor que 0.';
     } else {
         $values['_precio_venta_entero'] = $normalizedPrice;
     }
 
-    if ($values['stock_inicial'] === '' || !ctype_digit($values['stock_inicial'])) {
+    if (!$editing && ($values['stock_inicial'] === '' || !ctype_digit($values['stock_inicial']))) {
         $errors['stock_inicial'] = 'Ingresa un stock inicial entero igual o mayor que 0.';
     }
 
@@ -72,6 +74,8 @@ function normalizarValoresProducto(array $input): array
         $value = $input[$field] ?? '';
         $values[$field] = is_scalar($value) ? trim((string) $value) : '';
     }
+
+    $values['activo'] = ($input['activo'] ?? null) === '1';
 
     return $values;
 }
