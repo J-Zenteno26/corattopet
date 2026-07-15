@@ -3,8 +3,45 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/shared/seguridad.php';
+require_once dirname(__DIR__, 2) . '/config/database.php';
+require_once __DIR__ . '/includes/funciones-inventario.php';
+require_once __DIR__ . '/consultas/obtener-resumen.php';
+require_once __DIR__ . '/consultas/obtener-filtros.php';
+require_once __DIR__ . '/consultas/listar-productos.php';
 
 requireAuthentication();
+
+$parameters = normalizarParametrosInventario($_GET);
+$summary = ['productos_totales' => 0, 'stock_total' => 0, 'stock_bajo' => 0, 'sin_stock' => 0];
+$filterOptions = ['categorias' => [], 'marcas' => []];
+$listing = [
+    'registros' => [],
+    'total_registros' => 0,
+    'total_paginas' => 1,
+    'pagina_actual' => 1,
+    'por_pagina' => $parameters['por_pagina'],
+];
+$databaseError = false;
+
+try {
+    $connection = database();
+    $summary = obtenerResumenInventario($connection);
+    $filterOptions = obtenerFiltrosInventario($connection);
+    $listing = listarProductosInventario($connection, $parameters);
+} catch (Throwable $exception) {
+    $databaseError = true;
+    error_log('Inventory query error: ' . $exception->getMessage());
+}
+
+$parameters['pagina'] = $listing['pagina_actual'];
+$hasActiveFilters = hayFiltrosInventarioActivos($parameters);
+$firstRecord = $listing['total_registros'] === 0
+    ? 0
+    : (($listing['pagina_actual'] - 1) * $listing['por_pagina']) + 1;
+$lastRecord = min(
+    $listing['pagina_actual'] * $listing['por_pagina'],
+    $listing['total_registros']
+);
 $csrfToken = csrfToken();
 $pageTitle = 'Inventario';
 $activeSection = 'inventario';
@@ -19,65 +56,111 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
             <p>Gestiona el stock y la información de los productos</p>
         </div>
         <div class="admin-actions" aria-label="Acciones de inventario">
-            <button class="admin-button admin-button--primary" type="button">Agregar producto</button>
+            <a class="admin-button admin-button--primary" href="<?= escape(appUrl('admin/inventario/productos/crear.php')) ?>">Agregar producto</a>
             <button class="admin-button" type="button">Importar Excel</button>
             <button class="admin-button" type="button">Exportar inventario</button>
         </div>
     </header>
 
+    <?php if (($_GET['creado'] ?? null) === '1'): ?>
+        <div class="admin-alert admin-alert--success" role="status">
+            <strong>El producto fue registrado correctamente.</strong>
+        </div>
+    <?php endif; ?>
+
     <section class="admin-summary-grid" aria-label="Resumen del inventario">
         <article class="admin-summary-card">
             <span>PRODUCTOS TOTALES</span>
-            <strong>—</strong>
+            <strong><?= escape(number_format((int) $summary['productos_totales'], 0, ',', '.')) ?></strong>
         </article>
         <article class="admin-summary-card admin-summary-card--notice">
             <span>STOCK TOTAL</span>
-            <strong>—</strong>
+            <strong><?= escape(number_format((int) $summary['stock_total'], 0, ',', '.')) ?></strong>
         </article>
         <article class="admin-summary-card admin-summary-card--warning">
             <span>STOCK BAJO</span>
-            <strong>—</strong>
+            <strong><?= escape(number_format((int) $summary['stock_bajo'], 0, ',', '.')) ?></strong>
         </article>
         <article class="admin-summary-card admin-summary-card--warning">
             <span>SIN STOCK</span>
-            <strong>—</strong>
+            <strong><?= escape(number_format((int) $summary['sin_stock'], 0, ',', '.')) ?></strong>
         </article>
     </section>
+
     <section class="admin-panel" aria-label="Listado de inventario">
         <div class="admin-panel__header">
             <h2>Lista de productos</h2>
         </div>
 
-        <div class="admin-toolbar">
+        <form class="admin-toolbar" method="get" action="<?= escape(appUrl('admin/inventario/index.php')) ?>">
+            <input type="hidden" name="por_pagina" value="<?= escape((string) $parameters['por_pagina']) ?>">
             <div class="admin-field admin-field--search">
                 <label for="inventory-search">Buscar</label>
-                <input id="inventory-search" type="search" placeholder="Buscar por producto, SKU o código">
+                <input
+                    id="inventory-search"
+                    name="buscar"
+                    type="search"
+                    value="<?= escape($parameters['buscar']) ?>"
+                    placeholder="Buscar por producto, SKU o código"
+                >
             </div>
             <div class="admin-field">
                 <label for="category-filter">Categoría</label>
-                <select id="category-filter">
-                    <option>Todas</option>
+                <select id="category-filter" name="id_categoria">
+                    <option value="">Todas</option>
+                    <?php foreach ($filterOptions['categorias'] as $category): ?>
+                        <option
+                            value="<?= escape((string) $category['id_categoria']) ?>"
+                            <?= $parameters['id_categoria'] === (int) $category['id_categoria'] ? 'selected' : '' ?>
+                        ><?= escape((string) $category['nombre']) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="admin-field">
                 <label for="brand-filter">Marca</label>
-                <select id="brand-filter">
-                    <option>Todas</option>
+                <select id="brand-filter" name="id_marca">
+                    <option value="">Todas</option>
+                    <?php foreach ($filterOptions['marcas'] as $brand): ?>
+                        <option
+                            value="<?= escape((string) $brand['id_marca']) ?>"
+                            <?= $parameters['id_marca'] === (int) $brand['id_marca'] ? 'selected' : '' ?>
+                        ><?= escape((string) $brand['nombre']) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="admin-field">
                 <label for="pet-filter">Tipo de mascota</label>
-                <select id="pet-filter">
-                    <option>Todos</option>
+                <select id="pet-filter" name="tipo_mascota">
+                    <option value="">Todos</option>
+                    <option value="perro" <?= $parameters['tipo_mascota'] === 'perro' ? 'selected' : '' ?>>Perro</option>
+                    <option value="gato" <?= $parameters['tipo_mascota'] === 'gato' ? 'selected' : '' ?>>Gato</option>
+                    <option value="ambos" <?= $parameters['tipo_mascota'] === 'ambos' ? 'selected' : '' ?>>Perro y gato</option>
+                    <option value="otro" <?= $parameters['tipo_mascota'] === 'otro' ? 'selected' : '' ?>>Otro</option>
                 </select>
             </div>
             <div class="admin-field">
                 <label for="stock-filter">Estado de stock</label>
-                <select id="stock-filter">
-                    <option>Todos</option>
+                <select id="stock-filter" name="estado_stock">
+                    <option value="">Todos</option>
+                    <option value="en_stock" <?= $parameters['estado_stock'] === 'en_stock' ? 'selected' : '' ?>>En stock</option>
+                    <option value="stock_bajo" <?= $parameters['estado_stock'] === 'stock_bajo' ? 'selected' : '' ?>>Stock bajo</option>
+                    <option value="sin_stock" <?= $parameters['estado_stock'] === 'sin_stock' ? 'selected' : '' ?>>Sin stock</option>
                 </select>
             </div>
-        </div>
+            <div class="admin-filter-actions">
+                <button type="submit" class="admin-filter-button">
+                    <span class="admin-filter-button__icon" aria-hidden="true">▽</span>
+                     Filtros
+                </button>
+
+                <a
+                    class="admin-filter-clear"
+                    href="<?= escape(appUrl('admin/inventario/index.php')) ?>"
+                >
+                    Limpiar filtros
+                </a>
+            </div>
+        </form>
 
         <div class="admin-table-wrap">
             <table class="admin-table">
@@ -97,45 +180,115 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="admin-empty-state">
-                        <td colspan="11">
-                            <strong>Aún no hay productos registrados</strong>
-                            <span>Los productos aparecerán aquí cuando registres o importes el catálogo.</span>
-                        </td>
-                    </tr>
+                    <?php foreach ($listing['registros'] as $product): ?>
+                        <?php $imageUrl = urlImagenInventario($product['imagen_principal'] ?? null); ?>
+                        <tr>
+                            <td>
+                                <?php if ($imageUrl !== null): ?>
+                                    <img
+                                        src="<?= escape($imageUrl) ?>"
+                                        alt=""
+                                        width="44"
+                                        height="44"
+                                        loading="lazy"
+                                    >
+                                <?php endif; ?>
+                                <strong><?= escape((string) $product['nombre']) ?></strong>
+                            </td>
+                            <td><?= escape($product['sku'] !== null ? (string) $product['sku'] : 'Sin SKU') ?></td>
+                            <td><?= escape($product['codigo_barras'] !== null ? (string) $product['codigo_barras'] : 'Sin código') ?></td>
+                            <td><?= escape((string) $product['categoria']) ?></td>
+                            <td><?= escape($product['marca'] !== null ? (string) $product['marca'] : 'Sin marca') ?></td>
+                            <td><?= escape(textoTipoMascota($product['tipo_mascota'])) ?></td>
+                            <td><?= escape(formatearPrecioClp($product['precio_venta'])) ?></td>
+                            <td><?= escape((string) ((int) $product['cantidad_disponible'])) ?></td>
+                            <td><?= escape(textoEstadoStock($product['estado_stock'])) ?></td>
+                            <td><?= escape(formatearFechaInventario($product['actualizado_en'])) ?></td>
+                            <td><button class="admin-button" type="button" disabled>Ver</button></td>
+                        </tr>
+                    <?php endforeach; ?>
+
+                    <?php if ($listing['registros'] === []): ?>
+                        <tr class="admin-empty-state">
+                            <td colspan="11">
+                                <?php if ($databaseError): ?>
+                                    <strong role="alert">No fue posible cargar el inventario en este momento</strong>
+                                    <span>Intenta nuevamente más tarde.</span>
+                                <?php elseif ($hasActiveFilters && (int) $summary['productos_totales'] > 0): ?>
+                                    <strong>No encontramos productos con estos filtros</strong>
+                                    <span>Prueba con otros criterios o limpia los filtros seleccionados.</span>
+                                    <a class="admin-button" href="<?= escape(appUrl('admin/inventario/index.php')) ?>">Limpiar filtros</a>
+                                <?php else: ?>
+                                    <strong>Aún no hay productos registrados</strong>
+                                    <span>Los productos aparecerán aquí cuando registres o importes el catálogo.</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
+
         <div class="admin-pagination">
             <p class="admin-pagination__summary">
-                Mostrando 0 de 0 productos
+                Mostrando <?= escape((string) $firstRecord) ?> a <?= escape((string) $lastRecord) ?>
+                de <?= escape((string) $listing['total_registros']) ?> productos
             </p>
 
             <nav class="admin-pagination__pages" aria-label="Paginación del inventario">
-                <button type="button" class="admin-pagination__button" disabled aria-label="Página anterior">
-                    ‹
-                </button>
+                <?php if ($listing['pagina_actual'] > 1): ?>
+                    <a
+                        class="admin-pagination__button"
+                        href="<?= escape(construirUrlInventario($parameters, ['pagina' => $listing['pagina_actual'] - 1])) ?>"
+                        aria-label="Página anterior"
+                    >‹</a>
+                <?php else: ?>
+                    <span class="admin-pagination__button" aria-disabled="true">‹</span>
+                <?php endif; ?>
 
-                <button type="button" class="admin-pagination__button is-active" disabled>
-                    1
-                </button>
+                <?php
+                $firstPage = max(1, $listing['pagina_actual'] - 2);
+                $lastPage = min($listing['total_paginas'], $listing['pagina_actual'] + 2);
+                for ($page = $firstPage; $page <= $lastPage; $page++):
+                ?>
+                    <?php if ($page === $listing['pagina_actual']): ?>
+                        <span class="admin-pagination__button is-active" aria-current="page"><?= escape((string) $page) ?></span>
+                    <?php else: ?>
+                        <a
+                            class="admin-pagination__button"
+                            href="<?= escape(construirUrlInventario($parameters, ['pagina' => $page])) ?>"
+                        ><?= escape((string) $page) ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
 
-                <button type="button" class="admin-pagination__button" disabled aria-label="Página siguiente">
-                    ›
-                </button>
+                <?php if ($listing['pagina_actual'] < $listing['total_paginas']): ?>
+                    <a
+                        class="admin-pagination__button"
+                        href="<?= escape(construirUrlInventario($parameters, ['pagina' => $listing['pagina_actual'] + 1])) ?>"
+                        aria-label="Página siguiente"
+                    >›</a>
+                <?php else: ?>
+                    <span class="admin-pagination__button" aria-disabled="true">›</span>
+                <?php endif; ?>
             </nav>
 
-            <label class="admin-pagination__size">
-                <span>Mostrar</span>
-
-                <select disabled>
-                    <option selected>8</option>
-                    <option>16</option>
-                    <option>24</option>
+            <form class="admin-pagination__size" method="get" action="<?= escape(appUrl('admin/inventario/index.php')) ?>">
+                <?php foreach (['buscar', 'id_categoria', 'id_marca', 'tipo_mascota', 'estado_stock'] as $field): ?>
+                    <?php if ($parameters[$field] !== '' && $parameters[$field] !== null): ?>
+                        <input type="hidden" name="<?= escape($field) ?>" value="<?= escape((string) $parameters[$field]) ?>">
+                    <?php endif; ?>
+                <?php endforeach; ?>
+                <label for="per-page">Mostrar</label>
+                <select id="per-page" name="por_pagina">
+                    <?php foreach ([8, 16, 24] as $quantity): ?>
+                        <option value="<?= $quantity ?>" <?= $parameters['por_pagina'] === $quantity ? 'selected' : '' ?>>
+                            <?= $quantity ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
-
                 <span>por página</span>
-            </label>
+                <button class="admin-button" type="submit">Aplicar</button>
+            </form>
         </div>
     </section>
-    <?php require dirname(__DIR__, 2) . '/shared/admin-footer.php'; ?>
+<?php require dirname(__DIR__, 2) . '/shared/admin-footer.php'; ?>
