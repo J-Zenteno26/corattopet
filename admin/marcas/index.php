@@ -96,7 +96,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                 <thead>
                     <tr>
                         <th scope="col">Nombre</th>
-                        <th scope="col">Slug</th>
                         <th scope="col">Estado</th>
                         <th scope="col">Actualizada</th>
                         <th scope="col">Acciones</th>
@@ -113,10 +112,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         <tr>
                             <td>
                                 <?= escape((string) $brand['nombre']) ?>
-                            </td>
-
-                            <td>
-                                <?= escape((string) $brand['slug']) ?>
                             </td>
 
                             <td>

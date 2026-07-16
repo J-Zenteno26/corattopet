@@ -59,7 +59,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                 <thead>
                     <tr>
                         <th>NOMBRE</th>
-                        <th>SLUG</th>
                         <th>DESCRIPCIÓN</th>
                         <th>ORDEN</th>
                         <th>ESTADO</th>
@@ -72,7 +71,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         <?php $active = booleanoPostgresMantenedor($category['activo']); ?>
                         <tr>
                             <td><?= escape((string) $category['nombre']) ?></td>
-                            <td><?= escape((string) $category['slug']) ?></td>
                             <td><?= escape($category['descripcion'] !== null ? (string) $category['descripcion'] : 'Sin descripción') ?>
                             </td>
                             <td><?= escape((string) $category['orden']) ?></td>

@@ -67,19 +67,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
             <strong>El producto fue registrado correctamente.</strong>
         </div>
     <?php endif; ?>
-    <?php if (($_GET['mensaje'] ?? null) === 'actualizado'): ?>
-        <div class="admin-alert admin-alert--success" role="status">
-            <strong>El producto fue actualizado correctamente.</strong>
-        </div>
-    <?php elseif (($_GET['mensaje'] ?? null) === 'no_encontrado'): ?>
-        <div class="admin-alert admin-alert--error" role="alert">
-            <strong>No fue posible encontrar el producto solicitado.</strong>
-        </div>
-    <?php elseif (($_GET['mensaje'] ?? null) === 'error'): ?>
-        <div class="admin-alert admin-alert--error" role="alert">
-            <strong>No fue posible cargar el producto solicitado.</strong>
-        </div>
-    <?php endif; ?>
 
     <section class="admin-summary-grid" aria-label="Resumen del inventario">
         <article class="admin-summary-card">
@@ -220,7 +207,11 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                             <td>
                                 <div class="admin-actions-inline">
                                     <a
-                                        class="admin-button admin-button--small admin-button--primary"
+                                        class="admin-button admin-button--primary"
+                                        href="<?= escape(appUrl('admin/inventario/stock/index.php?id=' . $product['id_producto'])) ?>"
+                                    >Gestionar stock</a>
+                                    <a
+                                        class="admin-button admin-button--dark"
                                         href="<?= escape(appUrl('admin/inventario/productos/editar.php?id=' . $product['id_producto'])) ?>"
                                     >Editar</a>
                                 </div>
