@@ -46,8 +46,8 @@ try {
         exit;
     }
     $slug = generarSlugUnicoMantenedor($connection, 'categorias', 'id_categoria', $values['nombre'], $id);
-    $statement = $connection->prepare('UPDATE categorias SET nombre = :nombre, slug = :slug, descripcion = :descripcion, orden = :orden, activo = :activo, actualizado_en = CURRENT_TIMESTAMP WHERE id_categoria = :id');
-    $statement->execute(['nombre' => $values['nombre'], 'slug' => $slug, 'descripcion' => $values['descripcion'] === '' ? null : $values['descripcion'], 'orden' => (int) $values['orden'], 'activo' => $values['activo'], 'id' => $id]);
+    $statement = $connection->prepare('UPDATE categorias SET nombre = :nombre, slug = :slug, descripcion = :descripcion, orden = :orden, maneja_fraccionamiento = :maneja_fraccionamiento, activo = :activo, actualizado_en = CURRENT_TIMESTAMP WHERE id_categoria = :id');
+    $statement->execute(['nombre' => $values['nombre'], 'slug' => $slug, 'descripcion' => $values['descripcion'] === '' ? null : $values['descripcion'], 'orden' => (int) $values['orden'], 'maneja_fraccionamiento' => $values['maneja_fraccionamiento'], 'activo' => $values['activo'], 'id' => $id]);
     header('Location: ' . appUrl('admin/categorias/index.php?mensaje=actualizada'), true, 303);
     exit;
 } catch (Throwable $exception) {

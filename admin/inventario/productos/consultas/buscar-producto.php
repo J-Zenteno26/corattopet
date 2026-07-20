@@ -18,9 +18,11 @@ function buscarProductoParaEditar(PDO $connection, int $productId): ?array
             p.detalles_opcionales,
             p.estado,
             s.stock_minimo,
-            s.cantidad_actual
+            s.cantidad_actual,
+            c.maneja_fraccionamiento
         FROM productos p
         INNER JOIN stock s ON s.id_producto = p.id_producto
+        INNER JOIN categorias c ON c.id_categoria = p.id_categoria
         WHERE p.id_producto = :id_producto'
     );
     $statement->execute(['id_producto' => $productId]);

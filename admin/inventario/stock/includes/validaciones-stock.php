@@ -5,8 +5,11 @@ declare(strict_types=1);
 const MOTIVOS_MOVIMIENTO_STOCK = [
     'Compra o reposición',
     'Recepción de mercadería',
+    'Recepción de saco',
     'Venta manual',
     'Merma',
+    'Venta fraccionada',
+    'Merma por fraccionamiento',
     'Producto dañado',
     'Vencimiento',
     'Devolución',
@@ -15,10 +18,10 @@ const MOTIVOS_MOVIMIENTO_STOCK = [
     'Otro',
 ];
 
-function validarDatosMovimientoStock(array $input): array
+function validarDatosMovimientoStock(array $input, bool $fractionable = false): array
 {
     $values = [];
-    foreach (['tipo_movimiento', 'cantidad', 'motivo', 'observacion'] as $field) {
+    foreach (['tipo_movimiento', 'cantidad', 'unidad_cantidad', 'motivo', 'observacion'] as $field) {
         $value = $input[$field] ?? '';
         $values[$field] = is_scalar($value) ? trim((string) $value) : '';
     }
@@ -28,10 +31,14 @@ function validarDatosMovimientoStock(array $input): array
         $errors['tipo_movimiento'] = 'Selecciona un tipo de movimiento válido.';
     }
 
-    if ($values['cantidad'] === '' || !ctype_digit($values['cantidad'])) {
-        $errors['cantidad'] = 'Ingresa una cantidad entera igual o mayor que 0.';
+    if (!ctype_digit($values['cantidad'])) {
+        $errors['cantidad'] = $fractionable
+            ? 'Ingresa una cantidad entera de gramos igual o mayor que 0.'
+            : 'Ingresa una cantidad entera igual o mayor que 0.';
     } elseif ($values['tipo_movimiento'] !== 'ajuste' && (int) $values['cantidad'] === 0) {
         $errors['cantidad'] = 'La cantidad debe ser mayor que 0 para entradas y salidas.';
+    } else {
+        $values['_cantidad_entera'] = (int) $values['cantidad'];
     }
 
     if (!in_array($values['motivo'], MOTIVOS_MOVIMIENTO_STOCK, true)) {

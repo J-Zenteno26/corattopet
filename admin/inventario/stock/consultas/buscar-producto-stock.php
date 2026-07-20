@@ -13,6 +13,7 @@ function buscarProductoStock(PDO $connection, int $productId): ?array
             m.nombre AS marca,
             s.cantidad_actual,
             s.stock_minimo
+            ,c.maneja_fraccionamiento
         FROM productos p
         INNER JOIN stock s ON s.id_producto = p.id_producto
         INNER JOIN categorias c ON c.id_categoria = p.id_categoria

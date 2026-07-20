@@ -25,8 +25,8 @@ try {
         header('Location: ' . $formUrl, true, 303); exit;
     }
     $slug = generarSlugUnicoMantenedor($connection, 'categorias', 'id_categoria', $values['nombre']);
-    $statement = $connection->prepare('INSERT INTO categorias (nombre, slug, descripcion, orden, activo) VALUES (:nombre, :slug, :descripcion, :orden, :activo)');
-    $statement->execute(['nombre' => $values['nombre'], 'slug' => $slug, 'descripcion' => $values['descripcion'] === '' ? null : $values['descripcion'], 'orden' => (int) $values['orden'], 'activo' => $values['activo']]);
+    $statement = $connection->prepare('INSERT INTO categorias (nombre, slug, descripcion, orden, maneja_fraccionamiento, activo) VALUES (:nombre, :slug, :descripcion, :orden, :maneja_fraccionamiento, :activo)');
+    $statement->execute(['nombre' => $values['nombre'], 'slug' => $slug, 'descripcion' => $values['descripcion'] === '' ? null : $values['descripcion'], 'orden' => (int) $values['orden'], 'maneja_fraccionamiento' => $values['maneja_fraccionamiento'], 'activo' => $values['activo']]);
     header('Location: ' . appUrl('admin/categorias/index.php?mensaje=creada'), true, 303); exit;
 } catch (Throwable $exception) {
     $duplicate = $exception->getCode() === '23505';

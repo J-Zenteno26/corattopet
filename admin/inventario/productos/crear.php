@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 
 requireAuthentication();
@@ -33,9 +34,10 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
 <main class="admin-main" id="contenido-principal">
     <header class="admin-page-header">
         <div>
-            <a class="admin-back-link" href="<?= escape(appUrl('admin/inventario/index.php')) ?>">← Volver al inventario</a>
+            <a class="admin-back-link" href="<?= escape(appUrl('admin/inventario/index.php')) ?>">← Volver al
+                inventario</a>
             <h1 class="admin-page-title admin-page-title--paw">Agregar producto</h1>
-            <p>Registra la información comercial y el stock inicial del producto.</p>
+            <p>Registra la información base del producto y su stock inicial.</p>
         </div>
     </header>
 
@@ -62,78 +64,139 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
         </div>
     <?php endif; ?>
 
-    <form class="admin-product-form" method="post" action="<?= escape(appUrl('admin/inventario/productos/guardar.php')) ?>">
+    <form class="admin-product-form" method="post"
+        action="<?= escape(appUrl('admin/inventario/productos/guardar.php')) ?>">
         <input type="hidden" name="csrf_token" value="<?= escape($csrfToken) ?>">
 
         <section class="admin-panel" aria-labelledby="main-information-title">
             <div class="admin-panel__header">
                 <h2 id="main-information-title">Información principal</h2>
-                <p class="admin-field__help">Los campos marcados con <span class="admin-required">*</span> son obligatorios.</p>
+                <p class="admin-field__help">Los campos marcados con <span class="admin-required">*</span> son
+                    obligatorios.</p>
             </div>
 
             <div class="admin-form-grid">
-                <div class="admin-field admin-field--full<?= isset($errors['nombre']) ? ' admin-field--invalid' : '' ?>">
+                <div
+                    class="admin-field admin-field--full<?= isset($errors['nombre']) ? ' admin-field--invalid' : '' ?>">
                     <label for="nombre">Nombre del producto <span class="admin-required">*</span></label>
-                    <input id="nombre" name="nombre" type="text" maxlength="180" required value="<?= escape($values['nombre']) ?>" <?= isset($errors['nombre']) ? 'aria-invalid="true" aria-describedby="nombre-error"' : '' ?>>
-                    <?php if (isset($errors['nombre'])): ?><span class="admin-field__error" id="nombre-error"><?= escape($errors['nombre']) ?></span><?php endif; ?>
+                    <input id="nombre" name="nombre" type="text" maxlength="180" required
+                        placeholder="Ej.: Acana Adult Dog Recipe" value="<?= escape($values['nombre']) ?>"
+                        <?= isset($errors['nombre']) ? 'aria-invalid="true" aria-describedby="nombre-error"' : '' ?>>
+                    <?php if (isset($errors['nombre'])): ?><span class="admin-field__error"
+                            id="nombre-error"><?= escape($errors['nombre']) ?></span><?php endif; ?>
                 </div>
 
                 <div class="admin-field<?= isset($errors['sku']) ? ' admin-field--invalid' : '' ?>">
                     <label for="sku">SKU</label>
-                    <input id="sku" name="sku" type="text" maxlength="100" value="<?= escape($values['sku']) ?>" <?= isset($errors['sku']) ? 'aria-invalid="true" aria-describedby="sku-error"' : '' ?>>
-                    <?php if (isset($errors['sku'])): ?><span class="admin-field__error" id="sku-error"><?= escape($errors['sku']) ?></span><?php endif; ?>
+                    <input id="sku" name="sku" type="text" maxlength="100" placeholder="Ej.: ACA-ADULT-10KG"
+                        value="<?= escape($values['sku']) ?>" <?= isset($errors['sku']) ? 'aria-invalid="true" aria-describedby="sku-error"' : '' ?>>
+                    <?php if (isset($errors['sku'])): ?><span class="admin-field__error"
+                            id="sku-error"><?= escape($errors['sku']) ?></span><?php endif; ?>
                 </div>
 
                 <div class="admin-field<?= isset($errors['codigo_barras']) ? ' admin-field--invalid' : '' ?>">
                     <label for="codigo_barras">Código de barras</label>
-                    <input id="codigo_barras" name="codigo_barras" type="text" maxlength="100" value="<?= escape($values['codigo_barras']) ?>" <?= isset($errors['codigo_barras']) ? 'aria-invalid="true" aria-describedby="codigo-barras-error"' : '' ?>>
-                    <?php if (isset($errors['codigo_barras'])): ?><span class="admin-field__error" id="codigo-barras-error"><?= escape($errors['codigo_barras']) ?></span><?php endif; ?>
+                    <input id="codigo_barras" name="codigo_barras" type="text" maxlength="100"
+                        placeholder="Ej.: 064992523109" value="<?= escape($values['codigo_barras']) ?>"
+                        <?= isset($errors['codigo_barras']) ? 'aria-invalid="true" aria-describedby="codigo-barras-error"' : '' ?>>
+                    <?php if (isset($errors['codigo_barras'])): ?><span class="admin-field__error"
+                            id="codigo-barras-error"><?= escape($errors['codigo_barras']) ?></span><?php endif; ?>
                 </div>
 
-                <div class="admin-field<?= isset($errors['id_categoria']) ? ' admin-field--invalid' : '' ?>">
+                <div
+                    class="admin-field admin-field--select-compact<?= isset($errors['id_categoria']) ? ' admin-field--invalid' : '' ?>">
                     <label for="id_categoria">Categoría <span class="admin-required">*</span></label>
                     <select id="id_categoria" name="id_categoria" required <?= isset($errors['id_categoria']) ? 'aria-invalid="true" aria-describedby="categoria-error"' : '' ?>>
                         <option value="">Selecciona una categoría</option>
                         <?php foreach ($options['categorias'] as $category): ?>
-                            <option value="<?= escape((string) $category['id_categoria']) ?>" <?= (string) $values['id_categoria'] === (string) $category['id_categoria'] ? 'selected' : '' ?>><?= escape((string) $category['nombre']) ?></option>
+                            <option value="<?= escape((string) $category['id_categoria']) ?>"
+                                data-fraccionable="<?= valorBooleanoPostgres($category['maneja_fraccionamiento']) ? '1' : '0' ?>"
+                                <?= (string) $values['id_categoria'] === (string) $category['id_categoria'] ? 'selected' : '' ?>><?= escape((string) $category['nombre']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <?php if (isset($errors['id_categoria'])): ?><span class="admin-field__error" id="categoria-error"><?= escape($errors['id_categoria']) ?></span><?php endif; ?>
+                    <?php if (isset($errors['id_categoria'])): ?><span class="admin-field__error"
+                            id="categoria-error"><?= escape($errors['id_categoria']) ?></span><?php endif; ?>
                 </div>
 
-                <div class="admin-field<?= isset($errors['id_marca']) ? ' admin-field--invalid' : '' ?>">
+                <div
+                    class="admin-field admin-field--select-compact<?= isset($errors['id_marca']) ? ' admin-field--invalid' : '' ?>">
                     <label for="id_marca">Marca <span class="admin-required">*</span></label>
                     <select id="id_marca" name="id_marca" required <?= isset($errors['id_marca']) ? 'aria-invalid="true" aria-describedby="marca-error"' : '' ?>>
                         <option value="">Selecciona una marca</option>
                         <?php foreach ($options['marcas'] as $brand): ?>
-                            <option value="<?= escape((string) $brand['id_marca']) ?>" <?= (string) $values['id_marca'] === (string) $brand['id_marca'] ? 'selected' : '' ?>><?= escape((string) $brand['nombre']) ?></option>
+                            <option value="<?= escape((string) $brand['id_marca']) ?>" <?= (string) $values['id_marca'] === (string) $brand['id_marca'] ? 'selected' : '' ?>>
+                                <?= escape((string) $brand['nombre']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <?php if (isset($errors['id_marca'])): ?><span class="admin-field__error" id="marca-error"><?= escape($errors['id_marca']) ?></span><?php endif; ?>
+                    <?php if (isset($errors['id_marca'])): ?><span class="admin-field__error"
+                            id="marca-error"><?= escape($errors['id_marca']) ?></span><?php endif; ?>
                 </div>
 
-                <div class="admin-field<?= isset($errors['tipo_mascota']) ? ' admin-field--invalid' : '' ?>">
-                    <label for="tipo_mascota">Tipo de mascota <span class="admin-required">*</span></label>
-                    <select id="tipo_mascota" name="tipo_mascota" required <?= isset($errors['tipo_mascota']) ? 'aria-invalid="true" aria-describedby="mascota-error"' : '' ?>>
-                        <option value="">Selecciona un tipo</option>
+                <div
+                    class="admin-field admin-field--full admin-pet-selector<?= isset($errors['tipo_mascota']) ? ' admin-field--invalid' : '' ?>">
+                    <span class="admin-pet-selector__label" id="tipo-mascota-label">
+                        Tipo de mascota <span class="admin-required">*</span>
+                    </span>
+
+                    <div class="admin-pet-options" role="radiogroup" aria-labelledby="tipo-mascota-label">
                         <?php foreach (['perro' => 'Perro', 'gato' => 'Gato', 'ambos' => 'Perro y gato', 'otro' => 'Otro'] as $value => $label): ?>
-                            <option value="<?= $value ?>" <?= $values['tipo_mascota'] === $value ? 'selected' : '' ?>><?= escape($label) ?></option>
+                            <label class="admin-pet-option">
+                                <input type="radio" name="tipo_mascota" value="<?= $value ?>" required
+                                    <?= $values['tipo_mascota'] === $value ? 'checked' : '' ?>
+                                    <?= isset($errors['tipo_mascota']) ? 'aria-invalid="true" aria-describedby="mascota-error"' : '' ?>>
+                                <span><?= escape($label) ?></span>
+                            </label>
                         <?php endforeach; ?>
-                    </select>
-                    <?php if (isset($errors['tipo_mascota'])): ?><span class="admin-field__error" id="mascota-error"><?= escape($errors['tipo_mascota']) ?></span><?php endif; ?>
+                    </div>
+
+                    <?php if (isset($errors['tipo_mascota'])): ?>
+                        <span class="admin-field__error" id="mascota-error"><?= escape($errors['tipo_mascota']) ?></span>
+                    <?php endif; ?>
                 </div>
 
-                <div class="admin-field<?= isset($errors['precio_venta']) ? ' admin-field--invalid' : '' ?>">
+            </div>
+        </section>
+
+        <section class="admin-panel" aria-labelledby="sales-stock-title">
+            <div class="admin-panel__header">
+                <h2 id="sales-stock-title">Venta e inventario</h2>
+                <p class="admin-field__help" id="sales-stock-help">Configura el precio y las cantidades disponibles del
+                    producto.</p>
+            </div>
+            <div id="fractionable-info" class="admin-alert admin-alert--fractionable" hidden>
+                <strong>Producto fraccionable</strong>
+                <p>Indica cuántos kilos trae el saco. El sistema guardará el stock internamente en gramos y el precio se
+                    configurará después en Presentaciones.</p>
+            </div>
+            <div class="admin-form-grid">
+                <div id="precio-venta-field"
+                    class="admin-field<?= isset($errors['precio_venta']) ? ' admin-field--invalid' : '' ?>">
                     <label for="precio_venta">Precio de venta <span class="admin-required">*</span></label>
-                    <input id="precio_venta" name="precio_venta" type="text" inputmode="numeric" required value="<?= escape($values['precio_venta']) ?>" <?= isset($errors['precio_venta']) ? 'aria-invalid="true" aria-describedby="precio-error precio-help"' : 'aria-describedby="precio-help"' ?>>
+                    <input id="precio_venta" name="precio_venta" type="text" inputmode="numeric" required
+                        placeholder="Ej.: 24990" value="<?= escape($values['precio_venta']) ?>"
+                        <?= isset($errors['precio_venta']) ? 'aria-invalid="true" aria-describedby="precio-error precio-help"' : 'aria-describedby="precio-help"' ?>>
                     <span class="admin-field__help" id="precio-help">Ingresa el valor en pesos, sin decimales.</span>
-                    <?php if (isset($errors['precio_venta'])): ?><span class="admin-field__error" id="precio-error"><?= escape($errors['precio_venta']) ?></span><?php endif; ?>
+                    <?php if (isset($errors['precio_venta'])): ?><span class="admin-field__error"
+                            id="precio-error"><?= escape($errors['precio_venta']) ?></span><?php endif; ?>
                 </div>
 
                 <div class="admin-field<?= isset($errors['stock_inicial']) ? ' admin-field--invalid' : '' ?>">
-                    <label for="stock_inicial">Stock inicial <span class="admin-required">*</span></label>
-                    <input id="stock_inicial" name="stock_inicial" type="number" min="0" step="1" required value="<?= escape($values['stock_inicial']) ?>" <?= isset($errors['stock_inicial']) ? 'aria-invalid="true" aria-describedby="stock-error"' : '' ?>>
-                    <?php if (isset($errors['stock_inicial'])): ?><span class="admin-field__error" id="stock-error"><?= escape($errors['stock_inicial']) ?></span><?php endif; ?>
+                    <label id="stock-inicial-label" for="stock_inicial">Stock inicial en unidades <span
+                            class="admin-required">*</span></label>
+                    <input id="stock_inicial" name="stock_inicial" type="number" min="0" step="1" required
+                        value="<?= escape($values['stock_inicial']) ?>" <?= isset($errors['stock_inicial']) ? 'aria-invalid="true" aria-describedby="stock-inicial-help stock-error"' : 'aria-describedby="stock-inicial-help"' ?>>
+                    <span class="admin-field__help" id="stock-inicial-help">Ingresa la cantidad de unidades
+                        disponibles.</span>
+                    <?php if (isset($errors['stock_inicial'])): ?><span class="admin-field__error"
+                            id="stock-error"><?= escape($errors['stock_inicial']) ?></span><?php endif; ?>
+                </div>
+                <div id="stock-minimo-field"
+                    class="admin-field<?= isset($errors['stock_minimo']) ? ' admin-field--invalid' : '' ?>">
+                    <label id="stock-minimo-label" for="stock_minimo">Stock mínimo en unidades</label>
+                    <input id="stock_minimo" name="stock_minimo" type="number" min="0" step="1" placeholder="Ej.: 5"
+                        value="<?= escape($values['stock_minimo']) ?>" <?= isset($errors['stock_minimo']) ? 'aria-invalid="true" aria-describedby="stock-minimo-error"' : '' ?>>
+                    <?php if (isset($errors['stock_minimo'])): ?><span class="admin-field__error"
+                            id="stock-minimo-error"><?= escape($errors['stock_minimo']) ?></span><?php endif; ?>
                 </div>
             </div>
         </section>
@@ -145,65 +208,88 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </div>
 
             <div class="admin-form-grid">
-                <?php foreach (['subcategoria' => 'Subcategoría', 'formato' => 'Formato'] as $field => $label): ?>
-                    <div class="admin-field<?= isset($errors[$field]) ? ' admin-field--invalid' : '' ?>">
-                        <label for="<?= $field ?>"><?= escape($label) ?></label>
-                        <input id="<?= $field ?>" name="<?= $field ?>" type="text" value="<?= escape($values[$field]) ?>" <?= isset($errors[$field]) ? 'aria-invalid="true" aria-describedby="' . $field . '-error"' : '' ?>>
-                        <?php if (isset($errors[$field])): ?><span class="admin-field__error" id="<?= $field ?>-error"><?= escape($errors[$field]) ?></span><?php endif; ?>
+                <?php
+                $basicOptionalFields = [
+                    'subcategoria' => ['label' => 'Subcategoría', 'placeholder' => 'Ej.: Alimento seco'],
+                    'formato' => ['label' => 'Formato', 'placeholder' => 'Ej.: Saco, bolsa o lata'],
+                ];
+                foreach ($basicOptionalFields as $field => $fieldData):
+                    ?>
+                    <div <?= $field === 'formato' ? 'id="formato-field" data-presentation-field="1"' : '' ?>
+                        class="admin-field<?= isset($errors[$field]) ? ' admin-field--invalid' : '' ?>">
+                        <label for="<?= $field ?>"><?= escape($fieldData['label']) ?></label>
+                        <?php
+                        $fieldAria = isset($errors[$field])
+                            ? 'aria-invalid="true" aria-describedby="' . $field . '-error"'
+                            : '';
+                        ?>
+
+                        <input id="<?= escape($field) ?>" name="<?= escape($field) ?>" type="text"
+                            placeholder="<?= escape($fieldData['placeholder']) ?>" value="<?= escape($values[$field]) ?>"
+                            <?= $fieldAria ?>>
+                        <?php if (isset($errors[$field])): ?>
+                            <span class="admin-field__error" id="<?= $field ?>-error"><?= escape($errors[$field]) ?></span>
+                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
 
-                <div class="admin-field<?= isset($errors['peso_contenido']) ? ' admin-field--invalid' : '' ?>">
+                <div id="peso-contenido-field" data-presentation-field="1"
+                    class="admin-field<?= isset($errors['peso_contenido']) ? ' admin-field--invalid' : '' ?>">
                     <label for="peso_contenido">Peso o contenido</label>
-                    <input id="peso_contenido" name="peso_contenido" type="text" inputmode="decimal" value="<?= escape($values['peso_contenido']) ?>" <?= isset($errors['peso_contenido']) ? 'aria-invalid="true" aria-describedby="peso-error"' : '' ?>>
-                    <?php if (isset($errors['peso_contenido'])): ?><span class="admin-field__error" id="peso-error"><?= escape($errors['peso_contenido']) ?></span><?php endif; ?>
+                    <input id="peso_contenido" name="peso_contenido" type="text" inputmode="decimal"
+                        placeholder="Ej.: 10" value="<?= escape($values['peso_contenido']) ?>"
+                        <?= isset($errors['peso_contenido']) ? 'aria-invalid="true" aria-describedby="peso-error"' : '' ?>>
+                    <?php if (isset($errors['peso_contenido'])): ?><span class="admin-field__error"
+                            id="peso-error"><?= escape($errors['peso_contenido']) ?></span><?php endif; ?>
                 </div>
 
-                <div class="admin-field<?= isset($errors['unidad']) ? ' admin-field--invalid' : '' ?>">
+                <div id="unidad-field" data-presentation-field="1"
+                    class="admin-field admin-field--select-inline<?= isset($errors['unidad']) ? ' admin-field--invalid' : '' ?>">
                     <label for="unidad">Unidad</label>
                     <select id="unidad" name="unidad" <?= isset($errors['unidad']) ? 'aria-invalid="true" aria-describedby="unidad-error"' : '' ?>>
                         <option value="">Selecciona una unidad</option>
                         <?php foreach (['g', 'kg', 'ml', 'l', 'unidad', 'pack', 'otro'] as $unit): ?>
-                            <option value="<?= $unit ?>" <?= $values['unidad'] === $unit ? 'selected' : '' ?>><?= escape($unit) ?></option>
+                            <option value="<?= $unit ?>" <?= $values['unidad'] === $unit ? 'selected' : '' ?>>
+                                <?= escape($unit) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <?php if (isset($errors['unidad'])): ?><span class="admin-field__error" id="unidad-error"><?= escape($errors['unidad']) ?></span><?php endif; ?>
-                </div>
-
-                <div class="admin-field<?= isset($errors['stock_minimo']) ? ' admin-field--invalid' : '' ?>">
-                    <label for="stock_minimo">Stock mínimo</label>
-                    <input id="stock_minimo" name="stock_minimo" type="number" min="0" step="1" value="<?= escape($values['stock_minimo']) ?>" <?= isset($errors['stock_minimo']) ? 'aria-invalid="true" aria-describedby="stock-minimo-error"' : '' ?>>
-                    <?php if (isset($errors['stock_minimo'])): ?><span class="admin-field__error" id="stock-minimo-error"><?= escape($errors['stock_minimo']) ?></span><?php endif; ?>
+                    <?php if (isset($errors['unidad'])): ?><span class="admin-field__error"
+                            id="unidad-error"><?= escape($errors['unidad']) ?></span><?php endif; ?>
                 </div>
 
                 <?php
                 $shortOptionalFields = [
-                    'etapa_vida_tamano' => 'Etapa de vida o tamaño',
-                    'pais_origen' => 'País de origen',
-                    'fraccionadora_importador' => 'Fraccionadora o importador',
+                    'etapa_vida_tamano' => ['label' => 'Etapa de vida o tamaño', 'placeholder' => 'Ej.: Adulto, razas medianas y grandes'],
+                    'pais_origen' => ['label' => 'País de origen', 'placeholder' => 'Ej.: Canadá'],
+                    'fraccionadora_importador' => ['label' => 'Fraccionadora o importador', 'placeholder' => 'Ej.: Nombre o razón social de la empresa'],
                 ];
-                foreach ($shortOptionalFields as $field => $label):
-                ?>
+                foreach ($shortOptionalFields as $field => $fieldData):
+                    ?>
                     <div class="admin-field<?= isset($errors[$field]) ? ' admin-field--invalid' : '' ?>">
-                        <label for="<?= $field ?>"><?= escape($label) ?></label>
-                        <input id="<?= $field ?>" name="<?= $field ?>" type="text" value="<?= escape($values[$field]) ?>" <?= isset($errors[$field]) ? 'aria-invalid="true" aria-describedby="' . $field . '-error"' : '' ?>>
-                        <?php if (isset($errors[$field])): ?><span class="admin-field__error" id="<?= $field ?>-error"><?= escape($errors[$field]) ?></span><?php endif; ?>
+                        <label for="<?= $field ?>"><?= escape($fieldData['label']) ?></label>
+                        <input id="<?= $field ?>" name="<?= $field ?>" type="text"
+                            placeholder="<?= escape($fieldData['placeholder']) ?>" value="<?= escape($values[$field]) ?>"
+                            <?= isset($errors[$field]) ? 'aria-invalid="true" aria-describedby="' . $field . '-error"' : '' ?>>
+                        <?php if (isset($errors[$field])): ?><span class="admin-field__error"
+                                id="<?= $field ?>-error"><?= escape($errors[$field]) ?></span><?php endif; ?>
                     </div>
                 <?php endforeach; ?>
 
                 <?php
                 $longOptionalFields = [
-                    'descripcion' => 'Descripción',
-                    'ingredientes_materiales' => 'Ingredientes o materiales',
-                    'analisis_caracteristicas' => 'Análisis o características',
-                    'datos_reglamentarios' => 'Datos reglamentarios',
+                    'descripcion' => ['label' => 'Descripción', 'placeholder' => 'Ej.: Alimento completo para perros adultos, elaborado con ingredientes de origen animal.'],
+                    'ingredientes_materiales' => ['label' => 'Ingredientes o materiales', 'placeholder' => 'Ej.: Pollo fresco, pavo, lentejas rojas, grasa de pollo y fibra de arveja.'],
+                    'analisis_caracteristicas' => ['label' => 'Análisis o características', 'placeholder' => 'Ej.: Proteína 29%, grasa 17%, fibra 5% y humedad 12%.'],
+                    'datos_reglamentarios' => ['label' => 'Datos reglamentarios', 'placeholder' => 'Ej.: Registro SAG, resolución sanitaria, advertencias o condiciones de conservación indicadas en el envase.'],
                 ];
-                foreach ($longOptionalFields as $field => $label):
-                ?>
+                foreach ($longOptionalFields as $field => $fieldData):
+                    ?>
                     <div class="admin-field admin-field--full<?= isset($errors[$field]) ? ' admin-field--invalid' : '' ?>">
-                        <label for="<?= $field ?>"><?= escape($label) ?></label>
-                        <textarea id="<?= $field ?>" name="<?= $field ?>" rows="4" <?= isset($errors[$field]) ? 'aria-invalid="true" aria-describedby="' . $field . '-error"' : '' ?>><?= escape($values[$field]) ?></textarea>
-                        <?php if (isset($errors[$field])): ?><span class="admin-field__error" id="<?= $field ?>-error"><?= escape($errors[$field]) ?></span><?php endif; ?>
+                        <label for="<?= $field ?>"><?= escape($fieldData['label']) ?></label>
+                        <textarea id="<?= $field ?>" name="<?= $field ?>" rows="4"
+                            placeholder="<?= escape($fieldData['placeholder']) ?>" <?= isset($errors[$field]) ? 'aria-invalid="true" aria-describedby="' . $field . '-error"' : '' ?>><?= escape($values[$field]) ?></textarea>
+                        <?php if (isset($errors[$field])): ?><span class="admin-field__error"
+                                id="<?= $field ?>-error"><?= escape($errors[$field]) ?></span><?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -211,7 +297,85 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
 
         <section class="admin-panel admin-form-actions" aria-label="Acciones del formulario">
             <a class="admin-button" href="<?= escape(appUrl('admin/inventario/index.php')) ?>">Cancelar</a>
-            <button class="admin-button admin-button--primary" type="submit" <?= $canSubmit ? '' : 'disabled' ?>>Guardar producto</button>
+            <button class="admin-button admin-button--primary" type="submit" <?= $canSubmit ? '' : 'disabled' ?>>Guardar
+                producto</button>
         </section>
     </form>
-<?php require dirname(__DIR__, 3) . '/shared/admin-footer.php'; ?>
+    <script>
+        (() => {
+            const category = document.getElementById('id_categoria');
+            const priceField = document.getElementById('precio-venta-field');
+            const price = document.getElementById('precio_venta');
+            const initialLabel = document.getElementById('stock-inicial-label');
+            const initialHelp = document.getElementById('stock-inicial-help');
+            const initialStock = document.getElementById('stock_inicial');
+            const minimumField = document.getElementById('stock-minimo-field');
+            const minimumStock = document.getElementById('stock_minimo');
+            const panelTitle = document.getElementById('sales-stock-title');
+            const panelHelp = document.getElementById('sales-stock-help');
+            const optionalTitle = document.getElementById('optional-information-title');
+            const fractionableInfo = document.getElementById('fractionable-info');
+
+            const presentationFields = document.querySelectorAll('[data-presentation-field="1"]');
+
+            if (
+                !category ||
+                !priceField ||
+                !price ||
+                !initialLabel ||
+                !initialHelp ||
+                !initialStock ||
+                !minimumField ||
+                !minimumStock ||
+                !panelTitle ||
+                !panelHelp ||
+                !optionalTitle ||
+                !fractionableInfo
+            ) {
+                return;
+            }
+
+            const updateFields = () => {
+                const fractionable = category.selectedOptions[0]?.dataset.fraccionable === '1';
+
+                priceField.hidden = fractionable;
+                price.required = !fractionable;
+                price.disabled = fractionable;
+
+                minimumField.hidden = fractionable;
+                minimumStock.disabled = fractionable;
+
+                if (fractionable) {
+                    minimumStock.value = '';
+                }
+
+                for (const field of presentationFields) {
+                    field.hidden = fractionable;
+                }
+
+                fractionableInfo.hidden = !fractionable;
+
+                panelTitle.textContent = fractionable ? 'Stock base del alimento' : 'Venta e inventario';
+                panelHelp.textContent = fractionable
+                    ? 'Administra la cantidad total disponible del alimento base.'
+                    : 'Configura el precio y las cantidades disponibles del producto.';
+
+                optionalTitle.textContent = fractionable ? 'Datos técnicos del alimento' : 'Datos opcionales';
+
+                initialLabel.innerHTML = (fractionable ? 'Stock inicial en gramos' : 'Stock inicial en unidades') + ' <span class="admin-required">*</span>';
+
+                initialHelp.textContent = fractionable
+                    ? 'Ingresa el peso total en gramos. Ejemplo: saco de 10 kg = 10000.'
+                    : 'Ingresa la cantidad de unidades disponibles.';
+
+                initialStock.placeholder = fractionable ? 'Ej.: 10000' : 'Ej.: 30';
+                initialStock.type = 'number';
+                initialStock.inputMode = 'numeric';
+                initialStock.step = '1';
+            };
+
+            category.addEventListener('change', updateFields);
+            updateFields();
+        })();
+    </script>
+    <?php require dirname(__DIR__, 3) . '/shared/admin-footer.php'; ?>

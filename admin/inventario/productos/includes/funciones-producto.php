@@ -6,9 +6,9 @@ function valoresInicialesProducto(): array
 {
     return [
         'nombre' => '', 'id_categoria' => '', 'id_marca' => '', 'tipo_mascota' => '',
-        'precio_venta' => '', 'stock_inicial' => '', 'sku' => '', 'codigo_barras' => '',
+        'precio_venta' => '', 'stock_inicial' => '', 'unidad_stock_inicial' => 'unidad', 'sku' => '', 'codigo_barras' => '',
         'subcategoria' => '', 'formato' => '', 'peso_contenido' => '', 'unidad' => '',
-        'stock_minimo' => '5', 'descripcion' => '', 'ingredientes_materiales' => '',
+        'stock_minimo' => '5', 'unidad_stock_minimo' => 'unidad', 'descripcion' => '', 'ingredientes_materiales' => '',
         'analisis_caracteristicas' => '', 'etapa_vida_tamano' => '', 'pais_origen' => '',
         'fraccionadora_importador' => '', 'datos_reglamentarios' => '', 'activo' => true,
         'cantidad_actual' => '0',
@@ -17,7 +17,7 @@ function valoresInicialesProducto(): array
 
 function obtenerOpcionesProducto(PDO $connection, ?int $currentCategoryId = null, ?int $currentBrandId = null): array
 {
-    $categorySql = 'SELECT id_categoria, nombre, activo FROM categorias WHERE activo = TRUE';
+    $categorySql = 'SELECT id_categoria, nombre, maneja_fraccionamiento, activo FROM categorias WHERE activo = TRUE';
     $categoryParameters = [];
     if ($currentCategoryId !== null) {
         $categorySql .= ' OR id_categoria = :current_category_id';
@@ -36,6 +36,17 @@ function obtenerOpcionesProducto(PDO $connection, ?int $currentCategoryId = null
     $brands->execute($brandParameters);
 
     return ['categorias' => $categories->fetchAll(), 'marcas' => $brands->fetchAll()];
+}
+
+function obtenerCategoriaProducto(PDO $connection, int $categoryId): ?array
+{
+    $statement = $connection->prepare(
+        'SELECT id_categoria, maneja_fraccionamiento, activo FROM categorias WHERE id_categoria = :id_categoria'
+    );
+    $statement->execute(['id_categoria' => $categoryId]);
+    $category = $statement->fetch();
+
+    return is_array($category) ? $category : null;
 }
 
 function validarReferenciasProducto(PDO $connection, int $categoryId, int $brandId): array
@@ -198,6 +209,7 @@ function valoresEdicionProducto(array $product): array
         'codigo_barras' => $product['codigo_barras'] === null ? '' : (string) $product['codigo_barras'],
         'precio_venta' => (string) ((int) $product['precio_venta']),
         'stock_minimo' => (string) $product['stock_minimo'],
+        'unidad_stock_minimo' => esProductoFraccionable($product) ? 'g' : 'unidad',
         'cantidad_actual' => (string) $product['cantidad_actual'],
         'activo' => $product['estado'] === 'activo',
     ]);

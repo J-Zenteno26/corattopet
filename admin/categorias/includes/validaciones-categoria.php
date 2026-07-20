@@ -8,6 +8,7 @@ function validarCategoria(array $input): array
         'nombre' => is_scalar($input['nombre'] ?? null) ? trim((string) $input['nombre']) : '',
         'descripcion' => is_scalar($input['descripcion'] ?? null) ? trim((string) $input['descripcion']) : '',
         'orden' => is_scalar($input['orden'] ?? null) ? trim((string) $input['orden']) : '',
+        'maneja_fraccionamiento' => ($input['maneja_fraccionamiento'] ?? null) === '1',
         'activo' => ($input['activo'] ?? null) === '1',
     ];
     $errors = [];

@@ -15,27 +15,13 @@ function validarDatosProducto(array $input, bool $editing = false): array
         $errors['tipo_mascota'] = 'Selecciona un tipo de mascota válido.';
     }
 
-    $normalizedPrice = preg_replace('/[$.\s,]/u', '', $values['precio_venta']) ?? '';
-    if ($normalizedPrice === '' || !ctype_digit($normalizedPrice) || (!$editing && (int) $normalizedPrice <= 0)) {
-        $errors['precio_venta'] = $editing
-            ? 'Ingresa un precio entero igual o mayor que 0.'
-            : 'Ingresa un precio entero mayor que 0.';
-    } else {
-        $values['_precio_venta_entero'] = $normalizedPrice;
-    }
-
-    if (!$editing && ($values['stock_inicial'] === '' || !ctype_digit($values['stock_inicial']))) {
-        $errors['stock_inicial'] = 'Ingresa un stock inicial entero igual o mayor que 0.';
-    }
-
-    if ($values['stock_minimo'] !== '' && !ctype_digit($values['stock_minimo'])) {
-        $errors['stock_minimo'] = 'Ingresa un stock mínimo entero igual o mayor que 0.';
+    if (!$editing && $values['stock_inicial'] === '') {
+        $errors['stock_inicial'] = 'Ingresa el stock inicial.';
     }
 
     validarTextoOpcional($values, $errors, 'sku', 'SKU', 100);
     validarTextoOpcional($values, $errors, 'codigo_barras', 'Código de barras', 100);
     validarTextoOpcional($values, $errors, 'subcategoria', 'Subcategoría', 120);
-    validarTextoOpcional($values, $errors, 'formato', 'Formato', 100);
     validarTextoOpcional($values, $errors, 'descripcion', 'Descripción', 2000);
     validarTextoOpcional($values, $errors, 'ingredientes_materiales', 'Ingredientes o materiales', 3000);
     validarTextoOpcional($values, $errors, 'analisis_caracteristicas', 'Análisis o características', 3000);
@@ -43,6 +29,13 @@ function validarDatosProducto(array $input, bool $editing = false): array
     validarTextoOpcional($values, $errors, 'pais_origen', 'País de origen', 100);
     validarTextoOpcional($values, $errors, 'fraccionadora_importador', 'Fraccionadora o importador', 255);
     validarTextoOpcional($values, $errors, 'datos_reglamentarios', 'Datos reglamentarios', 3000);
+
+    return [$values, $errors];
+}
+
+function validarCamposFormatoProducto(array &$values, array &$errors): void
+{
+    validarTextoOpcional($values, $errors, 'formato', 'Formato', 100);
 
     if ($values['peso_contenido'] !== '') {
         $normalizedWeight = str_replace(',', '.', $values['peso_contenido']);
@@ -57,15 +50,14 @@ function validarDatosProducto(array $input, bool $editing = false): array
         $errors['unidad'] = 'Selecciona una unidad válida.';
     }
 
-    return [$values, $errors];
 }
 
 function normalizarValoresProducto(array $input): array
 {
     $fields = [
-        'nombre', 'id_categoria', 'id_marca', 'tipo_mascota', 'precio_venta', 'stock_inicial',
+        'nombre', 'id_categoria', 'id_marca', 'tipo_mascota', 'precio_venta', 'stock_inicial', 'unidad_stock_inicial',
         'sku', 'codigo_barras', 'subcategoria', 'formato', 'peso_contenido', 'unidad',
-        'stock_minimo', 'descripcion', 'ingredientes_materiales', 'analisis_caracteristicas',
+        'stock_minimo', 'unidad_stock_minimo', 'descripcion', 'ingredientes_materiales', 'analisis_caracteristicas',
         'etapa_vida_tamano', 'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios',
     ];
     $values = [];
@@ -78,6 +70,48 @@ function normalizarValoresProducto(array $input): array
     $values['activo'] = ($input['activo'] ?? null) === '1';
 
     return $values;
+}
+
+function validarProductoPorCategoria(array &$values, array &$errors, bool $fractionable, bool $editing): void
+{
+    if ($fractionable) {
+        $values['_precio_venta_entero'] = 0;
+        $values['_stock_minimo_entero'] = 0;
+
+        if (!$editing) {
+            if ($values['stock_inicial'] === '') {
+                $errors['stock_inicial'] = 'Ingresa el stock inicial en gramos.';
+                return;
+            }
+            if (!ctype_digit($values['stock_inicial'])) {
+                $errors['stock_inicial'] = 'Ingresa una cantidad entera de gramos igual o mayor que 0.';
+            } else {
+                $values['_stock_inicial_entero'] = (int) $values['stock_inicial'];
+            }
+        }
+
+        return;
+    }
+
+    $normalizedPrice = preg_replace('/[$.\s,]/u', '', $values['precio_venta']) ?? '';
+    if ($normalizedPrice === '' || !ctype_digit($normalizedPrice)) {
+        $errors['precio_venta'] = 'Ingresa un precio entero igual o mayor que 0.';
+    } else {
+        $values['_precio_venta_entero'] = $normalizedPrice;
+    }
+
+    foreach ($editing ? ['stock_minimo'] : ['stock_inicial', 'stock_minimo'] as $field) {
+        if ($values[$field] === '' && $field === 'stock_minimo') {
+            continue;
+        }
+
+        if (!ctype_digit($values[$field])) {
+            $errors[$field] = 'Ingresa una cantidad entera igual o mayor que 0.';
+            continue;
+        }
+
+        $values['_' . $field . '_entero'] = (int) $values[$field];
+    }
 }
 
 function validarTextoRequerido(

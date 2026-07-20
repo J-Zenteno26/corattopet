@@ -5,7 +5,7 @@ declare(strict_types=1);
 function listarCategorias(PDO $connection): array
 {
     $statement = $connection->prepare(
-        'SELECT id_categoria, nombre, slug, descripcion, orden, activo, actualizado_en
+        'SELECT id_categoria, nombre, slug, descripcion, orden, maneja_fraccionamiento, activo, actualizado_en
         FROM categorias
         ORDER BY orden ASC, nombre ASC'
     );

@@ -61,6 +61,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         <th>NOMBRE</th>
                         <th>DESCRIPCIÓN</th>
                         <th>ORDEN</th>
+                        <th>TIPO DE STOCK</th>
                         <th>ESTADO</th>
                         <th>ACTUALIZADA</th>
                         <th>ACCIONES</th>
@@ -74,6 +75,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                             <td><?= escape($category['descripcion'] !== null ? (string) $category['descripcion'] : 'Sin descripción') ?>
                             </td>
                             <td><?= escape((string) $category['orden']) ?></td>
+                            <td><?= booleanoPostgresMantenedor($category['maneja_fraccionamiento']) ? 'Peso (gramos)' : 'Unidades' ?></td>
                             <td>
                                 <span class="admin-status-badge <?= $active ? 'is-active' : 'is-inactive' ?>">
                                     <?= $active ? 'Activa' : 'Inactiva' ?>

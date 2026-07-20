@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 2) . '/config/database.php';
+require_once dirname(__DIR__, 2) . '/shared/funciones-stock-fraccionado.php';
 require_once __DIR__ . '/includes/funciones-inventario.php';
 require_once __DIR__ . '/consultas/obtener-resumen.php';
 require_once __DIR__ . '/consultas/obtener-filtros.php';
@@ -12,7 +13,7 @@ require_once __DIR__ . '/consultas/listar-productos.php';
 requireAuthentication();
 
 $parameters = normalizarParametrosInventario($_GET);
-$summary = ['productos_totales' => 0, 'stock_total' => 0, 'stock_bajo' => 0, 'sin_stock' => 0];
+$summary = ['productos_totales' => 0, 'alimentos_fraccionables' => 0, 'sin_presentaciones' => 0, 'sin_stock' => 0];
 $filterOptions = ['categorias' => [], 'marcas' => []];
 $listing = [
     'registros' => [],
@@ -74,12 +75,12 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
             <strong><?= escape(number_format((int) $summary['productos_totales'], 0, ',', '.')) ?></strong>
         </article>
         <article class="admin-summary-card admin-summary-card--notice">
-            <span>STOCK TOTAL</span>
-            <strong><?= escape(number_format((int) $summary['stock_total'], 0, ',', '.')) ?></strong>
+            <span>ALIMENTOS FRACCIONABLES</span>
+            <strong><?= escape(number_format((int) $summary['alimentos_fraccionables'], 0, ',', '.')) ?></strong>
         </article>
         <article class="admin-summary-card admin-summary-card--warning">
-            <span>STOCK BAJO</span>
-            <strong><?= escape(number_format((int) $summary['stock_bajo'], 0, ',', '.')) ?></strong>
+            <span>SIN PRESENTACIONES</span>
+            <strong><?= escape(number_format((int) $summary['sin_presentaciones'], 0, ',', '.')) ?></strong>
         </article>
         <article class="admin-summary-card admin-summary-card--warning">
             <span>SIN STOCK</span>
@@ -147,6 +148,14 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                     <option value="sin_stock" <?= $parameters['estado_stock'] === 'sin_stock' ? 'selected' : '' ?>>Sin stock</option>
                 </select>
             </div>
+            <div class="admin-field">
+                <label for="stock-type-filter">Tipo de stock</label>
+                <select id="stock-type-filter" name="tipo_stock">
+                    <option value="">Todos</option>
+                    <option value="fraccionable" <?= $parameters['tipo_stock'] === 'fraccionable' ? 'selected' : '' ?>>Fraccionables</option>
+                    <option value="unidad" <?= $parameters['tipo_stock'] === 'unidad' ? 'selected' : '' ?>>Por unidades</option>
+                </select>
+            </div>
             <div class="admin-filter-actions">
                 <button type="submit" class="admin-filter-button">
                     <span class="admin-filter-button__icon" aria-hidden="true">▽</span>
@@ -181,7 +190,11 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                 </thead>
                 <tbody>
                     <?php foreach ($listing['registros'] as $product): ?>
-                        <?php $imageUrl = urlImagenInventario($product['imagen_principal'] ?? null); ?>
+                        <?php
+                        $imageUrl = urlImagenInventario($product['imagen_principal'] ?? null);
+                        $fractionable = esProductoFraccionable($product);
+                        $activePresentations = (int) ($product['presentaciones_activas'] ?? 0);
+                        ?>
                         <tr>
                             <td>
                                 <?php if ($imageUrl !== null): ?>
@@ -200,8 +213,11 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                             <td><?= escape((string) $product['categoria']) ?></td>
                             <td><?= escape($product['marca'] !== null ? (string) $product['marca'] : 'Sin marca') ?></td>
                             <td><?= escape(textoTipoMascota($product['tipo_mascota'])) ?></td>
-                            <td><?= escape(formatearPrecioClp($product['precio_venta'])) ?></td>
-                            <td><?= escape((string) ((int) $product['cantidad_disponible'])) ?></td>
+                            <td><?= $fractionable ? '<span class="admin-status-badge">Por presentación</span>' : escape(formatearPrecioClp($product['precio_venta'])) ?></td>
+                            <td>
+                                <strong><?= escape(formatearCantidadStock((int) $product['cantidad_disponible'], $fractionable)) ?></strong>
+                                <?php if ($fractionable): ?><span class="admin-field__help">Stock base</span><?php endif; ?>
+                            </td>
                             <td><?= escape(textoEstadoStock($product['estado_stock'])) ?></td>
                             <td><?= escape(formatearFechaInventario($product['actualizado_en'])) ?></td>
                             <td>
@@ -214,6 +230,10 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                                         class="admin-button admin-button--dark"
                                         href="<?= escape(appUrl('admin/inventario/productos/editar.php?id=' . $product['id_producto'])) ?>"
                                     >Editar</a>
+                                    <?php if ($fractionable): ?>
+                                        <a class="admin-button<?= $activePresentations === 0 ? ' admin-button--primary' : '' ?>" href="<?= escape(appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $product['id_producto'])) ?>"><?= $activePresentations === 0 ? 'Agregar presentaciones' : 'Presentaciones' ?></a>
+                                        <?php if ($activePresentations === 0): ?><span class="admin-status-badge is-inactive">Sin presentaciones</span><?php endif; ?>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -284,7 +304,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
             </nav>
 
             <form class="admin-pagination__size" method="get" action="<?= escape(appUrl('admin/inventario/index.php')) ?>">
-                <?php foreach (['buscar', 'id_categoria', 'id_marca', 'tipo_mascota', 'estado_stock'] as $field): ?>
+                <?php foreach (['buscar', 'id_categoria', 'id_marca', 'tipo_mascota', 'estado_stock', 'tipo_stock'] as $field): ?>
                     <?php if ($parameters[$field] !== '' && $parameters[$field] !== null): ?>
                         <input type="hidden" name="<?= escape($field) ?>" value="<?= escape((string) $parameters[$field]) ?>">
                     <?php endif; ?>

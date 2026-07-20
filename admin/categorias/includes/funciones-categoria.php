@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 function valoresInicialesCategoria(): array
 {
-    return ['nombre' => '', 'descripcion' => '', 'orden' => '0', 'activo' => true];
+    return ['nombre' => '', 'descripcion' => '', 'orden' => '0', 'maneja_fraccionamiento' => false, 'activo' => true];
 }
 
 function obtenerCategoria(PDO $connection, int $id): ?array
 {
     $statement = $connection->prepare(
-        'SELECT id_categoria, nombre, descripcion, orden, activo FROM categorias WHERE id_categoria = :id'
+        'SELECT id_categoria, nombre, descripcion, orden, maneja_fraccionamiento, activo FROM categorias WHERE id_categoria = :id'
     );
     $statement->execute(['id' => $id]);
     $category = $statement->fetch();

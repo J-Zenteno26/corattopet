@@ -8,7 +8,7 @@ function listarProductosInventario(PDO $connection, array $filters): array
     $whereSql = $where === [] ? '' : ' WHERE ' . implode(' AND ', $where);
 
     $countStatement = $connection->prepare(
-        'SELECT COUNT(id_producto) FROM vista_inventario' . $whereSql
+        'SELECT COUNT(vi.id_producto) FROM vista_inventario vi' . $whereSql
     );
     ejecutarConsultaInventario($countStatement, $bindings);
     $totalRecords = (int) $countStatement->fetchColumn();
@@ -30,8 +30,15 @@ function listarProductosInventario(PDO $connection, array $filters): array
             precio_venta,
             cantidad_disponible,
             estado_stock,
-            actualizado_en
-        FROM vista_inventario'
+            actualizado_en,
+            (SELECT c.maneja_fraccionamiento
+             FROM productos p
+             INNER JOIN categorias c ON c.id_categoria = p.id_categoria
+             WHERE p.id_producto = vi.id_producto) AS maneja_fraccionamiento,
+            (SELECT COUNT(pp.id_presentacion)
+             FROM producto_presentaciones pp
+             WHERE pp.id_producto = vi.id_producto AND pp.activo = TRUE) AS presentaciones_activas
+        FROM vista_inventario vi'
         . $whereSql
         . ' ORDER BY actualizado_en DESC, id_producto DESC LIMIT :limit OFFSET :offset'
     );
@@ -69,6 +76,12 @@ function construirFiltrosSqlInventario(array $filters): array
     if ($filters['tipo_mascota'] !== '') {
         $where[] = 'tipo_mascota = :tipo_mascota';
         $bindings['tipo_mascota'] = $filters['tipo_mascota'];
+    }
+
+    if ($filters['tipo_stock'] !== '') {
+        $where[] = $filters['tipo_stock'] === 'fraccionable'
+            ? 'EXISTS (SELECT 1 FROM productos fp INNER JOIN categorias fc ON fc.id_categoria = fp.id_categoria WHERE fp.id_producto = vi.id_producto AND fc.maneja_fraccionamiento = TRUE)'
+            : 'EXISTS (SELECT 1 FROM productos up INNER JOIN categorias uc ON uc.id_categoria = up.id_categoria WHERE up.id_producto = vi.id_producto AND uc.maneja_fraccionamiento = FALSE)';
     }
 
     $stockConditions = [

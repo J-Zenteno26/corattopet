@@ -197,6 +197,18 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
 
                     <div class="admin-status-control">
                         <div class="admin-status-control__copy">
+                            <strong>Categoría fraccionable</strong>
+                            <span id="fraccionamiento-help">Los productos de esta categoría administran stock en gramos y pueden venderse por presentaciones.</span>
+                        </div>
+                        <label class="admin-switch" for="maneja_fraccionamiento">
+                            <input id="maneja_fraccionamiento" name="maneja_fraccionamiento" type="checkbox" value="1" aria-describedby="fraccionamiento-help" <?= $values['maneja_fraccionamiento'] ? 'checked' : '' ?>>
+                            <span class="admin-switch__track" aria-hidden="true"></span>
+                            <span class="admin-switch__label">Usa stock por peso</span>
+                        </label>
+                    </div>
+
+                    <div class="admin-status-control">
+                        <div class="admin-status-control__copy">
                             <strong>Estado de la categoría</strong>
 
                             <span id="activo-help">

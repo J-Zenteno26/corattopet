@@ -13,7 +13,7 @@ $category = null;
 try { if ($id !== null) { $category = obtenerCategoria(database(), $id); } } catch (Throwable $exception) { error_log('Category edit load error: ' . $exception->getMessage()); }
 if ($category === null) { http_response_code(404); }
 $state = consumirEstadoMantenedor('categoria_editar_' . ($id ?? 0));
-$values = $category === null ? valoresInicialesCategoria() : ['nombre' => $category['nombre'], 'descripcion' => $category['descripcion'] ?? '', 'orden' => $category['orden'], 'activo' => booleanoPostgresMantenedor($category['activo'])];
+$values = $category === null ? valoresInicialesCategoria() : ['nombre' => $category['nombre'], 'descripcion' => $category['descripcion'] ?? '', 'orden' => $category['orden'], 'maneja_fraccionamiento' => booleanoPostgresMantenedor($category['maneja_fraccionamiento']), 'activo' => booleanoPostgresMantenedor($category['activo'])];
 $values = array_merge($values, $state['valores'] ?? []);
 $errors = is_array($state['errores'] ?? null) ? $state['errores'] : [];
 $generalError = is_string($state['error_general'] ?? null) ? $state['error_general'] : null;
@@ -28,6 +28,7 @@ require dirname(__DIR__, 2) . '/shared/admin-header.php'; require dirname(__DIR_
 <div class="admin-field admin-field--full<?= isset($errors['nombre']) ? ' admin-field--invalid' : '' ?>"><label for="nombre">Nombre *</label><input id="nombre" name="nombre" maxlength="120" required value="<?= escape((string) $values['nombre']) ?>"><?php if (isset($errors['nombre'])): ?><span class="admin-field__error"><?= escape($errors['nombre']) ?></span><?php endif; ?></div>
 <div class="admin-field admin-field--full<?= isset($errors['descripcion']) ? ' admin-field--invalid' : '' ?>"><label for="descripcion">Descripción</label><textarea id="descripcion" name="descripcion" maxlength="1000" rows="4"><?= escape((string) $values['descripcion']) ?></textarea><?php if (isset($errors['descripcion'])): ?><span class="admin-field__error"><?= escape($errors['descripcion']) ?></span><?php endif; ?></div>
 <div class="admin-field<?= isset($errors['orden']) ? ' admin-field--invalid' : '' ?>"><label for="orden">Orden *</label><input id="orden" name="orden" type="number" min="0" step="1" required value="<?= escape((string) $values['orden']) ?>"><?php if (isset($errors['orden'])): ?><span class="admin-field__error"><?= escape($errors['orden']) ?></span><?php endif; ?></div>
+<div class="admin-field"><label><input name="maneja_fraccionamiento" type="checkbox" value="1" <?= $values['maneja_fraccionamiento'] ? 'checked' : '' ?>> Categoría fraccionable</label><span class="admin-field__help">Administra stock en gramos y permite venta por presentaciones.</span></div>
 <div class="admin-field"><label><input name="activo" type="checkbox" value="1" <?= $values['activo'] ? 'checked' : '' ?>> Categoría activa</label></div>
 </div></section><section class="admin-panel admin-form-actions"><a class="admin-button" href="<?= escape(appUrl('admin/categorias/index.php')) ?>">Cancelar</a><button class="admin-button admin-button--primary" type="submit">Actualizar categoría</button></section></form>
 <?php endif; ?>

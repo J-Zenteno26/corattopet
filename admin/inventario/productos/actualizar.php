@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
 require_once __DIR__ . '/includes/validaciones-producto.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 require_once __DIR__ . '/consultas/buscar-producto.php';
@@ -52,6 +53,16 @@ try {
         header('Location: ' . appUrl('admin/inventario/index.php?mensaje=no_encontrado'), true, 303);
         exit;
     }
+    $category = obtenerCategoriaProducto($connection, (int) $values['id_categoria']);
+    $fractionable = $category !== null && esProductoFraccionable($category);
+    validarProductoPorCategoria($values, $errors, $fractionable, true);
+    if ($fractionable) {
+        $values['formato'] = '';
+        $values['peso_contenido'] = '';
+        $values['unidad'] = '';
+    } else {
+        validarCamposFormatoProducto($values, $errors);
+    }
 
     $references = validarReferenciasProductoEdicion(
         $connection,
@@ -87,7 +98,7 @@ try {
         (object) construirDetallesOpcionales($values),
         JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
     );
-    $minimumStock = $values['stock_minimo'] === '' ? 5 : (int) $values['stock_minimo'];
+    $minimumStock = $values['stock_minimo'] === '' ? ($fractionable ? 0 : 5) : (int) $values['_stock_minimo_entero'];
 
     $connection->beginTransaction();
 

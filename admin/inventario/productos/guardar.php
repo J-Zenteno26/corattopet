@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
 require_once __DIR__ . '/includes/validaciones-producto.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 
@@ -35,11 +36,21 @@ $connection = null;
 try {
     $connection = database();
     $references = validarReferenciasProducto($connection, (int) $values['id_categoria'], (int) $values['id_marca']);
+    $category = obtenerCategoriaProducto($connection, (int) $values['id_categoria']);
     if (!valorBooleanoPostgres($references['categoria_valida'] ?? false)) {
         $errors['id_categoria'] = 'Selecciona una categoría activa.';
     }
     if (!valorBooleanoPostgres($references['marca_valida'] ?? false)) {
         $errors['id_marca'] = 'Selecciona una marca activa.';
+    }
+    $fractionable = $category !== null && esProductoFraccionable($category);
+    validarProductoPorCategoria($values, $errors, $fractionable, false);
+    if ($fractionable) {
+        $values['formato'] = '';
+        $values['peso_contenido'] = '';
+        $values['unidad'] = '';
+    } else {
+        validarCamposFormatoProducto($values, $errors);
     }
 
     $sku = $values['sku'] === '' ? null : $values['sku'];
@@ -63,8 +74,10 @@ try {
         (object) construirDetallesOpcionales($values),
         JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
     );
-    $stockInitial = (int) $values['stock_inicial'];
-    $minimumStock = $values['stock_minimo'] === '' ? 5 : (int) $values['stock_minimo'];
+    $stockInitial = (int) $values['_stock_inicial_entero'];
+    $minimumStock = $fractionable
+        ? 0
+        : ($values['stock_minimo'] === '' ? 5 : (int) $values['_stock_minimo_entero']);
 
     $connection->beginTransaction();
 
@@ -119,7 +132,10 @@ try {
     }
 
     $connection->commit();
-    header('Location: ' . appUrl('admin/inventario/index.php?creado=1'), true, 303);
+    $destination = $fractionable
+        ? appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId . '&creado=1')
+        : appUrl('admin/inventario/index.php?creado=1');
+    header('Location: ' . $destination, true, 303);
     exit;
 } catch (Throwable $exception) {
     if ($connection instanceof PDO && $connection->inTransaction()) {

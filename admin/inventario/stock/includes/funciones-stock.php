@@ -11,7 +11,7 @@ function idPositivoStock(mixed $value): ?int
 
 function valoresInicialesMovimientoStock(): array
 {
-    return ['tipo_movimiento' => '', 'cantidad' => '', 'motivo' => '', 'observacion' => ''];
+    return ['tipo_movimiento' => '', 'cantidad' => '', 'unidad_cantidad' => 'unidad', 'motivo' => '', 'observacion' => ''];
 }
 
 function guardarEstadoMovimientoStock(int $productId, array $values, array $errors, ?string $generalError = null): void
@@ -71,6 +71,10 @@ function tipoPersistidoMovimientoStock(string $type, string $reason, int $moveme
 
     if ($type === 'salida' && $reason === 'Venta manual') {
         return 'venta';
+    }
+
+    if ($type === 'salida') {
+        return 'salida';
     }
 
     return $movementQuantity > 0 ? 'ajuste_positivo' : 'ajuste_negativo';

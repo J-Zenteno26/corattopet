@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
 require_once __DIR__ . '/includes/funciones-stock.php';
 require_once __DIR__ . '/includes/validaciones-stock.php';
 
@@ -22,16 +23,14 @@ if ($productId === null) {
 }
 
 $formUrl = appUrl('admin/inventario/stock/index.php?id=' . $productId);
-[$values, $errors] = validarDatosMovimientoStock($_POST);
+$values = array_merge(valoresInicialesMovimientoStock(), array_map(
+    static fn (mixed $value): string => is_scalar($value) ? trim((string) $value) : '',
+    array_intersect_key($_POST, valoresInicialesMovimientoStock())
+));
+$errors = [];
 
 if (!validateCsrfToken($_POST['csrf_token'] ?? null)) {
     guardarEstadoMovimientoStock($productId, $values, [], 'La solicitud no es válida. Recarga el formulario e intenta nuevamente.');
-    header('Location: ' . $formUrl, true, 303);
-    exit;
-}
-
-if ($errors !== []) {
-    guardarEstadoMovimientoStock($productId, $values, $errors);
     header('Location: ' . $formUrl, true, 303);
     exit;
 }
@@ -43,10 +42,12 @@ try {
     $connection->beginTransaction();
 
     $stockStatement = $connection->prepare(
-        'SELECT cantidad_actual, cantidad_reservada
-        FROM stock
-        WHERE id_producto = :id_producto
-        FOR UPDATE'
+        'SELECT s.cantidad_actual, s.cantidad_reservada, c.maneja_fraccionamiento
+        FROM stock s
+        INNER JOIN productos p ON p.id_producto = s.id_producto
+        INNER JOIN categorias c ON c.id_categoria = p.id_categoria
+        WHERE s.id_producto = :id_producto
+        FOR UPDATE OF s'
     );
     $stockStatement->execute(['id_producto' => $productId]);
     $stock = $stockStatement->fetch();
@@ -56,12 +57,19 @@ try {
         header('Location: ' . appUrl('admin/inventario/index.php?mensaje=no_encontrado'), true, 303);
         exit;
     }
+    [$values, $errors] = validarDatosMovimientoStock($_POST, esProductoFraccionable($stock));
+    if ($errors !== []) {
+        $connection->rollBack();
+        guardarEstadoMovimientoStock($productId, $values, $errors);
+        header('Location: ' . $formUrl, true, 303);
+        exit;
+    }
 
     $currentStock = (int) $stock['cantidad_actual'];
     $reservedStock = (int) $stock['cantidad_reservada'];
     [$movementQuantity, $resultingStock] = calcularMovimientoStock(
         $values['tipo_movimiento'],
-        (int) $values['cantidad'],
+        (int) $values['_cantidad_entera'],
         $currentStock
     );
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 require_once __DIR__ . '/consultas/buscar-producto.php';
 
@@ -71,6 +72,7 @@ $values = array_merge(
     $databaseValues,
     $state['valores'] ?? []
 );
+$fractionable = esProductoFraccionable($product);
 
 $errors = is_array($state['errores'] ?? null)
     ? $state['errores']
@@ -360,6 +362,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                         <?php endif; ?>
                     </div>
 
+                    <?php if (!$fractionable): ?>
                     <div
                         class="admin-field<?= isset($errors['precio_venta'])
                             ? ' admin-field--invalid'
@@ -389,6 +392,12 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             </span>
                         <?php endif; ?>
                     </div>
+                    <?php else: ?>
+                    <div class="admin-field admin-field--full">
+                        <strong>Producto fraccionable</strong>
+                        <span class="admin-field__help">Stock administrado en gramos. El precio de venta se gestiona en las presentaciones.</span>
+                    </div>
+                    <?php endif; ?>
 
                     <?php
                     $identifierFields = [
@@ -649,15 +658,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             Cantidad actual
                         </label>
 
-                        <input
-                            id="cantidad_actual"
-                            type="number"
-                            value="<?= escape(
-                                (string) $values['cantidad_actual']
-                            ) ?>"
-                            readonly
-                            aria-describedby="stock-trace-help"
-                        >
+                        <input id="cantidad_actual" type="text" value="<?= escape(formatearCantidadStock((int) $values['cantidad_actual'], $fractionable)) ?>" readonly aria-describedby="stock-trace-help">
 
                         <span
                             class="admin-field__help"
@@ -673,7 +674,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
         : '' ?>"
 >
     <label for="stock_minimo">
-        Stock mínimo
+        <?= $fractionable ? 'Stock mínimo en gramos' : 'Stock mínimo en unidades' ?>
     </label>
 
     <input

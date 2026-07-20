@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
 require_once __DIR__ . '/includes/funciones-stock.php';
 require_once __DIR__ . '/includes/validaciones-stock.php';
 require_once __DIR__ . '/consultas/buscar-producto-stock.php';
@@ -82,6 +83,7 @@ $generalError = is_string($state['error_general'] ?? null)
 
 $currentStock = (int) $product['cantidad_actual'];
 $minimumStock = (int) $product['stock_minimo'];
+$fractionable = esProductoFraccionable($product);
 
 $stockStatus = estadoStockProducto(
     $currentStock,
@@ -214,11 +216,11 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 </span>
 
                 <strong class="admin-stock-overview__value">
-                    <?= escape((string) $currentStock) ?>
+                    <?= escape(formatearCantidadStock($currentStock, $fractionable)) ?>
                 </strong>
 
                 <span class="admin-stock-overview__detail">
-                    Unidades disponibles
+                    <?= $fractionable ? 'Peso disponible' : 'Unidades disponibles' ?>
                 </span>
             </div>
 
@@ -228,7 +230,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 </span>
 
                 <strong class="admin-stock-overview__value">
-                    <?= escape((string) $minimumStock) ?>
+                    <?= escape(formatearCantidadStock($minimumStock, $fractionable)) ?>
                 </strong>
 
                 <span class="admin-stock-overview__detail">
@@ -269,7 +271,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     </h3>
 
                     <p>
-                        Entrada suma unidades, salida descuenta y ajuste establece el stock real final.
+                        <?= $fractionable ? 'Entrada suma peso, salida descuenta y ajuste establece el peso real final.' : 'Entrada suma unidades, salida descuenta y ajuste establece el stock real final.' ?>
                     </p>
                 </div>
             </header>
@@ -350,15 +352,17 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             : '' ?>"
                     >
                         <label for="cantidad">
-                            Cantidad
+                            <?= $fractionable ? 'Cantidad en gramos' : 'Cantidad en unidades' ?>
                         </label>
 
                         <input
                             id="cantidad"
                             name="cantidad"
                             type="number"
+                            inputmode="numeric"
                             min="0"
                             step="1"
+                            placeholder="<?= $fractionable ? 'Ej.: 1000' : 'Ej.: 10' ?>"
                             required
                             value="<?= escape(
                                 (string) $values['cantidad']
@@ -372,6 +376,9 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                 ) ?>
                             </span>
                         <?php endif; ?>
+                    </div>
+                    <div class="admin-field">
+                        <span class="admin-field__help"><?= $fractionable ? 'Ejemplo: 1 kg = 1000 g, 250 g = 250.' : 'Ingresa una cantidad entera de unidades.' ?></span>
                     </div>
 
                     <div
@@ -535,31 +542,21 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                 <td>
                                     <strong>
                                         <?= escape(
-                                            ($movementQuantity > 0
-                                                ? '+'
-                                                : '')
-                                            . (string) $movementQuantity
+                                            ($movementQuantity > 0 ? '+' : '')
+                                            . formatearCantidadStock($movementQuantity, $fractionable)
                                         ) ?>
                                     </strong>
                                 </td>
 
                                 <td>
                                     <?= escape(
-                                        (string) (
-                                            (int) $movement[
-                                                'stock_anterior'
-                                            ]
-                                        )
+                                        formatearCantidadStock((int) $movement['stock_anterior'], $fractionable)
                                     ) ?>
                                 </td>
 
                                 <td>
                                     <?= escape(
-                                        (string) (
-                                            (int) $movement[
-                                                'stock_final'
-                                            ]
-                                        )
+                                        formatearCantidadStock((int) $movement['stock_final'], $fractionable)
                                     ) ?>
                                 </td>
 
