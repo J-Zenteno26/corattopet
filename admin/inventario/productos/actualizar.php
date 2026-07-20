@@ -98,7 +98,7 @@ try {
         (object) construirDetallesOpcionales($values),
         JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
     );
-    $minimumStock = $values['stock_minimo'] === '' ? ($fractionable ? 0 : 5) : (int) $values['_stock_minimo_entero'];
+    $minimumStock = $values['stock_minimo'] === '' ? ($fractionable ? 5000 : 5) : (int) $values['_stock_minimo_entero'];
 
     $connection->beginTransaction();
 

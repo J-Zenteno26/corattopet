@@ -76,7 +76,7 @@ try {
     );
     $stockInitial = (int) $values['_stock_inicial_entero'];
     $minimumStock = $fractionable
-        ? 0
+        ? 5000
         : ($values['stock_minimo'] === '' ? 5 : (int) $values['_stock_minimo_entero']);
 
     $connection->beginTransaction();

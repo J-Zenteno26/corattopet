@@ -76,7 +76,7 @@ function validarProductoPorCategoria(array &$values, array &$errors, bool $fract
 {
     if ($fractionable) {
         $values['_precio_venta_entero'] = 0;
-        $values['_stock_minimo_entero'] = 0;
+        $values['_stock_minimo_entero'] = 5000;
 
         if (!$editing) {
             if ($values['stock_inicial'] === '') {

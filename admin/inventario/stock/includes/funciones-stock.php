@@ -14,6 +14,33 @@ function valoresInicialesMovimientoStock(): array
     return ['tipo_movimiento' => '', 'cantidad' => '', 'unidad_cantidad' => 'unidad', 'motivo' => '', 'observacion' => ''];
 }
 
+function motivosMovimientoStock(): array
+{
+    return [
+        'entrada' => [
+            'compra_reposicion' => 'Compra o reposición',
+            'recepcion_saco' => 'Recepción de saco',
+            'devolucion_cliente' => 'Devolución de cliente',
+            'correccion_administrativa' => 'Corrección administrativa',
+            'otro' => 'Otro',
+        ],
+        'salida' => [
+            'venta_manual' => 'Venta manual',
+            'venta_fraccionada' => 'Venta fraccionada',
+            'merma_fraccionamiento' => 'Merma por fraccionamiento',
+            'producto_danado' => 'Producto dañado',
+            'vencimiento' => 'Vencimiento',
+            'correccion_administrativa' => 'Corrección administrativa',
+            'otro' => 'Otro',
+        ],
+        'ajuste' => [
+            'conteo_fisico' => 'Conteo físico',
+            'correccion_administrativa' => 'Corrección administrativa',
+            'otro' => 'Otro',
+        ],
+    ];
+}
+
 function guardarEstadoMovimientoStock(int $productId, array $values, array $errors, ?string $generalError = null): void
 {
     $_SESSION['movimiento_stock_' . $productId] = [
@@ -32,22 +59,26 @@ function consumirEstadoMovimientoStock(int $productId): array
     return is_array($state) ? $state : [];
 }
 
-function estadoStockProducto(int $currentStock, int $minimumStock): string
+function estadoStockProducto(int $currentStock, int $minimumStock, bool $fractionable = false): string
 {
     if ($currentStock === 0) {
         return 'Sin stock';
     }
 
-    return $currentStock <= $minimumStock ? 'Stock bajo' : 'Disponible';
+    $lowStock = $fractionable ? $currentStock < $minimumStock : $currentStock <= $minimumStock;
+
+    return $lowStock ? 'Stock bajo' : 'Disponible';
 }
 
-function claseEstadoStockProducto(int $currentStock, int $minimumStock): string
+function claseEstadoStockProducto(int $currentStock, int $minimumStock, bool $fractionable = false): string
 {
     if ($currentStock === 0) {
         return 'is-inactive';
     }
 
-    return $currentStock <= $minimumStock ? '' : 'is-active';
+    $lowStock = $fractionable ? $currentStock < $minimumStock : $currentStock <= $minimumStock;
+
+    return $lowStock ? '' : 'is-active';
 }
 
 function calcularMovimientoStock(string $type, int $quantity, int $currentStock): array
@@ -69,7 +100,7 @@ function tipoPersistidoMovimientoStock(string $type, string $reason, int $moveme
         return 'entrada';
     }
 
-    if ($type === 'salida' && $reason === 'Venta manual') {
+    if ($type === 'salida' && $reason === 'venta_manual') {
         return 'venta';
     }
 

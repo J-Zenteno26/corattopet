@@ -87,12 +87,14 @@ $fractionable = esProductoFraccionable($product);
 
 $stockStatus = estadoStockProducto(
     $currentStock,
-    $minimumStock
+    $minimumStock,
+    $fractionable
 );
 
 $statusClass = claseEstadoStockProducto(
     $currentStock,
-    $minimumStock
+    $minimumStock,
+    $fractionable
 );
 
 $movementTypes = [
@@ -100,6 +102,8 @@ $movementTypes = [
     'salida' => 'Salida',
     'ajuste' => 'Ajuste',
 ];
+$reasonsByType = motivosMovimientoStock();
+$currentReasons = $reasonsByType[$values['tipo_movimiento']] ?? [];
 
 $csrfToken = csrfToken();
 $pageTitle = 'Gestionar stock';
@@ -396,21 +400,19 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             id="motivo"
                             name="motivo"
                             required
+                            <?= $currentReasons === [] ? 'disabled' : '' ?>
                         >
-                            <option value="">
-                                Seleccionar
-                            </option>
-
-                            <?php foreach (
-                                MOTIVOS_MOVIMIENTO_STOCK as $reason
-                            ): ?>
+                            <?php if ($currentReasons === []): ?>
+                                <option value="">Selecciona primero el tipo de movimiento</option>
+                            <?php endif; ?>
+                            <?php foreach ($currentReasons as $reasonKey => $reasonLabel): ?>
                                 <option
-                                    value="<?= escape($reason) ?>"
-                                    <?= $values['motivo'] === $reason
+                                    value="<?= escape($reasonKey) ?>"
+                                    <?= $values['motivo'] === $reasonKey
                                         ? 'selected'
                                         : '' ?>
                                 >
-                                    <?= escape($reason) ?>
+                                    <?= escape($reasonLabel) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -433,7 +435,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     >
                         <label for="observacion">
                             Observación
-                            <span>(opcional)</span>
+                            <span id="observacion-requirement">(opcional)</span>
                         </label>
 
                         <textarea
@@ -441,6 +443,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             name="observacion"
                             maxlength="150"
                             rows="3"
+                            <?= $values['motivo'] === 'otro' ? 'required' : '' ?>
                         ><?= escape(
                             (string) $values['observacion']
                         ) ?></textarea>
@@ -480,6 +483,37 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     </button>
                 </div>
             </form>
+            <script>
+            (() => {
+                const reasonsByType = <?= json_encode($reasonsByType, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const typeSelect = document.getElementById('tipo_movimiento');
+                const reasonSelect = document.getElementById('motivo');
+                const observation = document.getElementById('observacion');
+                const requirement = document.getElementById('observacion-requirement');
+                if (!typeSelect || !reasonSelect || !observation || !requirement) return;
+
+                const updateObservation = () => {
+                    const required = reasonSelect.value === 'otro';
+                    observation.required = required;
+                    requirement.textContent = required ? '(obligatoria)' : '(opcional)';
+                };
+                const updateReasons = () => {
+                    const previousReason = reasonSelect.value;
+                    const reasons = reasonsByType[typeSelect.value] ?? {};
+                    reasonSelect.replaceChildren();
+                    for (const [value, label] of Object.entries(reasons)) {
+                        const option = new Option(label, value);
+                        reasonSelect.add(option);
+                    }
+                    reasonSelect.disabled = Object.keys(reasons).length === 0;
+                    if (Object.hasOwn(reasons, previousReason)) reasonSelect.value = previousReason;
+                    updateObservation();
+                };
+                typeSelect.addEventListener('change', updateReasons);
+                reasonSelect.addEventListener('change', updateObservation);
+                updateObservation();
+            })();
+            </script>
         </section>
 
         <section

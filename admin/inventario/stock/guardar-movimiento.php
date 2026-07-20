@@ -122,7 +122,7 @@ try {
         'cantidad' => $movementQuantity,
         'stock_anterior' => $currentStock,
         'stock_final' => $resultingStock,
-        'motivo' => $values['motivo'],
+        'motivo' => $values['_motivo_label'],
         'referencia' => $values['observacion'] === '' ? null : $values['observacion'],
     ]);
 

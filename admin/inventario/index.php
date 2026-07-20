@@ -218,7 +218,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                                 <strong><?= escape(formatearCantidadStock((int) $product['cantidad_disponible'], $fractionable)) ?></strong>
                                 <?php if ($fractionable): ?><span class="admin-field__help">Stock base</span><?php endif; ?>
                             </td>
-                            <td><?= escape(textoEstadoStock($product['estado_stock'])) ?></td>
+                            <td><?= escape(textoEstadoStockInventario($product)) ?></td>
                             <td><?= escape(formatearFechaInventario($product['actualizado_en'])) ?></td>
                             <td>
                                 <div class="admin-actions-inline">

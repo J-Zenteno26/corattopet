@@ -113,6 +113,21 @@ function textoEstadoStock(mixed $status): string
     ][(string) $status] ?? 'Sin stock';
 }
 
+function textoEstadoStockInventario(array $product): string
+{
+    $available = (int) ($product['cantidad_disponible'] ?? 0);
+    if ($available === 0) {
+        return 'Sin stock';
+    }
+
+    $minimum = (int) ($product['stock_minimo'] ?? 0);
+    if (esProductoFraccionable($product)) {
+        return $available < $minimum ? 'Stock bajo' : 'En stock';
+    }
+
+    return $available <= $minimum ? 'Stock bajo' : 'En stock';
+}
+
 function urlImagenInventario(mixed $path): ?string
 {
     if (!is_string($path) || trim($path) === '') {

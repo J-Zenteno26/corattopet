@@ -2,22 +2,6 @@
 
 declare(strict_types=1);
 
-const MOTIVOS_MOVIMIENTO_STOCK = [
-    'Compra o reposición',
-    'Recepción de mercadería',
-    'Recepción de saco',
-    'Venta manual',
-    'Merma',
-    'Venta fraccionada',
-    'Merma por fraccionamiento',
-    'Producto dañado',
-    'Vencimiento',
-    'Devolución',
-    'Conteo físico',
-    'Corrección administrativa',
-    'Otro',
-];
-
 function validarDatosMovimientoStock(array $input, bool $fractionable = false): array
 {
     $values = [];
@@ -41,8 +25,16 @@ function validarDatosMovimientoStock(array $input, bool $fractionable = false): 
         $values['_cantidad_entera'] = (int) $values['cantidad'];
     }
 
-    if (!in_array($values['motivo'], MOTIVOS_MOVIMIENTO_STOCK, true)) {
-        $errors['motivo'] = 'Selecciona un motivo válido.';
+    $reasonsByType = motivosMovimientoStock();
+    $allowedReasons = $reasonsByType[$values['tipo_movimiento']] ?? [];
+    if (!array_key_exists($values['motivo'], $allowedReasons)) {
+        $errors['motivo'] = 'Selecciona un motivo válido para el tipo de movimiento.';
+    } else {
+        $values['_motivo_label'] = $allowedReasons[$values['motivo']];
+    }
+
+    if ($values['motivo'] === 'otro' && $values['observacion'] === '') {
+        $errors['observacion'] = 'La observación es obligatoria cuando el motivo es Otro.';
     }
 
     if (mb_strlen($values['observacion']) > 150) {

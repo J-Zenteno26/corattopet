@@ -29,6 +29,7 @@ function listarProductosInventario(PDO $connection, array $filters): array
             tipo_mascota,
             precio_venta,
             cantidad_disponible,
+            stock_minimo,
             estado_stock,
             actualizado_en,
             (SELECT c.maneja_fraccionamiento
@@ -84,9 +85,14 @@ function construirFiltrosSqlInventario(array $filters): array
             : 'EXISTS (SELECT 1 FROM productos up INNER JOIN categorias uc ON uc.id_categoria = up.id_categoria WHERE up.id_producto = vi.id_producto AND uc.maneja_fraccionamiento = FALSE)';
     }
 
+    $fractionableCondition = 'EXISTS (SELECT 1 FROM productos sp INNER JOIN categorias sc ON sc.id_categoria = sp.id_categoria WHERE sp.id_producto = vi.id_producto AND sc.maneja_fraccionamiento = TRUE)';
     $stockConditions = [
-        'en_stock' => 'cantidad_disponible > stock_minimo',
-        'stock_bajo' => 'cantidad_disponible > 0 AND cantidad_disponible <= stock_minimo',
+        'en_stock' => 'cantidad_disponible > 0 AND (('
+            . $fractionableCondition . ' AND cantidad_disponible >= stock_minimo) OR (NOT '
+            . $fractionableCondition . ' AND cantidad_disponible > stock_minimo))',
+        'stock_bajo' => 'cantidad_disponible > 0 AND (('
+            . $fractionableCondition . ' AND cantidad_disponible < stock_minimo) OR (NOT '
+            . $fractionableCondition . ' AND cantidad_disponible <= stock_minimo))',
         'sin_stock' => 'cantidad_disponible = 0',
     ];
     if (isset($stockConditions[$filters['estado_stock']])) {
