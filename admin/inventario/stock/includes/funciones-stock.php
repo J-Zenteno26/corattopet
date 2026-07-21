@@ -41,12 +41,13 @@ function motivosMovimientoStock(): array
     ];
 }
 
-function guardarEstadoMovimientoStock(int $productId, array $values, array $errors, ?string $generalError = null): void
+function guardarEstadoMovimientoStock(int $productId, array $values, array $errors, ?string $generalError = null, ?string $reference = null): void
 {
     $_SESSION['movimiento_stock_' . $productId] = [
         'valores' => $values,
         'errores' => $errors,
         'error_general' => $generalError,
+        'referencia' => $reference,
     ];
 }
 

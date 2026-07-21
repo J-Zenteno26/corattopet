@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
+require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/funciones-stock.php';
 require_once __DIR__ . '/includes/validaciones-stock.php';
 
@@ -18,7 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $productId = idPositivoStock($_POST['id_producto'] ?? null);
 if ($productId === null) {
-    header('Location: ' . appUrl('admin/inventario/index.php?mensaje=no_encontrado'), true, 303);
+    guardarModalAdmin('error', 'No fue posible registrar el movimiento', 'El producto indicado no es válido.');
+    header('Location: ' . appUrl('admin/inventario/index.php'), true, 303);
     exit;
 }
 
@@ -54,7 +57,8 @@ try {
 
     if (!is_array($stock)) {
         $connection->rollBack();
-        header('Location: ' . appUrl('admin/inventario/index.php?mensaje=no_encontrado'), true, 303);
+        guardarModalAdmin('error', 'No fue posible registrar el movimiento', 'El producto indicado no existe o no tiene un registro de stock.');
+        header('Location: ' . appUrl('admin/inventario/index.php'), true, 303);
         exit;
     }
     [$values, $errors] = validarDatosMovimientoStock($_POST, esProductoFraccionable($stock));
@@ -127,15 +131,21 @@ try {
     ]);
 
     $connection->commit();
-    header('Location: ' . $formUrl . '&mensaje=registrado', true, 303);
+    $successModal = match ($values['tipo_movimiento']) {
+        'entrada' => ['Entrada registrada', 'El stock fue actualizado correctamente.'],
+        'salida' => ['Salida registrada', 'El stock fue descontado correctamente.'],
+        default => ['Ajuste registrado', 'El ajuste de stock fue guardado correctamente.'],
+    };
+    guardarModalAdmin('success', $successModal[0], $successModal[1]);
+    header('Location: ' . $formUrl, true, 303);
     exit;
 } catch (Throwable $exception) {
     if ($connection instanceof PDO && $connection->inTransaction()) {
         $connection->rollBack();
     }
 
-    error_log('Stock movement error: ' . $exception->getMessage());
-    guardarEstadoMovimientoStock($productId, $values, [], 'No fue posible registrar el movimiento de stock.');
+    $reference = registrarExcepcionAdmin('Stock movement error', $exception);
+    guardarEstadoMovimientoStock($productId, $values, [], 'Intenta nuevamente. Si el problema continúa, revisa el registro del sistema.', $reference);
     header('Location: ' . $formUrl, true, 303);
     exit;
 }

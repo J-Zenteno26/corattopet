@@ -102,6 +102,55 @@ function construirFiltrosSqlInventario(array $filters): array
     return [$where, $bindings];
 }
 
+function listarProductosInventarioExportacion(PDO $connection, array $filters, int $limit = 5001): array
+{
+    [$where, $bindings] = construirFiltrosSqlInventario($filters);
+    $whereSql = $where === [] ? '' : ' WHERE ' . implode(' AND ', $where);
+    $statement = $connection->prepare(
+        'SELECT vi.id_producto, vi.nombre, vi.sku, vi.codigo_barras, vi.categoria, vi.marca,
+            vi.tipo_mascota, vi.precio_venta, vi.cantidad_disponible, vi.stock_minimo,
+            vi.estado_stock, vi.estado, vi.actualizado_en,
+            (SELECT c.maneja_fraccionamiento
+             FROM productos p
+             INNER JOIN categorias c ON c.id_categoria = p.id_categoria
+             WHERE p.id_producto = vi.id_producto) AS maneja_fraccionamiento,
+            (SELECT COUNT(pp.id_presentacion) FROM producto_presentaciones pp
+             WHERE pp.id_producto = vi.id_producto AND pp.activo = TRUE) AS presentaciones_activas
+        FROM vista_inventario vi'
+        . $whereSql
+        . ' ORDER BY vi.actualizado_en DESC, vi.id_producto DESC LIMIT :limit'
+    );
+    ejecutarConsultaInventario($statement, $bindings, $limit);
+
+    return $statement->fetchAll();
+}
+
+function listarPresentacionesExportacion(PDO $connection, array $productIds): array
+{
+    $productIds = array_values(array_unique(array_filter(array_map('intval', $productIds), static fn (int $id): bool => $id > 0)));
+    if ($productIds === []) {
+        return [];
+    }
+    $placeholders = [];
+    foreach ($productIds as $index => $id) {
+        $placeholders[] = ':product_' . $index;
+    }
+    $statement = $connection->prepare(
+        'SELECT p.id_producto, p.nombre AS producto_base, p.sku AS sku_producto_base,
+            pp.nombre, pp.cantidad_gramos, pp.precio_venta, pp.sku, pp.activo, pp.orden
+        FROM producto_presentaciones pp
+        INNER JOIN productos p ON p.id_producto = pp.id_producto
+        WHERE pp.id_producto IN (' . implode(', ', $placeholders) . ')
+        ORDER BY p.nombre, pp.orden, pp.nombre'
+    );
+    foreach ($productIds as $index => $id) {
+        $statement->bindValue(':product_' . $index, $id, PDO::PARAM_INT);
+    }
+    $statement->execute();
+
+    return $statement->fetchAll();
+}
+
 function ejecutarConsultaInventario(
     PDOStatement $statement,
     array $bindings,

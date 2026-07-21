@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 
 requireAuthentication();
@@ -13,6 +14,17 @@ $state = consumirEstadoFormularioProducto();
 $values = array_merge(valoresInicialesProducto(), $state['valores'] ?? []);
 $errors = is_array($state['errores'] ?? null) ? $state['errores'] : [];
 $generalError = is_string($state['error_general'] ?? null) ? $state['error_general'] : null;
+$errorReference = is_string($state['referencia'] ?? null) ? $state['referencia'] : '';
+if ($errors !== [] || $generalError !== null) {
+    $adminModal = [
+        'type' => 'error',
+        'title' => 'No fue posible guardar el producto',
+        'message' => $errors !== [] ? 'Revisa los campos marcados antes de continuar.' : 'No se pudo completar la acción.',
+        'detail' => resumenErroresFormulario($errors, $generalError),
+        'reference' => $errorReference,
+        'primaryText' => 'Aceptar',
+    ];
+}
 $options = ['categorias' => [], 'marcas' => []];
 $optionsError = false;
 
@@ -20,7 +32,16 @@ try {
     $options = obtenerOpcionesProducto(database());
 } catch (Throwable $exception) {
     $optionsError = true;
-    error_log('Product form options error: ' . $exception->getMessage());
+    $reference = registrarExcepcionAdmin('Product form options error', $exception);
+    if (!isset($adminModal)) {
+        $adminModal = [
+            'type' => 'error',
+            'title' => 'No fue posible preparar el formulario',
+            'message' => 'No se pudieron cargar las categorías y marcas disponibles.',
+            'reference' => $reference,
+            'primaryText' => 'Aceptar',
+        ];
+    }
 }
 
 $canSubmit = !$optionsError && $options['categorias'] !== [] && $options['marcas'] !== [];
@@ -40,22 +61,6 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             <p>Registra la información base del producto y su stock inicial.</p>
         </div>
     </header>
-
-    <?php if ($errors !== [] || $generalError !== null): ?>
-        <div class="admin-alert admin-alert--error" role="alert" tabindex="-1">
-            <strong>No fue posible guardar el producto.</strong>
-            <?php if ($generalError !== null): ?>
-                <p><?= escape($generalError) ?></p>
-            <?php endif; ?>
-            <?php if ($errors !== []): ?>
-                <ul>
-                    <?php foreach ($errors as $error): ?>
-                        <li><?= escape((string) $error) ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
 
     <?php if (!$canSubmit): ?>
         <div class="admin-alert admin-alert--warning" role="status">

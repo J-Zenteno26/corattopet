@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
+require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/funciones-stock.php';
 require_once __DIR__ . '/includes/validaciones-stock.php';
 require_once __DIR__ . '/consultas/buscar-producto-stock.php';
@@ -15,9 +17,10 @@ requireAuthentication();
 $productId = idPositivoStock($_GET['id'] ?? null);
 
 if ($productId === null) {
+    guardarModalAdmin('error', 'No fue posible abrir la gestión de stock', 'El producto indicado no es válido.');
     header(
         'Location: ' . appUrl(
-            'admin/inventario/index.php?mensaje=no_encontrado'
+            'admin/inventario/index.php'
         ),
         true,
         302
@@ -34,9 +37,10 @@ try {
     );
 
     if ($product === null) {
+        guardarModalAdmin('error', 'No fue posible abrir la gestión de stock', 'El producto indicado no existe.');
         header(
             'Location: ' . appUrl(
-                'admin/inventario/index.php?mensaje=no_encontrado'
+                'admin/inventario/index.php'
             ),
             true,
             302
@@ -49,14 +53,12 @@ try {
         $productId
     );
 } catch (Throwable $exception) {
-    error_log(
-        'Stock page query error: '
-        . $exception->getMessage()
-    );
+    $reference = registrarExcepcionAdmin('Stock page query error', $exception);
+    guardarModalAdmin('error', 'No fue posible abrir la gestión de stock', 'Intenta nuevamente. Si el problema continúa, revisa el registro del sistema.', ['reference' => $reference]);
 
     header(
         'Location: ' . appUrl(
-            'admin/inventario/index.php?mensaje=error'
+            'admin/inventario/index.php'
         ),
         true,
         302
@@ -80,6 +82,17 @@ $errors = is_array($state['errores'] ?? null)
 $generalError = is_string($state['error_general'] ?? null)
     ? $state['error_general']
     : null;
+$errorReference = is_string($state['referencia'] ?? null) ? $state['referencia'] : '';
+if ($errors !== [] || $generalError !== null) {
+    $adminModal = [
+        'type' => 'error',
+        'title' => 'No fue posible registrar el movimiento',
+        'message' => $errors !== [] ? 'Revisa los campos marcados antes de continuar.' : 'No se pudo completar la acción.',
+        'detail' => resumenErroresFormulario($errors, $generalError),
+        'reference' => $errorReference,
+        'primaryText' => 'Aceptar',
+    ];
+}
 
 $currentStock = (int) $product['cantidad_actual'];
 $minimumStock = (int) $product['stock_minimo'];
@@ -135,42 +148,6 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </p>
         </div>
     </header>
-
-    <?php if (($_GET['mensaje'] ?? null) === 'registrado'): ?>
-        <div
-            class="admin-alert admin-alert--success"
-            role="status"
-        >
-            <strong>
-                El movimiento de stock fue registrado correctamente.
-            </strong>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($errors !== [] || $generalError !== null): ?>
-        <div
-            class="admin-alert admin-alert--error"
-            role="alert"
-        >
-            <strong>
-                No fue posible registrar el movimiento de stock.
-            </strong>
-
-            <?php if ($generalError !== null): ?>
-                <p><?= escape($generalError) ?></p>
-            <?php endif; ?>
-
-            <?php if ($errors !== []): ?>
-                <ul>
-                    <?php foreach ($errors as $error): ?>
-                        <li>
-                            <?= escape((string) $error) ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
 
     <section
         class="admin-stock-module"
@@ -281,6 +258,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </header>
 
             <form
+                id="form-movimiento-stock"
                 class="admin-product-form"
                 method="post"
                 action="<?= escape(
@@ -477,12 +455,24 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
 
                     <button
                         class="admin-button admin-button--primary"
-                        type="submit"
+                        type="button"
+                        data-stock-confirm-form="form-movimiento-stock"
+                        data-stock-product-name="<?= escape((string) $product['nombre']) ?>"
+                        data-stock-fractionable="<?= $fractionable ? '1' : '0' ?>"
                     >
                         Registrar movimiento
                     </button>
                 </div>
             </form>
+            <template id="stock-confirm-template">
+                <div class="admin-stock-confirm-summary" data-stock-confirm-summary>
+                    <div class="admin-stock-confirm-summary__row"><span class="admin-stock-confirm-summary__label">Producto</span><strong class="admin-stock-confirm-summary__value" data-stock-summary-product></strong></div>
+                    <div class="admin-stock-confirm-summary__row"><span class="admin-stock-confirm-summary__label">Tipo de movimiento</span><strong class="admin-stock-confirm-summary__value" data-stock-summary-type></strong></div>
+                    <div class="admin-stock-confirm-summary__row"><span class="admin-stock-confirm-summary__label">Cantidad</span><strong class="admin-stock-confirm-summary__value" data-stock-summary-quantity></strong></div>
+                    <div class="admin-stock-confirm-summary__row"><span class="admin-stock-confirm-summary__label">Motivo</span><strong class="admin-stock-confirm-summary__value" data-stock-summary-reason></strong></div>
+                    <div class="admin-stock-confirm-summary__row" data-stock-summary-observation-row><span class="admin-stock-confirm-summary__label">Observación</span><strong class="admin-stock-confirm-summary__value" data-stock-summary-observation></strong></div>
+                </div>
+            </template>
             <script>
             (() => {
                 const reasonsByType = <?= json_encode($reasonsByType, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/consultas-presentaciones.php';
 require_once __DIR__ . '/includes/validaciones-presentacion.php';
 requireAuthentication();
@@ -39,8 +40,16 @@ try {
         exit;
     }
     $statement = $connection->prepare('INSERT INTO producto_presentaciones (id_producto, nombre, cantidad_gramos, precio_venta, sku, activo, orden) VALUES (:id_producto, :nombre, :cantidad_gramos, :precio_venta, :sku, :activo, :orden)');
-    $statement->execute(['id_producto' => $productId, 'nombre' => $values['nombre'], 'cantidad_gramos' => (int) $values['cantidad_gramos'], 'precio_venta' => (int) $values['precio_venta'], 'sku' => $values['sku'] === '' ? null : $values['sku'], 'activo' => $values['activo'], 'orden' => (int) $values['orden']]);
-    header('Location: ' . appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId . '&mensaje=creada'), true, 303);
+    $statement->bindValue(':id_producto', $productId, PDO::PARAM_INT);
+    $statement->bindValue(':nombre', $values['nombre']);
+    $statement->bindValue(':cantidad_gramos', (int) $values['cantidad_gramos'], PDO::PARAM_INT);
+    $statement->bindValue(':precio_venta', (int) $values['precio_venta'], PDO::PARAM_INT);
+    $statement->bindValue(':sku', $values['sku'] === '' ? null : $values['sku']);
+    $statement->bindValue(':activo', $values['activo'], PDO::PARAM_BOOL);
+    $statement->bindValue(':orden', (int) $values['orden'], PDO::PARAM_INT);
+    $statement->execute();
+    guardarModalAdmin('success', 'Presentación guardada', 'La presentación fue registrada correctamente.');
+    header('Location: ' . appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId), true, 303);
     exit;
 } catch (Throwable $exception) {
     error_log('Presentation creation error: ' . $exception->getMessage());

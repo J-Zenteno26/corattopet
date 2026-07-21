@@ -226,13 +226,15 @@ function guardarEstadoFormularioProducto(
     array $values,
     array $errors,
     ?string $generalError = null,
-    string $key = 'producto_formulario'
+    string $key = 'producto_formulario',
+    ?string $reference = null
 ): void
 {
     $_SESSION[$key] = [
         'valores' => $values,
         'errores' => $errors,
         'error_general' => $generalError,
+        'referencia' => $reference,
     ];
 }
 

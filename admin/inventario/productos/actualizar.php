@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
+require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/validaciones-producto.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 require_once __DIR__ . '/consultas/buscar-producto.php';
@@ -19,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $productId = idPositivoProducto($_POST['id_producto'] ?? null);
 if ($productId === null) {
-    header('Location: ' . appUrl('admin/inventario/index.php?mensaje=no_encontrado'), true, 303);
+    guardarModalAdmin('error', 'No fue posible actualizar el producto', 'El producto indicado no es válido.');
+    header('Location: ' . appUrl('admin/inventario/index.php'), true, 303);
     exit;
 }
 
@@ -50,7 +53,8 @@ try {
     $connection = database();
     $product = buscarProductoParaEditar($connection, $productId);
     if ($product === null) {
-        header('Location: ' . appUrl('admin/inventario/index.php?mensaje=no_encontrado'), true, 303);
+        guardarModalAdmin('error', 'No fue posible actualizar el producto', 'El producto indicado no existe.');
+        header('Location: ' . appUrl('admin/inventario/index.php'), true, 303);
         exit;
     }
     $category = obtenerCategoriaProducto($connection, (int) $values['id_categoria']);
@@ -141,7 +145,8 @@ try {
     }
 
     $connection->commit();
-    header('Location: ' . appUrl('admin/inventario/index.php?mensaje=actualizado'), true, 303);
+    guardarModalAdmin('success', 'Producto actualizado', 'Los cambios fueron guardados correctamente.');
+    header('Location: ' . appUrl('admin/inventario/index.php'), true, 303);
     exit;
 } catch (Throwable $exception) {
     if ($connection instanceof PDO && $connection->inTransaction()) {
@@ -155,12 +160,13 @@ try {
         $errors['codigo_barras'] = 'Ya existe un producto con este código de barras.';
     }
 
-    error_log('Product update error: ' . $message);
+    $reference = registrarExcepcionAdmin('Product update error', $exception);
     guardarEstadoFormularioProducto(
         $values,
         $errors,
-        $errors === [] ? 'No fue posible actualizar el producto. Intenta nuevamente.' : null,
-        $stateKey
+        $errors === [] ? 'Intenta nuevamente. Si el problema continúa, revisa el registro del sistema.' : null,
+        $stateKey,
+        $errors === [] ? $reference : null
     );
     header('Location: ' . $formUrl, true, 303);
     exit;

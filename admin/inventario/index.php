@@ -43,6 +43,12 @@ $lastRecord = min(
     $listing['pagina_actual'] * $listing['por_pagina'],
     $listing['total_registros']
 );
+$exportQuery = array_filter([
+    'buscar' => $parameters['buscar'], 'id_categoria' => $parameters['id_categoria'],
+    'id_marca' => $parameters['id_marca'], 'tipo_mascota' => $parameters['tipo_mascota'],
+    'estado_stock' => $parameters['estado_stock'], 'tipo_stock' => $parameters['tipo_stock'],
+], static fn (mixed $value): bool => $value !== '' && $value !== null);
+$exportUrl = appUrl('admin/inventario/exportar.php') . ($exportQuery === [] ? '' : '?' . http_build_query($exportQuery));
 $csrfToken = csrfToken();
 $adminModal = (($_GET['importado'] ?? null) === '1') ? [
     'type' => 'success',
@@ -65,15 +71,9 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
         <div class="admin-actions" aria-label="Acciones de inventario">
             <a class="admin-button admin-button--primary" href="<?= escape(appUrl('admin/inventario/productos/crear.php')) ?>">Agregar producto</a>
             <a class="admin-button admin-button--dark" href="<?= escape(appUrl('admin/inventario/importar/index.php')) ?>">Importar Excel</a>
-            <button class="admin-button" type="button">Exportar inventario</button>
+            <a class="admin-button" href="<?= escape($exportUrl) ?>">Exportar inventario</a>
         </div>
     </header>
-
-    <?php if (($_GET['creado'] ?? null) === '1'): ?>
-        <div class="admin-alert admin-alert--success" role="status">
-            <strong>El producto fue registrado correctamente.</strong>
-        </div>
-    <?php endif; ?>
 
     <section class="admin-summary-grid admin-inventory-summary" aria-label="Resumen del inventario">
         <article class="admin-summary-card admin-inventory-summary__card">

@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
+require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/validaciones-producto.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 
@@ -132,9 +134,16 @@ try {
     }
 
     $connection->commit();
+    guardarModalAdmin(
+        'success',
+        'Producto creado',
+        $fractionable
+            ? 'El alimento fue registrado correctamente. Ahora puedes configurar sus presentaciones.'
+            : 'El producto fue registrado correctamente.'
+    );
     $destination = $fractionable
-        ? appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId . '&creado=1')
-        : appUrl('admin/inventario/index.php?creado=1');
+        ? appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId)
+        : appUrl('admin/inventario/index.php');
     header('Location: ' . $destination, true, 303);
     exit;
 } catch (Throwable $exception) {
@@ -149,11 +158,13 @@ try {
         $errors['codigo_barras'] = 'Ya existe un producto con este código de barras.';
     }
 
-    error_log('Product creation error: ' . $message);
+    $reference = registrarExcepcionAdmin('Product creation error', $exception);
     guardarEstadoFormularioProducto(
         $values,
         $errors,
-        $errors === [] ? 'No fue posible guardar el producto. Intenta nuevamente.' : null
+        $errors === [] ? 'Intenta nuevamente. Si el problema continúa, revisa el registro del sistema.' : null,
+        'producto_formulario',
+        $errors === [] ? $reference : null
     );
     header('Location: ' . $formUrl, true, 303);
     exit;

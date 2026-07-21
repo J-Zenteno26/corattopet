@@ -39,12 +39,6 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             href="<?= escape(appUrl('admin/inventario/presentaciones/crear.php?id_producto=' . $productId)) ?>">Agregar
             presentación</a>
     </header>
-    <?php if (($_GET['creado'] ?? null) === '1'): ?>
-        <div class="admin-alert admin-alert--success" role="status">Producto base creado. Ahora configura sus
-            presentaciones.</div><?php endif; ?>
-    <?php if (isset($_GET['mensaje'])): ?>
-        <div class="admin-alert admin-alert--success" role="status">La presentación fue actualizada correctamente.</div>
-    <?php endif; ?>
     <section class="admin-panel">
         <div class="admin-panel__header">
             <h2>Presentaciones disponibles</h2>
@@ -64,7 +58,8 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 </thead>
                 <tbody>
                     <?php foreach ($presentations as $presentation):
-                        $active = in_array($presentation['activo'], [true, 1, '1', 't', 'true'], true); ?>
+                        $active = in_array($presentation['activo'], [true, 1, '1', 't', 'true'], true);
+                        $presentationFormId = 'estado-presentacion-' . (int) $presentation['id_presentacion']; ?>
                         <tr>
                             <td><?= escape((string) $presentation['nombre']) ?></td>
                             <td><?= escape(formatearCantidadStock((int) $presentation['cantidad_gramos'], true)) ?></td>
@@ -77,13 +72,18 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             <td>
                                 <div class="admin-actions-inline"><a class="admin-button admin-button--dark"
                                         href="<?= escape(appUrl('admin/inventario/presentaciones/editar.php?id=' . $presentation['id_presentacion'])) ?>">Editar</a>
-                                    <form method="post"
+                                    <form id="<?= escape($presentationFormId) ?>" method="post"
                                         action="<?= escape(appUrl('admin/inventario/presentaciones/cambiar-estado.php')) ?>">
                                         <input type="hidden" name="csrf_token" value="<?= escape($csrfToken) ?>"><input
                                             type="hidden" name="id_presentacion"
                                             value="<?= (int) $presentation['id_presentacion'] ?>"><button
-                                            class="admin-button"
-                                            type="submit"><?= $active ? 'Desactivar' : 'Activar' ?></button></form>
+                                            class="admin-button" type="button"
+                                            data-admin-confirm-form="<?= escape($presentationFormId) ?>"
+                                            data-modal-title="<?= $active ? 'Desactivar presentación' : 'Activar presentación' ?>"
+                                            data-modal-message="<?= $active ? 'Esta presentación dejará de estar disponible para venta. El producto base y su stock no se eliminarán.' : 'Esta presentación volverá a estar disponible para venta.' ?>"
+                                            data-modal-primary="<?= $active ? 'Desactivar' : 'Activar' ?>"
+                                            data-modal-secondary="Cancelar"
+                                            data-modal-destructive="<?= $active ? 'true' : 'false' ?>"><?= $active ? 'Desactivar' : 'Activar' ?></button></form>
                                 </div>
                             </td>
                         </tr>

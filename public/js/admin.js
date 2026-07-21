@@ -86,7 +86,7 @@
             if (template instanceof HTMLTemplateElement) {
                 content.append(template.content.cloneNode(true));
                 content.hidden = false;
-                actions.hidden = true;
+                actions.hidden = config.hideDefaultActions !== false;
             }
         }
         primaryButton.textContent = config.primaryText || 'Aceptar';
@@ -167,6 +167,7 @@
                 : (mode === 'edit' ? 'Actualiza los datos de la marca.' : 'Registra una marca para asociarla a los productos del catálogo.'),
             detail: config.detail || '', reference: config.reference || '',
             contentTemplate: '#brand-form-template', initialFocus: '[name="nombre"]',
+            hideDefaultActions: true,
         });
         const form = content.querySelector('[data-brand-form]');
         if (!form) return;
@@ -193,4 +194,58 @@
     if (brandState) {
         try { openBrandForm(JSON.parse(brandState.textContent)); } catch (error) { console.error('Invalid brand modal state.', error); }
     }
+
+    document.querySelectorAll('[data-stock-confirm-form]').forEach((button) => {
+        const stockForm = document.getElementById(button.dataset.stockConfirmForm);
+        if (stockForm) {
+            stockForm.addEventListener('submit', (event) => {
+                if (stockForm.dataset.stockConfirmed === '1') {
+                    delete stockForm.dataset.stockConfirmed;
+                    return;
+                }
+                event.preventDefault();
+                button.click();
+            });
+        }
+        button.addEventListener('click', () => {
+            const form = document.getElementById(button.dataset.stockConfirmForm);
+            if (!form || !form.reportValidity()) return;
+            const type = form.querySelector('[name="tipo_movimiento"]');
+            const quantity = form.querySelector('[name="cantidad"]');
+            const reason = form.querySelector('[name="motivo"]');
+            const observation = form.querySelector('[name="observacion"]');
+            const movementType = type.value;
+            const fractionable = button.dataset.stockFractionable === '1';
+            const numericQuantity = Number.parseInt(quantity.value, 10);
+            const formattedQuantity = fractionable
+                ? (numericQuantity >= 1000 ? `${new Intl.NumberFormat('es-CL', { maximumFractionDigits: 3 }).format(numericQuantity / 1000)} kg` : `${numericQuantity} g`)
+                : `${numericQuantity} ${numericQuantity === 1 ? 'unidad' : 'unidades'}`;
+            const settings = {
+                entrada: { title: 'Confirmar entrada de stock', message: 'Se sumará esta cantidad al stock actual del producto.', primary: 'Registrar entrada' },
+                salida: { title: 'Confirmar salida de stock', message: `Se descontará esta cantidad del stock actual del producto. Esta acción quedará registrada en el historial.${fractionable ? ' Recuerda que los alimentos descuentan stock en gramos.' : ''}`, primary: 'Registrar salida' },
+                ajuste: { title: 'Confirmar ajuste de stock', message: 'Se registrará un ajuste manual de stock. Revisa que la cantidad y el motivo sean correctos.', primary: 'Registrar ajuste' },
+            };
+            const config = settings[movementType];
+            if (!config) return;
+            confirm({
+                title: config.title, message: config.message,
+                confirmText: config.primary, cancelText: 'Cancelar',
+                destructive: movementType === 'salida', closeOnOverlay: false,
+                contentTemplate: '#stock-confirm-template', hideDefaultActions: false,
+                onConfirm: () => {
+                    form.dataset.stockConfirmed = '1';
+                    form.requestSubmit();
+                },
+            });
+            const summary = content.querySelector('[data-stock-confirm-summary]');
+            if (!summary) return;
+            summary.querySelector('[data-stock-summary-product]').textContent = button.dataset.stockProductName || '';
+            summary.querySelector('[data-stock-summary-type]').textContent = type.options[type.selectedIndex]?.text || '';
+            summary.querySelector('[data-stock-summary-quantity]').textContent = formattedQuantity;
+            summary.querySelector('[data-stock-summary-reason]').textContent = reason.options[reason.selectedIndex]?.text || '';
+            const observationRow = summary.querySelector('[data-stock-summary-observation-row]');
+            summary.querySelector('[data-stock-summary-observation]').textContent = observation.value.trim();
+            observationRow.hidden = observation.value.trim() === '';
+        });
+    });
 })();

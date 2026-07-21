@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
+require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 require_once __DIR__ . '/consultas/buscar-producto.php';
 
@@ -13,9 +15,10 @@ requireAuthentication();
 $productId = idPositivoProducto($_GET['id'] ?? null);
 
 if ($productId === null) {
+    guardarModalAdmin('error', 'No fue posible abrir el producto', 'El producto indicado no es válido.');
     header(
         'Location: ' . appUrl(
-            'admin/inventario/index.php?mensaje=no_encontrado'
+            'admin/inventario/index.php'
         ),
         true,
         302
@@ -32,9 +35,10 @@ try {
     );
 
     if ($product === null) {
+        guardarModalAdmin('error', 'No fue posible abrir el producto', 'El producto indicado no existe.');
         header(
             'Location: ' . appUrl(
-                'admin/inventario/index.php?mensaje=no_encontrado'
+                'admin/inventario/index.php'
             ),
             true,
             302
@@ -50,14 +54,12 @@ try {
 
     $databaseValues = valoresEdicionProducto($product);
 } catch (Throwable $exception) {
-    error_log(
-        'Product edit load error: '
-        . $exception->getMessage()
-    );
+    $reference = registrarExcepcionAdmin('Product edit load error', $exception);
+    guardarModalAdmin('error', 'No fue posible abrir el producto', 'Intenta nuevamente. Si el problema continúa, revisa el registro del sistema.', ['reference' => $reference]);
 
     header(
         'Location: ' . appUrl(
-            'admin/inventario/index.php?mensaje=error'
+            'admin/inventario/index.php'
         ),
         true,
         302
@@ -81,6 +83,17 @@ $errors = is_array($state['errores'] ?? null)
 $generalError = is_string($state['error_general'] ?? null)
     ? $state['error_general']
     : null;
+$errorReference = is_string($state['referencia'] ?? null) ? $state['referencia'] : '';
+if ($errors !== [] || $generalError !== null) {
+    $adminModal = [
+        'type' => 'error',
+        'title' => 'No fue posible actualizar el producto',
+        'message' => $errors !== [] ? 'Revisa los campos marcados antes de continuar.' : 'No se pudo completar la acción.',
+        'detail' => resumenErroresFormulario($errors, $generalError),
+        'reference' => $errorReference,
+        'primaryText' => 'Aceptar',
+    ];
+}
 
 $csrfToken = csrfToken();
 $pageTitle = 'Editar producto';
@@ -112,32 +125,6 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </p>
         </div>
     </header>
-
-    <?php if ($errors !== [] || $generalError !== null): ?>
-        <div
-            class="admin-alert admin-alert--error"
-            role="alert"
-            tabindex="-1"
-        >
-            <strong>
-                No fue posible actualizar el producto.
-            </strong>
-
-            <?php if ($generalError !== null): ?>
-                <p><?= escape($generalError) ?></p>
-            <?php endif; ?>
-
-            <?php if ($errors !== []): ?>
-                <ul>
-                    <?php foreach ($errors as $error): ?>
-                        <li>
-                            <?= escape((string) $error) ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
 
     <div class="admin-form-layout">
 

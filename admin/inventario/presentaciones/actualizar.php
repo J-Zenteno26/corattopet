@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
+require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/consultas-presentaciones.php';
 require_once __DIR__ . '/includes/validaciones-presentacion.php';
 requireAuthentication();
@@ -41,8 +42,16 @@ try {
         exit;
     }
     $statement = $connection->prepare('UPDATE producto_presentaciones SET nombre=:nombre, cantidad_gramos=:cantidad_gramos, precio_venta=:precio_venta, sku=:sku, activo=:activo, orden=:orden, actualizado_en=CURRENT_TIMESTAMP WHERE id_presentacion=:id_presentacion');
-    $statement->execute(['nombre' => $values['nombre'], 'cantidad_gramos' => (int) $values['cantidad_gramos'], 'precio_venta' => (int) $values['precio_venta'], 'sku' => $values['sku'] === '' ? null : $values['sku'], 'activo' => $values['activo'], 'orden' => (int) $values['orden'], 'id_presentacion' => $presentationId]);
-    header('Location: ' . appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $presentation['id_producto'] . '&mensaje=actualizada'), true, 303);
+    $statement->bindValue(':nombre', $values['nombre']);
+    $statement->bindValue(':cantidad_gramos', (int) $values['cantidad_gramos'], PDO::PARAM_INT);
+    $statement->bindValue(':precio_venta', (int) $values['precio_venta'], PDO::PARAM_INT);
+    $statement->bindValue(':sku', $values['sku'] === '' ? null : $values['sku']);
+    $statement->bindValue(':activo', $values['activo'], PDO::PARAM_BOOL);
+    $statement->bindValue(':orden', (int) $values['orden'], PDO::PARAM_INT);
+    $statement->bindValue(':id_presentacion', $presentationId, PDO::PARAM_INT);
+    $statement->execute();
+    guardarModalAdmin('success', 'Presentación actualizada', 'Los cambios fueron guardados correctamente.');
+    header('Location: ' . appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $presentation['id_producto']), true, 303);
     exit;
 } catch (Throwable $exception) {
     error_log('Presentation update error: ' . $exception->getMessage());
