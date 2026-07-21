@@ -18,14 +18,9 @@ try {
     error_log('Categories list error: ' . $exception->getMessage());
 }
 
-$messages = [
-    'creada' => 'La categoría fue creada correctamente.',
-    'actualizada' => 'La categoría fue actualizada correctamente.',
-    'activada' => 'La categoría fue activada correctamente.',
-    'desactivada' => 'La categoría fue desactivada correctamente.',
-    'error' => 'No fue posible cambiar el estado de la categoría.',
-];
-$message = $messages[$_GET['mensaje'] ?? ''] ?? null;
+if ($loadError) {
+    $adminModal = ['type' => 'error', 'title' => 'No fue posible cargar las categorías', 'message' => 'Intenta nuevamente más tarde.', 'primaryText' => 'Aceptar'];
+}
 $csrfToken = csrfToken();
 $pageTitle = 'Categorías';
 $activeSection = 'categorias';
@@ -42,11 +37,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
         <div class="admin-actions"><a class="admin-button admin-button--primary"
                 href="<?= escape(appUrl('admin/categorias/crear.php')) ?>">Agregar categoría</a></div>
     </header>
-    <?php if ($message !== null): ?>
-        <div class="admin-alert <?= ($_GET['mensaje'] ?? '') === 'error' ? 'admin-alert--error' : 'admin-alert--success' ?>"
-            role="status"><strong><?= escape($message) ?></strong></div><?php endif; ?>
-    <?php if ($loadError): ?>
-        <div class="admin-alert admin-alert--error" role="alert">No fue posible cargar las categorías.</div><?php endif; ?>
     <section class="admin-panel admin-panel--soft" aria-label="Listado de categorías">
         <div class="admin-panel__header">
             <h2>Lista de categorías</h2>
@@ -90,14 +80,21 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                                         Editar
                                     </a>
 
-                                    <form method="post"
+                                    <?php $formId = 'estado-categoria-' . (int) $category['id_categoria']; ?>
+                                    <form id="<?= escape($formId) ?>" method="post"
                                         action="<?= escape(appUrl('admin/categorias/cambiar-estado.php')) ?>">
                                         <input type="hidden" name="csrf_token" value="<?= escape($csrfToken) ?>">
 
                                         <input type="hidden" name="id_categoria"
                                             value="<?= (int) $category['id_categoria'] ?>">
 
-                                        <button class="admin-button admin-button--small" type="submit">
+                                        <button class="admin-button admin-button--small" type="button"
+                                            data-admin-confirm-form="<?= escape($formId) ?>"
+                                            data-modal-title="<?= $active ? 'Desactivar categoría' : 'Activar categoría' ?>"
+                                            data-modal-message="<?= $active ? 'Esta categoría dejará de estar disponible para nuevos productos. Los productos existentes no se eliminarán.' : 'La categoría volverá a estar disponible para nuevos productos.' ?>"
+                                            data-modal-primary="<?= $active ? 'Desactivar' : 'Activar' ?>"
+                                            data-modal-destructive="<?= $active ? 'true' : 'false' ?>"
+                                            data-modal-secondary="Cancelar">
                                             <?= $active ? 'Desactivar' : 'Activar' ?>
                                         </button>
                                     </form>

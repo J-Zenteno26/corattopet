@@ -73,10 +73,12 @@
         icon.innerHTML = icons[type];
         reference.textContent = config.reference || '';
         referenceWrap.hidden = !config.reference;
-        detail.textContent = config.detail || '';
-        detailWrap.hidden = !config.detail;
+        const detailText = String(config.detail || '').trim();
+        detail.textContent = detailText;
+        detailWrap.hidden = !detailText || detailText === String(config.message || '').trim();
         primaryButton.textContent = config.primaryText || 'Aceptar';
         primaryButton.href = config.primaryUrl || '#';
+        primaryButton.className = `admin-modal__button admin-modal__button--primary${config.destructive || type === 'error' ? ' admin-modal__button--destructive' : ''}`;
         primaryAction = typeof config.onPrimary === 'function' ? config.onPrimary : null;
         secondaryButton.textContent = config.secondaryText || '';
         secondaryButton.hidden = !config.secondaryText;
@@ -104,16 +106,26 @@
         }
     });
 
-    window.AdminModal = { open, close };
+    const confirm = (config = {}) => open({
+        ...config,
+        type: 'confirm',
+        primaryText: config.confirmText || config.primaryText || 'Confirmar',
+        secondaryText: config.cancelText || config.secondaryText || 'Cancelar',
+        closeOnOverlay: config.closeOnOverlay ?? false,
+        onPrimary: config.onConfirm || config.onPrimary,
+    });
+
+    window.AdminModal = { open, close, confirm };
     document.querySelectorAll('[data-admin-confirm-form]').forEach((button) => {
         button.addEventListener('click', () => {
             const form = document.getElementById(button.dataset.adminConfirmForm);
             if (!form) return;
-            open({
+            confirm({
                 type: 'confirm', title: button.dataset.modalTitle || 'Confirmar acción',
                 message: button.dataset.modalMessage || '¿Deseas continuar?',
-                primaryText: button.dataset.modalPrimary || 'Confirmar', secondaryText: button.dataset.modalSecondary || 'Cancelar',
-                closeOnOverlay: false, onPrimary: () => form.requestSubmit(),
+                confirmText: button.dataset.modalPrimary || 'Confirmar', cancelText: button.dataset.modalSecondary || 'Cancelar',
+                destructive: button.dataset.modalDestructive === 'true',
+                onConfirm: () => form.requestSubmit(),
             });
         });
     });

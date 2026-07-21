@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 2) . '/config/database.php';
 require_once dirname(__DIR__, 2) . '/shared/funciones-mantenedores.php';
+require_once dirname(__DIR__, 2) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/funciones-categoria.php';
 
 requireAuthentication();
@@ -15,12 +16,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 if (!validateCsrfToken($_POST['csrf_token'] ?? null)) {
-    http_response_code(403);
+    guardarModalAdmin('error', 'No fue posible cambiar el estado de la categoría', 'La solicitud no es válida. Recarga la página e intenta nuevamente.');
+    header('Location: ' . appUrl('admin/categorias/index.php'), true, 303);
     exit;
 }
 $id = idPositivoCategoria($_POST['id_categoria'] ?? null);
 if ($id === null) {
-    http_response_code(404);
+    guardarModalAdmin('error', 'No fue posible cambiar el estado de la categoría', 'La categoría indicada no es válida.');
+    header('Location: ' . appUrl('admin/categorias/index.php'), true, 303);
     exit;
 }
 try {
@@ -28,13 +31,21 @@ try {
     $statement->execute(['id' => $id]);
     $result = $statement->fetch();
     if (!is_array($result)) {
-        http_response_code(404);
+        guardarModalAdmin('error', 'No fue posible cambiar el estado de la categoría', 'La categoría indicada no existe.');
+        header('Location: ' . appUrl('admin/categorias/index.php'), true, 303);
         exit;
     }
-    header('Location: ' . appUrl('admin/categorias/index.php?mensaje=' . (booleanoPostgresMantenedor($result['activo']) ? 'activada' : 'desactivada')), true, 303);
+    $active = booleanoPostgresMantenedor($result['activo']);
+    guardarModalAdmin(
+        'success',
+        $active ? 'Categoría activada' : 'Categoría desactivada',
+        $active ? 'La categoría fue activada correctamente.' : 'La categoría fue desactivada correctamente.'
+    );
+    header('Location: ' . appUrl('admin/categorias/index.php'), true, 303);
     exit;
 } catch (Throwable $exception) {
     error_log('Category status error: ' . $exception->getMessage());
-    header('Location: ' . appUrl('admin/categorias/index.php?mensaje=error'), true, 303);
+    guardarModalAdmin('error', 'No fue posible cambiar el estado de la categoría', 'Intenta nuevamente. Si el problema continúa, contacta al administrador.');
+    header('Location: ' . appUrl('admin/categorias/index.php'), true, 303);
     exit;
 }

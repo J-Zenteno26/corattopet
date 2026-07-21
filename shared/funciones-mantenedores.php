@@ -51,13 +51,54 @@ function generarSlugUnicoMantenedor(
     }
 }
 
-function guardarEstadoMantenedor(string $key, array $values, array $errors, ?string $generalError = null): void
+function guardarEstadoMantenedor(
+    string $key,
+    array $values,
+    array $errors,
+    ?string $generalError = null,
+    ?string $reference = null
+): void
 {
     $_SESSION['mantenedor_' . $key] = [
         'valores' => $values,
         'errores' => $errors,
         'error_general' => $generalError,
+        'referencia' => $reference,
     ];
+}
+
+function resumenErroresFormulario(array $errors, ?string $generalError = null): string
+{
+    $messages = [];
+    if (is_string($generalError) && trim($generalError) !== '') {
+        $messages[] = trim($generalError);
+    }
+    foreach ($errors as $error) {
+        if (is_string($error) && trim($error) !== '') {
+            $messages[] = trim($error);
+        }
+    }
+
+    $messages = array_values(array_unique($messages));
+
+    return implode("\n", array_map(static fn (string $message): string => '• ' . $message, $messages));
+}
+
+function registrarExcepcionAdmin(string $context, Throwable $exception): string
+{
+    $reference = strtoupper(bin2hex(random_bytes(4)));
+    $trace = array_slice(explode("\n", $exception->getTraceAsString()), 0, 5);
+    error_log(sprintf(
+        '[%s] %s: %s in %s:%d | trace: %s',
+        $reference,
+        $context,
+        $exception->getMessage(),
+        $exception->getFile(),
+        $exception->getLine(),
+        implode(' <- ', $trace)
+    ));
+
+    return $reference;
 }
 
 function consumirEstadoMantenedor(string $key): array

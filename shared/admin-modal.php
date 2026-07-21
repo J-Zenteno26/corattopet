@@ -7,15 +7,21 @@ $adminModalConfig = isset($adminModal) && is_array($adminModal) ? $adminModal : 
 <div class="admin-modal" data-admin-modal aria-hidden="true">
     <div class="admin-modal__overlay" data-admin-modal-overlay></div>
     <div class="admin-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title" aria-describedby="admin-modal-message" tabindex="-1">
+        <span class="admin-modal__paw" aria-hidden="true">
+            <svg viewBox="0 0 64 64"><ellipse cx="32" cy="40" rx="15" ry="12"/><circle cx="14" cy="29" r="7"/><circle cx="24" cy="16" r="7"/><circle cx="40" cy="16" r="7"/><circle cx="50" cy="29" r="7"/></svg>
+        </span>
         <button class="admin-modal__close" type="button" data-admin-modal-close aria-label="Cerrar mensaje">×</button>
         <div class="admin-modal__header">
             <span class="admin-modal__icon" data-admin-modal-icon aria-hidden="true"></span>
-            <h2 class="admin-modal__title" id="admin-modal-title" data-admin-modal-title></h2>
+            <div class="admin-modal__heading">
+                <span class="admin-modal__brand-mark">Coratto Pet</span>
+                <h2 class="admin-modal__title" id="admin-modal-title" data-admin-modal-title></h2>
+            </div>
         </div>
         <div class="admin-modal__body">
             <p class="admin-modal__message" id="admin-modal-message" data-admin-modal-message></p>
             <p class="admin-modal__reference" data-admin-modal-reference-wrap hidden>Referencia: <strong data-admin-modal-reference></strong></p>
-            <div class="admin-modal__detail" data-admin-modal-detail-wrap hidden><strong>Detalle técnico</strong><p data-admin-modal-detail></p></div>
+            <div class="admin-modal__detail" data-admin-modal-detail-wrap hidden><strong class="admin-modal__detail-title">Detalle</strong><p data-admin-modal-detail></p></div>
         </div>
         <div class="admin-modal__actions">
             <button class="admin-modal__button admin-modal__button--secondary" type="button" data-admin-modal-secondary hidden></button>

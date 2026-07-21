@@ -22,6 +22,18 @@ $errors = is_array($state['errores'] ?? null)
 $generalError = is_string($state['error_general'] ?? null)
     ? $state['error_general']
     : null;
+$errorReference = is_string($state['referencia'] ?? null) ? $state['referencia'] : '';
+
+if ($errors !== [] || $generalError !== null) {
+    $adminModal = [
+        'type' => 'error',
+        'title' => 'No fue posible guardar la categoría',
+        'message' => $errors !== [] ? 'Revisa los campos marcados antes de continuar.' : 'No se pudo completar la acción.',
+        'detail' => resumenErroresFormulario($errors, $generalError),
+        'reference' => $errorReference,
+        'primaryText' => 'Aceptar',
+    ];
+}
 
 $csrfToken = csrfToken();
 $pageTitle = 'Categorías';
@@ -53,24 +65,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
     </header>
 
     <div class="admin-form-layout">
-
-        <?php if ($errors !== [] || $generalError !== null): ?>
-            <div class="admin-alert admin-alert--error" role="alert">
-                <strong>No fue posible guardar la categoría.</strong>
-
-                <?php if ($generalError !== null): ?>
-                    <p><?= escape($generalError) ?></p>
-                <?php endif; ?>
-
-                <?php if ($errors !== []): ?>
-                    <ul>
-                        <?php foreach ($errors as $error): ?>
-                            <li><?= escape((string) $error) ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
 
         <form
             class="admin-form-layout__form"
@@ -148,7 +142,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                             <?= isset($errors['descripcion'])
                                 ? 'aria-invalid="true" aria-describedby="descripcion-help descripcion-error"'
                                 : 'aria-describedby="descripcion-help"' ?>
-                        ><?= escape((string) $values['descripcion']) ?></textarea>
+                        ><?php echo escape((string) $values['descripcion']); ?></textarea>
 
                         <p class="admin-field__help" id="descripcion-help">
                             Puedes indicar qué tipos de productos pertenecen a esta categoría.
