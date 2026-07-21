@@ -44,6 +44,12 @@ $lastRecord = min(
     $listing['total_registros']
 );
 $csrfToken = csrfToken();
+$adminModal = (($_GET['importado'] ?? null) === '1') ? [
+    'type' => 'success',
+    'title' => 'Importación completada',
+    'message' => 'Los productos y presentaciones fueron insertados correctamente.',
+    'primaryText' => 'Ver inventario',
+] : null;
 $pageTitle = 'Inventario';
 $activeSection = 'inventario';
 
@@ -58,7 +64,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
         </div>
         <div class="admin-actions" aria-label="Acciones de inventario">
             <a class="admin-button admin-button--primary" href="<?= escape(appUrl('admin/inventario/productos/crear.php')) ?>">Agregar producto</a>
-            <button class="admin-button" type="button">Importar Excel</button>
+            <a class="admin-button admin-button--dark" href="<?= escape(appUrl('admin/inventario/importar/index.php')) ?>">Importar Excel</a>
             <button class="admin-button" type="button">Exportar inventario</button>
         </div>
     </header>
