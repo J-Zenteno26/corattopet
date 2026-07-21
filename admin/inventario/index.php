@@ -69,33 +69,34 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
         </div>
     <?php endif; ?>
 
-    <section class="admin-summary-grid" aria-label="Resumen del inventario">
-        <article class="admin-summary-card">
+    <section class="admin-summary-grid admin-inventory-summary" aria-label="Resumen del inventario">
+        <article class="admin-summary-card admin-inventory-summary__card">
             <span>PRODUCTOS TOTALES</span>
             <strong><?= escape(number_format((int) $summary['productos_totales'], 0, ',', '.')) ?></strong>
         </article>
-        <article class="admin-summary-card admin-summary-card--notice">
+        <article class="admin-summary-card admin-summary-card--notice admin-inventory-summary__card">
             <span>ALIMENTOS FRACCIONABLES</span>
             <strong><?= escape(number_format((int) $summary['alimentos_fraccionables'], 0, ',', '.')) ?></strong>
         </article>
-        <article class="admin-summary-card admin-summary-card--warning">
+        <article class="admin-summary-card admin-summary-card--warning admin-inventory-summary__card">
             <span>SIN PRESENTACIONES</span>
             <strong><?= escape(number_format((int) $summary['sin_presentaciones'], 0, ',', '.')) ?></strong>
         </article>
-        <article class="admin-summary-card admin-summary-card--warning">
+        <article class="admin-summary-card admin-summary-card--warning admin-inventory-summary__card">
             <span>SIN STOCK</span>
             <strong><?= escape(number_format((int) $summary['sin_stock'], 0, ',', '.')) ?></strong>
         </article>
     </section>
 
-    <section class="admin-panel" aria-label="Listado de inventario">
+    <section class="admin-panel admin-inventory-panel" aria-label="Listado de inventario">
         <div class="admin-panel__header">
             <h2>Lista de productos</h2>
         </div>
 
-        <form class="admin-toolbar" method="get" action="<?= escape(appUrl('admin/inventario/index.php')) ?>">
+        <form class="admin-toolbar admin-inventory-filters" method="get" action="<?= escape(appUrl('admin/inventario/index.php')) ?>">
             <input type="hidden" name="por_pagina" value="<?= escape((string) $parameters['por_pagina']) ?>">
-            <div class="admin-field admin-field--search">
+            <div class="admin-inventory-filter-row admin-inventory-filter-row--primary">
+            <div class="admin-field admin-field--search admin-inventory-filter-search">
                 <label for="inventory-search">Buscar</label>
                 <input
                     id="inventory-search"
@@ -129,6 +130,8 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            </div>
+            <div class="admin-inventory-filter-row admin-inventory-filter-row--secondary">
             <div class="admin-field">
                 <label for="pet-filter">Tipo de mascota</label>
                 <select id="pet-filter" name="tipo_mascota">
@@ -169,6 +172,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                     Limpiar filtros
                 </a>
             </div>
+            </div>
         </form>
 
         <div class="admin-table-wrap">
@@ -176,11 +180,8 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                 <thead>
                     <tr>
                         <th scope="col">PRODUCTO</th>
-                        <th scope="col">SKU</th>
-                        <th scope="col">CÓDIGO DE BARRAS</th>
-                        <th scope="col">CATEGORÍA</th>
-                        <th scope="col">MARCA</th>
-                        <th scope="col">MASCOTA</th>
+                        <th scope="col">IDENTIFICACIÓN</th>
+                        <th scope="col">CLASIFICACIÓN</th>
                         <th scope="col">PRECIO</th>
                         <th scope="col">STOCK</th>
                         <th scope="col">ESTADO</th>
@@ -194,54 +195,54 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         $imageUrl = urlImagenInventario($product['imagen_principal'] ?? null);
                         $fractionable = esProductoFraccionable($product);
                         $activePresentations = (int) ($product['presentaciones_activas'] ?? 0);
+                        $stockState = textoEstadoStockInventario($product);
+                        $updatedParts = explode(' ', formatearFechaInventario($product['actualizado_en']), 2);
                         ?>
                         <tr>
                             <td>
-                                <?php if ($imageUrl !== null): ?>
-                                    <img
-                                        src="<?= escape($imageUrl) ?>"
-                                        alt=""
-                                        width="44"
-                                        height="44"
-                                        loading="lazy"
-                                    >
-                                <?php endif; ?>
-                                <strong><?= escape((string) $product['nombre']) ?></strong>
+                                <div class="admin-product-cell">
+                                    <?php if ($imageUrl !== null): ?>
+                                        <img class="admin-product-thumb" src="<?= escape($imageUrl) ?>" alt="" width="48" height="48" loading="lazy">
+                                    <?php else: ?>
+                                        <span class="admin-product-thumb admin-product-thumb--placeholder" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr((string) $product['nombre'], 0, 1))) ?></span>
+                                    <?php endif; ?>
+                                    <span class="admin-product-main">
+                                        <strong class="admin-product-name"><?= escape((string) $product['nombre']) ?></strong>
+                                        <span class="admin-product-kind"><?= $fractionable ? 'Alimento fraccionable' : 'Producto por unidad' ?></span>
+                                    </span>
+                                </div>
                             </td>
-                            <td><?= escape($product['sku'] !== null ? (string) $product['sku'] : 'Sin SKU') ?></td>
-                            <td><?= escape($product['codigo_barras'] !== null ? (string) $product['codigo_barras'] : 'Sin código') ?></td>
-                            <td><?= escape((string) $product['categoria']) ?></td>
-                            <td><?= escape($product['marca'] !== null ? (string) $product['marca'] : 'Sin marca') ?></td>
-                            <td><?= escape(textoTipoMascota($product['tipo_mascota'])) ?></td>
-                            <td><?= $fractionable ? '<span class="admin-status-badge">Por presentación</span>' : escape(formatearPrecioClp($product['precio_venta'])) ?></td>
-                            <td>
-                                <strong><?= escape(formatearCantidadStock((int) $product['cantidad_disponible'], $fractionable)) ?></strong>
-                                <?php if ($fractionable): ?><span class="admin-field__help">Stock base</span><?php endif; ?>
+                            <td><span class="admin-product-identifiers"><span class="admin-product-code-line"><strong>SKU:</strong> <?= escape($product['sku'] !== null ? (string) $product['sku'] : 'Sin SKU') ?></span><span class="admin-product-code-line"><strong>Código:</strong> <?= escape($product['codigo_barras'] !== null ? (string) $product['codigo_barras'] : 'Sin código') ?></span></span></td>
+                            <td><span class="admin-product-classification"><strong><?= escape((string) $product['categoria']) ?></strong><span><?= escape($product['marca'] !== null ? (string) $product['marca'] : 'Sin marca') ?> · <?= escape(textoTipoMascota($product['tipo_mascota'])) ?></span></span></td>
+                            <td><?= $fractionable ? '<span class="admin-price-badge admin-price-badge--presentation">Por presentación</span>' : '<strong>' . escape(formatearPrecioClp($product['precio_venta'])) . '</strong>' ?></td>
+                            <td class="admin-stock-cell">
+                                <strong class="admin-stock-cell__value"><?= escape(formatearCantidadStock((int) $product['cantidad_disponible'], $fractionable)) ?></strong>
+                                <?php if ($fractionable): ?><span class="admin-stock-cell__meta">Stock base</span><?php endif; ?>
                             </td>
-                            <td><?= escape(textoEstadoStockInventario($product)) ?></td>
-                            <td><?= escape(formatearFechaInventario($product['actualizado_en'])) ?></td>
+                            <td><span class="admin-status-badge admin-inventory-status<?= $stockState === 'En stock' ? ' is-active' : ($stockState === 'Sin stock' ? ' is-inactive' : ' admin-inventory-status--attention') ?>"><?= escape($stockState) ?></span></td>
+                            <td><time class="admin-inventory-date"><span><?= escape($updatedParts[0]) ?></span><?php if (isset($updatedParts[1])): ?><small><?= escape($updatedParts[1]) ?></small><?php endif; ?></time></td>
                             <td>
-                                <div class="admin-actions-inline">
-                                    <a
-                                        class="admin-button admin-button--primary"
-                                        href="<?= escape(appUrl('admin/inventario/stock/index.php?id=' . $product['id_producto'])) ?>"
-                                    >Gestionar stock</a>
-                                    <a
-                                        class="admin-button admin-button--dark"
-                                        href="<?= escape(appUrl('admin/inventario/productos/editar.php?id=' . $product['id_producto'])) ?>"
-                                    >Editar</a>
+                                <div class="admin-icon-actions">
+                                    <a class="admin-icon-button admin-icon-button--stock" href="<?= escape(appUrl('admin/inventario/stock/index.php?id=' . $product['id_producto'])) ?>" title="Gestionar stock" aria-label="Gestionar stock de <?= escape((string) $product['nombre']) ?>">
+                                        <svg class="admin-icon-button__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Zm0 0 8 4.5m8-4.5L12 12m0 9v-9M8 5.25l8 4.5"/></svg><span class="admin-sr-only">Gestionar stock</span>
+                                    </a>
+                                    <a class="admin-icon-button admin-icon-button--edit" href="<?= escape(appUrl('admin/inventario/productos/editar.php?id=' . $product['id_producto'])) ?>" title="Editar" aria-label="Editar <?= escape((string) $product['nombre']) ?>">
+                                        <svg class="admin-icon-button__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.2 16 4 20Zm10.3-13.1 2.8 2.8M13 20h7"/></svg><span class="admin-sr-only">Editar producto</span>
+                                    </a>
                                     <?php if ($fractionable): ?>
-                                        <a class="admin-button<?= $activePresentations === 0 ? ' admin-button--primary' : '' ?>" href="<?= escape(appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $product['id_producto'])) ?>"><?= $activePresentations === 0 ? 'Agregar presentaciones' : 'Presentaciones' ?></a>
-                                        <?php if ($activePresentations === 0): ?><span class="admin-status-badge is-inactive">Sin presentaciones</span><?php endif; ?>
+                                        <a class="admin-icon-button admin-icon-button--view<?= $activePresentations === 0 ? ' admin-icon-button--warning' : '' ?>" href="<?= escape(appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $product['id_producto'])) ?>" title="<?= $activePresentations === 0 ? 'Agregar presentaciones' : 'Ver presentaciones' ?>" aria-label="<?= $activePresentations === 0 ? 'Agregar presentaciones a ' : 'Ver presentaciones de ' ?><?= escape((string) $product['nombre']) ?>">
+                                            <svg class="admin-icon-button__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/><?php if ($activePresentations === 0): ?><path d="M17 12v6m-3-3h6"/><?php endif; ?></svg><span class="admin-sr-only"><?= $activePresentations === 0 ? 'Agregar presentaciones' : 'Ver presentaciones' ?></span>
+                                        </a>
                                     <?php endif; ?>
                                 </div>
+                                <?php if ($fractionable && $activePresentations === 0): ?><span class="admin-inventory-note">Sin presentaciones</span><?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
 
                     <?php if ($listing['registros'] === []): ?>
                         <tr class="admin-empty-state">
-                            <td colspan="11">
+                            <td colspan="8">
                                 <?php if ($databaseError): ?>
                                     <strong role="alert">No fue posible cargar el inventario en este momento</strong>
                                     <span>Intenta nuevamente más tarde.</span>
