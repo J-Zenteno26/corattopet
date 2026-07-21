@@ -31,6 +31,8 @@
     const reference = modal.querySelector('[data-admin-modal-reference]');
     const detailWrap = modal.querySelector('[data-admin-modal-detail-wrap]');
     const detail = modal.querySelector('[data-admin-modal-detail]');
+    const content = modal.querySelector('[data-admin-modal-content]');
+    const actions = modal.querySelector('.admin-modal__actions');
     const icons = {
         success: '<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>',
         error: '<svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01M4.5 19h15L12 4 4.5 19Z"/></svg>',
@@ -76,6 +78,17 @@
         const detailText = String(config.detail || '').trim();
         detail.textContent = detailText;
         detailWrap.hidden = !detailText || detailText === String(config.message || '').trim();
+        content.replaceChildren();
+        content.hidden = true;
+        actions.hidden = false;
+        if (config.contentTemplate) {
+            const template = document.querySelector(config.contentTemplate);
+            if (template instanceof HTMLTemplateElement) {
+                content.append(template.content.cloneNode(true));
+                content.hidden = false;
+                actions.hidden = true;
+            }
+        }
         primaryButton.textContent = config.primaryText || 'Aceptar';
         primaryButton.href = config.primaryUrl || '#';
         primaryButton.className = `admin-modal__button admin-modal__button--primary${config.destructive || type === 'error' ? ' admin-modal__button--destructive' : ''}`;
@@ -84,10 +97,16 @@
         secondaryButton.hidden = !config.secondaryText;
         document.body.classList.add('admin-modal-open');
         setBackgroundInert(true);
-        requestAnimationFrame(() => (primaryButton || closeButton).focus());
+        requestAnimationFrame(() => {
+            const initialFocus = config.initialFocus ? content.querySelector(config.initialFocus) : null;
+            (initialFocus || primaryButton || closeButton).focus();
+        });
     };
 
     closeButton.addEventListener('click', close);
+    modal.addEventListener('click', (event) => {
+        if (event.target.closest('[data-admin-modal-cancel]')) close();
+    });
     secondaryButton.addEventListener('click', close);
     modal.querySelector('[data-admin-modal-overlay]').addEventListener('click', () => { if (closeOnOverlay) close(); });
     primaryButton.addEventListener('click', (event) => {
@@ -132,5 +151,46 @@
     const autoConfig = document.getElementById('admin-modal-auto-config');
     if (autoConfig) {
         try { open(JSON.parse(autoConfig.textContent)); } catch (error) { console.error('Invalid admin modal configuration.', error); }
+    }
+
+    const brandState = document.getElementById('brand-modal-state');
+    const openBrandForm = (config) => {
+        const mode = config.mode === 'edit' ? 'edit' : 'create';
+        const titleText = config.hasErrors
+            ? (mode === 'edit' ? 'No fue posible actualizar la marca' : 'No fue posible guardar la marca')
+            : (mode === 'edit' ? 'Editar marca' : 'Nueva marca');
+        open({
+            type: config.hasErrors ? 'error' : 'info',
+            title: titleText,
+            message: config.hasErrors
+                ? (config.hasFieldErrors ? 'Revisa los campos marcados antes de continuar.' : 'No se pudo completar la acción.')
+                : (mode === 'edit' ? 'Actualiza los datos de la marca.' : 'Registra una marca para asociarla a los productos del catálogo.'),
+            detail: config.detail || '', reference: config.reference || '',
+            contentTemplate: '#brand-form-template', initialFocus: '[name="nombre"]',
+        });
+        const form = content.querySelector('[data-brand-form]');
+        if (!form) return;
+        form.action = mode === 'edit' ? form.dataset.editAction : form.dataset.createAction;
+        form.querySelector('[name="id_marca"]').value = mode === 'edit' ? String(config.id || '') : '';
+        form.querySelector('[name="nombre"]').value = config.name || '';
+        form.querySelector('[name="activo"]').checked = mode === 'edit' ? config.active !== false : true;
+        form.querySelector('[data-brand-submit]').textContent = mode === 'edit' ? 'Guardar cambios' : 'Guardar marca';
+        if (!config.hasErrors) {
+            form.querySelectorAll('.admin-field--invalid').forEach((field) => field.classList.remove('admin-field--invalid'));
+            form.querySelectorAll('.admin-field__error').forEach((error) => error.remove());
+            const nameInput = form.querySelector('[name="nombre"]');
+            nameInput.removeAttribute('aria-invalid');
+            nameInput.setAttribute('aria-describedby', 'marca-modal-help');
+        }
+    };
+    document.querySelectorAll('[data-brand-modal-open]').forEach((button) => {
+        button.addEventListener('click', () => openBrandForm({
+            mode: button.dataset.brandModalOpen,
+            id: button.dataset.brandId || '', name: button.dataset.brandName || '',
+            active: button.dataset.brandActive !== '0', hasErrors: false,
+        }));
+    });
+    if (brandState) {
+        try { openBrandForm(JSON.parse(brandState.textContent)); } catch (error) { console.error('Invalid brand modal state.', error); }
     }
 })();

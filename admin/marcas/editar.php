@@ -3,67 +3,8 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/shared/seguridad.php';
-require_once dirname(__DIR__, 2) . '/config/database.php';
-require_once dirname(__DIR__, 2) . '/shared/funciones-mantenedores.php';
 require_once __DIR__ . '/includes/funciones-marca.php';
 requireAuthentication();
 $id = idPositivoMarca($_GET['id'] ?? null);
-$brand = null;
-try {
-    if ($id !== null) {
-        $brand = obtenerMarca(database(), $id);
-    }
-} catch (Throwable $exception) {
-    error_log('Brand edit load error: ' . $exception->getMessage());
-}
-if ($brand === null) {
-    http_response_code(404);
-}
-$state = consumirEstadoMantenedor('marca_editar_' . ($id ?? 0));
-$values = $brand === null ? valoresInicialesMarca() : ['nombre' => $brand['nombre'], 'activo' => booleanoPostgresMantenedor($brand['activo'])];
-$values = array_merge($values, $state['valores'] ?? []);
-$errors = is_array($state['errores'] ?? null) ? $state['errores'] : [];
-$generalError = is_string($state['error_general'] ?? null) ? $state['error_general'] : null;
-$csrfToken = csrfToken();
-$pageTitle = 'Marcas';
-$activeSection = 'marcas';
-require dirname(__DIR__, 2) . '/shared/admin-header.php';
-require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
-?>
-<main class="admin-main" id="contenido-principal">
-    <header class="admin-page-header">
-        <div><a class="admin-back-link" href="<?= escape(appUrl('admin/marcas/index.php')) ?>">← Volver a marcas</a>
-            <h1 class="admin-page-title admin-page-title--paw">Editar marca</h1>
-        </div>
-    </header>
-    <?php if ($brand === null): ?>
-        <div class="admin-alert admin-alert--error" role="alert">La marca solicitada no existe.</div><?php else: ?>
-        <?php if ($errors !== [] || $generalError): ?>
-            <div class="admin-alert admin-alert--error" role="alert"><strong>No fue posible actualizar la
-                    marca.</strong><?php if ($generalError): ?>
-                    <p><?= escape($generalError) ?></p><?php endif; ?>
-                <ul><?php foreach ($errors as $error): ?>
-                        <li><?= escape((string) $error) ?></li><?php endforeach; ?>
-                </ul>
-            </div><?php endif; ?>
-        <form class="admin-product-form" method="post" action="<?= escape(appUrl('admin/marcas/actualizar.php')) ?>"><input
-                type="hidden" name="csrf_token" value="<?= escape($csrfToken) ?>"><input type="hidden" name="id_marca"
-                value="<?= escape((string) $id) ?>">
-            <section class="admin-panel">
-                <div class="admin-panel__header">
-                    <h2>Información de la marca</h2>
-                </div>
-                <div class="admin-form-grid">
-                    <div
-                        class="admin-field admin-field--full<?= isset($errors['nombre']) ? ' admin-field--invalid' : '' ?>">
-                        <label for="nombre">Nombre *</label><input id="nombre" name="nombre" maxlength="120" required
-                            value="<?= escape((string) $values['nombre']) ?>"><?php if (isset($errors['nombre'])): ?><span
-                                class="admin-field__error"><?= escape($errors['nombre']) ?></span><?php endif; ?></div>
-                    <div class="admin-field"><label><input name="activo" type="checkbox" value="1" <?= $values['activo'] ? 'checked' : '' ?>> Marca activa</label></div>
-                </div>
-            </section>
-            <section class="admin-panel admin-form-actions"><a class="admin-button"
-                    href="<?= escape(appUrl('admin/marcas/index.php')) ?>">Cancelar</a><button
-                    class="admin-button admin-button--primary" type="submit">Actualizar marca</button></section>
-        </form>
-    <?php endif; ?><?php require dirname(__DIR__, 2) . '/shared/admin-footer.php'; ?>
+header('Location: ' . appUrl('admin/marcas/index.php' . ($id !== null ? '?editar=' . $id : '')), true, 302);
+exit;

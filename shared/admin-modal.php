@@ -22,6 +22,7 @@ $adminModalConfig = isset($adminModal) && is_array($adminModal) ? $adminModal : 
             <p class="admin-modal__message" id="admin-modal-message" data-admin-modal-message></p>
             <p class="admin-modal__reference" data-admin-modal-reference-wrap hidden>Referencia: <strong data-admin-modal-reference></strong></p>
             <div class="admin-modal__detail" data-admin-modal-detail-wrap hidden><strong class="admin-modal__detail-title">Detalle</strong><p data-admin-modal-detail></p></div>
+            <div class="admin-modal__content" data-admin-modal-content hidden></div>
         </div>
         <div class="admin-modal__actions">
             <button class="admin-modal__button admin-modal__button--secondary" type="button" data-admin-modal-secondary hidden></button>
