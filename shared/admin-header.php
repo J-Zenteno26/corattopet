@@ -22,6 +22,10 @@ $csrfToken = isset($csrfToken) ? (string) $csrfToken : csrfToken();
             rel="stylesheet"
             href="<?= escape(appUrl('public/css/admin.css') . '?v=' . $adminCssVersion) ?>"
         >
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        >
 </head>
 <body class="admin-body">
     <a class="admin-skip-link" href="#contenido-principal">Saltar al contenido</a>
