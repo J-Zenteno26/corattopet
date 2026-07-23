@@ -210,7 +210,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                                     <?php if ($imageUrl !== null): ?>
                                         <img class="admin-product-thumb" src="<?= escape($imageUrl) ?>" alt="" width="48" height="48" loading="lazy">
                                     <?php else: ?>
-                                        <span class="admin-product-thumb admin-product-thumb--placeholder" aria-hidden="true"><?= escape(mb_strtoupper(mb_substr((string) $product['nombre'], 0, 1))) ?></span>
+                                        <span class="admin-product-thumb admin-product-thumb--placeholder" aria-hidden="true"><span class="admin-product-thumb__paw">🐾</span><span><?= escape(mb_strtoupper(mb_substr((string) $product['nombre'], 0, 1))) ?></span></span>
                                     <?php endif; ?>
                                     <span class="admin-product-main">
                                         <strong class="admin-product-name"><?= escape((string) $product['nombre']) ?></strong>
@@ -223,7 +223,6 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                             <td><?= $fractionable ? '<span class="admin-price-badge admin-price-badge--presentation">Por presentación</span>' : '<strong>' . escape(formatearPrecioClp($product['precio_venta'])) . '</strong>' ?></td>
                             <td class="admin-stock-cell">
                                 <strong class="admin-stock-cell__value"><?= escape(formatearCantidadStock((int) $product['cantidad_disponible'], $fractionable)) ?></strong>
-                                <?php if ($fractionable): ?><span class="admin-stock-cell__meta">Stock base</span><?php endif; ?>
                             </td>
                             <td><span class="admin-status-badge admin-inventory-status<?= $stockState === 'En stock' ? ' is-active' : ($stockState === 'Sin stock' ? ' is-inactive' : ' admin-inventory-status--attention') ?>"><?= escape($stockState) ?></span></td>
                             <td><time class="admin-inventory-date"><span><?= escape($updatedParts[0]) ?></span><?php if (isset($updatedParts[1])): ?><small><?= escape($updatedParts[1]) ?></small><?php endif; ?></time></td>

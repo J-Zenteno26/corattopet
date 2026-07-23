@@ -23,7 +23,14 @@ function listarProductosInventario(PDO $connection, array $filters): array
             nombre,
             sku,
             codigo_barras,
-            imagen_principal,
+            COALESCE(
+                (SELECT ip.archivo
+                 FROM imagenes_producto ip
+                 WHERE ip.id_producto = vi.id_producto AND ip.activo = TRUE
+                 ORDER BY ip.es_principal DESC, ip.orden, ip.id_imagen
+                 LIMIT 1),
+                imagen_principal
+            ) AS imagen_principal,
             categoria,
             marca,
             tipo_mascota,

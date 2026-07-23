@@ -248,4 +248,78 @@
             observationRow.hidden = observation.value.trim() === '';
         });
     });
+
+    document.querySelectorAll('[data-image-preview-input]').forEach((input) => {
+        const targetId = input.dataset.previewTarget;
+        const preview = targetId ? document.getElementById(targetId) : null;
+        const container = preview?.parentElement;
+        const placeholder = container?.querySelector('[data-image-preview-placeholder]');
+        if (!preview) return;
+
+        let objectUrl = '';
+        input.addEventListener('change', () => {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = '';
+            }
+            const file = input.files?.[0];
+            if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                preview.removeAttribute('src');
+                preview.hidden = true;
+                if (placeholder) placeholder.hidden = false;
+                return;
+            }
+            objectUrl = URL.createObjectURL(file);
+            preview.src = objectUrl;
+            preview.hidden = false;
+            if (placeholder) placeholder.hidden = true;
+        });
+        window.addEventListener('pagehide', () => {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        }, { once: true });
+    });
+
+    const createProduct = document.querySelector('.admin-product-create-layout');
+    if (createProduct) {
+        const name = createProduct.querySelector('[name="nombre"]');
+        const sku = createProduct.querySelector('[name="sku"]');
+        const category = createProduct.querySelector('[name="id_categoria"]');
+        const brand = createProduct.querySelector('[name="id_marca"]');
+        const stock = createProduct.querySelector('[name="stock_inicial"]');
+        const price = createProduct.querySelector('[name="precio_venta"]');
+        const preview = {
+            name: createProduct.querySelector('[data-create-preview-name]'),
+            sku: createProduct.querySelector('[data-create-preview-sku]'),
+            category: createProduct.querySelector('[data-create-preview-category]'),
+            brand: createProduct.querySelector('[data-create-preview-brand]'),
+            type: createProduct.querySelector('[data-create-preview-type]'),
+            pet: createProduct.querySelector('[data-create-preview-pet]'),
+            stock: createProduct.querySelector('[data-create-preview-stock]'),
+            price: createProduct.querySelector('[data-create-preview-price]'),
+        };
+        const selectedLabel = (select, fallback) => {
+            const option = select?.selectedOptions?.[0];
+            return option?.value ? option.textContent.trim() : fallback;
+        };
+        const updateCatalogPreview = () => {
+            const fractionable = category?.selectedOptions?.[0]?.dataset.fraccionable === '1';
+            const petInput = createProduct.querySelector('[name="tipo_mascota"]:checked');
+            const petLabel = petInput?.closest('label')?.textContent.trim() || 'Por definir';
+            const stockValue = Number.parseInt(stock?.value || '0', 10);
+            const priceValue = Number.parseInt(String(price?.value || '').replace(/\D/g, ''), 10);
+            preview.name.textContent = name?.value.trim() || 'Nuevo producto';
+            preview.sku.textContent = sku?.value.trim() || 'Sin SKU';
+            preview.category.textContent = selectedLabel(category, 'Categoría pendiente');
+            preview.brand.textContent = selectedLabel(brand, 'Marca pendiente');
+            preview.type.textContent = fractionable ? 'Alimento fraccionable' : 'Producto por unidad';
+            preview.pet.textContent = petLabel;
+            preview.stock.textContent = (Number.isNaN(stockValue) ? 0 : stockValue) + (fractionable ? ' g' : ' unidades');
+            preview.price.textContent = fractionable
+                ? 'Precio por presentación'
+                : (Number.isNaN(priceValue) ? 'Por definir' : '$' + new Intl.NumberFormat('es-CL').format(priceValue));
+        };
+        createProduct.addEventListener('input', updateCatalogPreview);
+        createProduct.addEventListener('change', updateCatalogPreview);
+        updateCatalogPreview();
+    }
 })();

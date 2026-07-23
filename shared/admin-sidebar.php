@@ -8,6 +8,7 @@ $navigationItems = [
     'inventario' => ['Inventario', 'admin/inventario/index.php'],
     'categorias' => ['Categorías', 'admin/categorias/index.php'],
     'marcas' => ['Marcas', 'admin/marcas/index.php'],
+    'configuracion' => ['Configuración', 'admin/configuracion/index.php'],
     'importaciones' => ['Importaciones', 'admin/inventario/importacion/index.php'],
     'usuarios' => ['Usuarios', 'admin/usuarios/index.php'],
 ];

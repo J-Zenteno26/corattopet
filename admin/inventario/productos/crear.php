@@ -16,10 +16,11 @@ $errors = is_array($state['errores'] ?? null) ? $state['errores'] : [];
 $generalError = is_string($state['error_general'] ?? null) ? $state['error_general'] : null;
 $errorReference = is_string($state['referencia'] ?? null) ? $state['referencia'] : '';
 if ($errors !== [] || $generalError !== null) {
+    $imageError = isset($errors['imagen_principal']) && count($errors) === 1;
     $adminModal = [
         'type' => 'error',
-        'title' => 'No fue posible guardar el producto',
-        'message' => $errors !== [] ? 'Revisa los campos marcados antes de continuar.' : 'No se pudo completar la acción.',
+        'title' => $imageError ? 'No fue posible subir la imagen' : 'No fue posible guardar el producto',
+        'message' => $imageError ? 'Revisa el archivo seleccionado antes de continuar.' : ($errors !== [] ? 'Revisa los campos marcados antes de continuar.' : 'No se pudo completar la acción.'),
         'detail' => resumenErroresFormulario($errors, $generalError),
         'reference' => $errorReference,
         'primaryText' => 'Aceptar',
@@ -69,14 +70,64 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
         </div>
     <?php endif; ?>
 
-    <form class="admin-product-form" method="post"
+    <div class="admin-form-layout admin-product-edit-shell admin-product-create-shell">
+    <form class="admin-product-form admin-product-create-layout" method="post" enctype="multipart/form-data"
         action="<?= escape(appUrl('admin/inventario/productos/guardar.php')) ?>">
         <input type="hidden" name="csrf_token" value="<?= escape($csrfToken) ?>">
 
-        <section class="admin-panel" aria-labelledby="main-information-title">
+        <aside class="admin-product-edit-media admin-product-create-media">
+            <section class="admin-panel admin-product-media-panel admin-product-create-media-card" aria-labelledby="create-catalog-preview-title">
+                <div class="admin-panel__header">
+                    <h2 id="create-catalog-preview-title">Vista previa de catálogo</h2>
+                    <p class="admin-panel__intro">Completa los datos para visualizar la nueva ficha de producto.</p>
+                </div>
+                <div class="admin-product-media-hero">
+                    <div class="admin-product-media-hero__image admin-product-edit-main-image admin-product-create-preview">
+                        <span class="admin-product-media-hero__badge">Imagen principal</span>
+                        <div class="admin-product-media-hero__placeholder" data-image-preview-placeholder>
+                            <span aria-hidden="true">🐾</span>
+                            <strong>Selecciona una imagen para previsualizar el producto</strong>
+                        </div>
+                        <img id="create-product-image-preview" alt="Vista previa de la imagen seleccionada" hidden>
+                    </div>
+                    <div class="admin-product-media-info">
+                        <span class="admin-product-media-info__eyebrow">Nueva ficha</span>
+                        <h3 class="admin-product-media-info__title" data-create-preview-name><?= escape($values['nombre'] !== '' ? $values['nombre'] : 'Nuevo producto') ?></h3>
+                        <dl class="admin-product-media-info__meta admin-product-create-summary">
+                            <div><dt>SKU</dt><dd data-create-preview-sku><?= escape($values['sku'] !== '' ? $values['sku'] : 'Sin SKU') ?></dd></div>
+                            <div><dt>Categoría</dt><dd data-create-preview-category>Categoría pendiente</dd></div>
+                            <div><dt>Marca</dt><dd data-create-preview-brand>Marca pendiente</dd></div>
+                            <div><dt>Tipo</dt><dd data-create-preview-type>Producto por unidad</dd></div>
+                            <div><dt>Mascota</dt><dd data-create-preview-pet>Por definir</dd></div>
+                            <div><dt>Estado</dt><dd><span class="admin-status-badge is-active">Activo</span></dd></div>
+                            <div><dt>Stock inicial</dt><dd data-create-preview-stock><?= escape($values['stock_inicial'] !== '' ? $values['stock_inicial'] : '0 unidades') ?></dd></div>
+                            <div><dt>Precio</dt><dd data-create-preview-price><?= escape($values['precio_venta'] !== '' ? '$' . $values['precio_venta'] : 'Por definir') ?></dd></div>
+                        </dl>
+                    </div>
+                </div>
+                <div class="admin-product-create-upload">
+                    <h3>Cargar imagen principal</h3>
+                    <div class="admin-field<?= isset($errors['imagen_principal']) ? ' admin-field--invalid' : '' ?>">
+                        <label for="imagen_principal">Archivo de imagen</label>
+                        <input id="imagen_principal" name="imagen_principal" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-image-preview-input data-preview-target="create-product-image-preview" <?= isset($errors['imagen_principal']) ? 'aria-invalid="true" aria-describedby="imagen-principal-error imagen-principal-help"' : 'aria-describedby="imagen-principal-help"' ?>>
+                        <span class="admin-field__help" id="imagen-principal-help">JPG, PNG o WEBP. Máximo 2 MB. La imagen es opcional.</span>
+                        <?php if (isset($errors['imagen_principal'])): ?><span class="admin-field__error" id="imagen-principal-error"><?= escape((string) $errors['imagen_principal']) ?></span><?php endif; ?>
+                    </div>
+                    <div class="admin-field">
+                        <label for="imagen_alt_text">Texto alternativo</label>
+                        <input id="imagen_alt_text" name="imagen_alt_text" type="text" maxlength="180" value="<?= escape((string) ($values['imagen_alt_text'] ?? '')) ?>" placeholder="Describe brevemente la imagen">
+                        <span class="admin-field__help">Opcional. Describe la imagen para mejorar su accesibilidad.</span>
+                    </div>
+                    <p>La imagen se subirá junto con el producto y quedará marcada como principal.</p>
+                </div>
+            </section>
+        </aside>
+
+        <div class="admin-product-edit-form admin-product-create-form">
+        <section class="admin-panel admin-product-create-form__main" aria-labelledby="main-information-title">
             <div class="admin-panel__header">
                 <h2 id="main-information-title">Información principal</h2>
-                <p class="admin-field__help">Los campos marcados con <span class="admin-required">*</span> son
+                <p class="admin-panel__intro">Los campos marcados con <span class="admin-required">*</span> son
                     obligatorios.</p>
             </div>
 
@@ -162,10 +213,10 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </div>
         </section>
 
-        <section class="admin-panel" aria-labelledby="sales-stock-title">
+        <section class="admin-panel admin-product-create-form__sales" aria-labelledby="sales-stock-title">
             <div class="admin-panel__header">
                 <h2 id="sales-stock-title">Venta e inventario</h2>
-                <p class="admin-field__help" id="sales-stock-help">Configura el precio y las cantidades disponibles del
+                <p class="admin-panel__intro" id="sales-stock-help">Configura el precio y las cantidades disponibles del
                     producto.</p>
             </div>
             <div id="fractionable-info" class="admin-alert admin-alert--fractionable" hidden>
@@ -206,10 +257,10 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </div>
         </section>
 
-        <section class="admin-panel" aria-labelledby="optional-information-title">
+        <section class="admin-panel admin-product-create-form__optional" aria-labelledby="optional-information-title">
             <div class="admin-panel__header">
                 <h2 id="optional-information-title">Datos opcionales</h2>
-                <p class="admin-field__help">Completa únicamente la información disponible para este producto.</p>
+                <p class="admin-panel__intro">Completa únicamente la información disponible para este producto.</p>
             </div>
 
             <div class="admin-form-grid">
@@ -300,12 +351,14 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </div>
         </section>
 
-        <section class="admin-panel admin-form-actions" aria-label="Acciones del formulario">
+        <section class="admin-panel admin-form-actions admin-product-create-form__actions" aria-label="Acciones del formulario">
             <a class="admin-button" href="<?= escape(appUrl('admin/inventario/index.php')) ?>">Cancelar</a>
             <button class="admin-button admin-button--primary" type="submit" <?= $canSubmit ? '' : 'disabled' ?>>Guardar
                 producto</button>
         </section>
+        </div>
     </form>
+    </div>
     <script>
         (() => {
             const category = document.getElementById('id_categoria');

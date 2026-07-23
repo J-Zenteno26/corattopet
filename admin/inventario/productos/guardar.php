@@ -9,6 +9,7 @@ require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
 require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/validaciones-producto.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
+require_once __DIR__ . '/imagenes/includes/funciones-imagenes-producto.php';
 
 requireAuthentication();
 
@@ -20,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $formUrl = appUrl('admin/inventario/productos/crear.php');
 [$values, $errors] = validarDatosProducto($_POST);
+$imageAltText = normalizarTextoAlternativoImagen($_POST['imagen_alt_text'] ?? null);
+$values['imagen_alt_text'] = $imageAltText ?? '';
 
 if (!validateCsrfToken($_POST['csrf_token'] ?? null)) {
     guardarEstadoFormularioProducto($values, [], 'La solicitud no es válida. Recarga el formulario e intenta nuevamente.');
@@ -34,6 +37,18 @@ if ($errors !== []) {
 }
 
 $connection = null;
+$validatedImage = null;
+
+try {
+    $imageFile = is_array($_FILES['imagen_principal'] ?? null) ? $_FILES['imagen_principal'] : [];
+    if ((int) ($imageFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        $validatedImage = validarArchivoImagenProducto($imageFile);
+    }
+} catch (ImagenProductoException $exception) {
+    guardarEstadoFormularioProducto($values, ['imagen_principal' => $exception->getMessage()]);
+    header('Location: ' . $formUrl, true, 303);
+    exit;
+}
 
 try {
     $connection = database();
@@ -134,13 +149,38 @@ try {
     }
 
     $connection->commit();
-    guardarModalAdmin(
-        'success',
-        'Producto creado',
-        $fractionable
-            ? 'El alimento fue registrado correctamente. Ahora puedes configurar sus presentaciones.'
-            : 'El producto fue registrado correctamente.'
-    );
+    $imageSaved = false;
+    $imageWarningReference = null;
+    if (is_array($validatedImage)) {
+        try {
+            guardarImagenProductoValidada($connection, $productId, $validatedImage, $imageAltText);
+            $imageSaved = true;
+        } catch (Throwable $imageException) {
+            $imageWarningReference = registrarExcepcionAdmin('Product created image upload error', $imageException);
+        }
+    }
+    if ($imageWarningReference !== null) {
+        guardarModalAdmin(
+            'warning',
+            $fractionable ? 'Alimento creado sin imagen' : 'Producto creado sin imagen',
+            $fractionable
+                ? 'El alimento fue creado, pero no fue posible subir la imagen.'
+                : 'El producto fue creado, pero no fue posible subir la imagen.',
+            ['reference' => $imageWarningReference]
+        );
+    } else {
+        guardarModalAdmin(
+            'success',
+            $fractionable ? 'Alimento creado' : 'Producto creado',
+            $fractionable
+                ? ($imageSaved
+                    ? 'El alimento fue registrado correctamente con su imagen principal. Ahora puedes configurar sus presentaciones.'
+                    : 'El alimento fue registrado correctamente. Ahora puedes configurar sus presentaciones.')
+                : ($imageSaved
+                    ? 'El producto fue registrado correctamente con su imagen principal.'
+                    : 'El producto fue registrado correctamente.')
+        );
+    }
     $destination = $fractionable
         ? appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId)
         : appUrl('admin/inventario/index.php');

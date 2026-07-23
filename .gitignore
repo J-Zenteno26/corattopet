@@ -10,6 +10,7 @@ storage/logs/*
 !storage/logs/.gitkeep
 public/uploads/productos/*
 !public/uploads/productos/.gitkeep
+!public/uploads/productos/.htaccess
 
 # Dependencies and tooling
 /vendor/
