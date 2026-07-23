@@ -7,6 +7,7 @@ $navigationItems = [
     'dashboard' => ['Dashboard', 'admin/dashboard/index.php'],
     'inventario' => ['Inventario', 'admin/inventario/index.php'],
     'pedidos' => ['Pedidos', 'admin/pedidos/index.php'],
+    'clientes' => ['Clientes', 'admin/clientes/index.php'],
     'categorias' => ['Categorías', 'admin/categorias/index.php'],
     'marcas' => ['Marcas', 'admin/marcas/index.php'],
     'configuracion' => ['Configuración', 'admin/configuracion/index.php'],
