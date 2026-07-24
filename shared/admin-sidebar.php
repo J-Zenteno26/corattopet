@@ -14,6 +14,10 @@ $navigationItems = [
     'importaciones' => ['Importaciones', 'admin/inventario/importacion/index.php'],
     'usuarios' => ['Usuarios', 'admin/usuarios/index.php'],
 ];
+
+if (($_SESSION['rol'] ?? '') !== 'administrador') {
+    unset($navigationItems['usuarios']);
+}
 ?>
 <nav class="admin-sidebar" id="admin-sidebar" aria-label="Navegación administrativa">
     <ul class="admin-nav">
