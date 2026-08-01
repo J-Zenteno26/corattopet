@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-lotes.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
 require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/validaciones-producto.php';
@@ -21,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $formUrl = appUrl('admin/inventario/productos/crear.php');
 [$values, $errors] = validarDatosProducto($_POST);
+$values['id_proveedor'] = trim((string) ($_POST['id_proveedor'] ?? ''));
 $imageAltText = normalizarTextoAlternativoImagen($_POST['imagen_alt_text'] ?? null);
 $values['imagen_alt_text'] = $imageAltText ?? '';
 
@@ -60,15 +62,53 @@ try {
     if (!valorBooleanoPostgres($references['marca_valida'] ?? false)) {
         $errors['id_marca'] = 'Selecciona una marca activa.';
     }
-    $fractionable = $category !== null && esProductoFraccionable($category);
+    if ($category !== null && esCategoriaAlimentos($category) && $values['subcategoria'] !== '') {
+        $subcategory = obtenerSubcategoriaActivaProducto($connection, (int) $values['id_categoria'], $values['subcategoria']);
+        if ($subcategory === null) {
+            $errors['subcategoria'] = 'Selecciona una subcategoría activa de Alimentos.';
+        } else {
+            $values['subcategoria'] = (string) $subcategory['nombre'];
+        }
+    }
+    $fractionable = aplicarReglaSubcategoriaProducto($values, $errors, $category);
+    $lotes = normalizarLotesFormulario($_POST['lotes'] ?? []);
+    if ($fractionable) {
+        $lotErrors = validarLotesStock($lotes, []);
+        $stockFromLots = calcularStockInicialLotesProducto($lotes);
+        if ($lotes === [] || $stockFromLots <= 0) {
+            $lotErrors['lotes'] = 'Ingresa al menos un lote con cantidad válida.';
+        }
+        $errors += $lotErrors;
+        $values['lotes'] = $lotes;
+        $values['_stock_inicial_lotes'] = $stockFromLots;
+        $values['_stock_inicial_entero'] = (int) round($stockFromLots);
+    }
     validarProductoPorCategoria($values, $errors, $fractionable, false);
     if ($fractionable) {
         $values['formato'] = '';
         $values['peso_contenido'] = '';
         $values['unidad'] = '';
-    } else {
-        validarCamposFormatoProducto($values, $errors);
+        $values['fraccionadora_importador'] = '';
     }
+    $supplierId = null;
+    if ($fractionable && trim((string) ($_POST['id_proveedor'] ?? '')) !== '') {
+        $supplierId = filter_var($_POST['id_proveedor'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($supplierId === false) {
+            $errors['id_proveedor'] = 'Selecciona un proveedor válido.';
+            $supplierId = null;
+        } else {
+            $supplierCheck = $connection->prepare('SELECT 1 FROM proveedores WHERE id_proveedor=:id AND activo=TRUE');
+            $supplierCheck->execute(['id' => $supplierId]);
+            if ($supplierCheck->fetchColumn() === false) {
+                $errors['id_proveedor'] = 'El proveedor seleccionado no está activo.';
+                $supplierId = null;
+            } else {
+                $supplierId = (int) $supplierId;
+                $values['id_proveedor'] = (string) $supplierId;
+            }
+        }
+    }
+    validarCamposFormatoProducto($values, $errors);
 
     $sku = $values['sku'] === '' ? null : $values['sku'];
     $barcode = $values['codigo_barras'] === '' ? null : $values['codigo_barras'];
@@ -91,7 +131,9 @@ try {
         (object) construirDetallesOpcionales($values),
         JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
     );
-    $stockInitial = (int) $values['_stock_inicial_entero'];
+    // En alimento seco, los lotes representan stock físico. Solo las unidades
+    // asignadas a presentaciones cuentan como stock vendible.
+    $stockInitial = $fractionable ? 0 : (int) $values['_stock_inicial_entero'];
     $minimumStock = $fractionable
         ? 5000
         : ($values['stock_minimo'] === '' ? 5 : (int) $values['_stock_minimo_entero']);
@@ -130,6 +172,14 @@ try {
         'stock_minimo' => $minimumStock,
     ]);
 
+    if ($fractionable) {
+        if ($supplierId !== null) {
+            $connection->prepare('INSERT INTO proveedor_productos (id_proveedor,id_producto,activo) VALUES (:proveedor,:producto,TRUE) ON CONFLICT (id_proveedor,id_producto) DO UPDATE SET activo=TRUE')
+                ->execute(['proveedor' => $supplierId, 'producto' => $productId]);
+        }
+        guardarLotesStock($connection, $productId, $lotes, [], $supplierId);
+    }
+
     if ($stockInitial > 0) {
         $movementStatement = $connection->prepare(
             "INSERT INTO movimientos_stock (
@@ -137,7 +187,7 @@ try {
                 stock_anterior, stock_final, origen, motivo
             ) VALUES (
                 :id_producto, :id_usuario, 'carga_inicial', :cantidad,
-                0, :stock_final, 'manual', 'Registro manual del producto'
+                0, :stock_final, 'manual', :motivo
             )"
         );
         $movementStatement->execute([
@@ -145,6 +195,7 @@ try {
             'id_usuario' => (int) $_SESSION['id_usuario'],
             'cantidad' => $stockInitial,
             'stock_final' => $stockInitial,
+            'motivo' => $fractionable ? 'Carga inicial desde lotes' : 'Registro manual del producto',
         ]);
     }
 

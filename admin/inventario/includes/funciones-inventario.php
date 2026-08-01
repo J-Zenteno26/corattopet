@@ -91,6 +91,36 @@ function formatearFechaInventario(mixed $date): string
     }
 }
 
+function estadoFechaLoteInventario(string $date, ?DateTimeImmutable $today = null): array
+{
+    $today = ($today ?? new DateTimeImmutable('today'))->setTime(0, 0);
+    $expiration = (new DateTimeImmutable($date))->setTime(0, 0);
+    if ($expiration < $today) return ['key'=>'expired','label'=>'Vencido','priority'=>1];
+    if ($expiration < $today->modify('+2 months')) return ['key'=>'critical','label'=>'Crítico','priority'=>2];
+    if ($expiration <= $today->modify('+6 months')) return ['key'=>'upcoming','label'=>'Próximo','priority'=>3];
+    return ['key'=>'current','label'=>'Vigente','priority'=>4];
+}
+
+function estadoLotesPorPrioridadInventario(mixed $priority): array
+{
+    return match ((int) $priority) {
+        1 => ['key'=>'expired','label'=>'Vencido'],
+        2 => ['key'=>'critical','label'=>'Crítico'],
+        3 => ['key'=>'upcoming','label'=>'Próximo'],
+        4 => ['key'=>'current','label'=>'Vigente'],
+        default => ['key'=>'none','label'=>'Sin lotes'],
+    };
+}
+
+function formatearPesoLoteInventario(mixed $grams): string
+{
+    $value = (float) $grams;
+    $unitValue = $value >= 1000 ? $value / 1000 : $value;
+    $formatted = number_format($unitValue, 3, ',', '.');
+    $formatted = rtrim(rtrim($formatted, '0'), ',');
+    return $formatted . ($value >= 1000 ? ' kg' : ' g');
+}
+
 function textoTipoMascota(mixed $type): string
 {
     return [

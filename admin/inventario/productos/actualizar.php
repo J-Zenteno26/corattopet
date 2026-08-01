@@ -58,15 +58,21 @@ try {
         exit;
     }
     $category = obtenerCategoriaProducto($connection, (int) $values['id_categoria']);
-    $fractionable = $category !== null && esProductoFraccionable($category);
+    if ($category !== null && esCategoriaAlimentos($category) && $values['subcategoria'] !== '') {
+        $subcategory = obtenerSubcategoriaActivaProducto($connection, (int) $values['id_categoria'], $values['subcategoria']);
+        if ($subcategory === null) {
+            $errors['subcategoria'] = 'Selecciona una subcategoría activa de Alimentos.';
+        } else {
+            $values['subcategoria'] = (string) $subcategory['nombre'];
+        }
+    }
+    $fractionable = aplicarReglaSubcategoriaProducto($values, $errors, $category);
     validarProductoPorCategoria($values, $errors, $fractionable, true);
     if ($fractionable) {
         $values['formato'] = '';
         $values['peso_contenido'] = '';
-        $values['unidad'] = '';
-    } else {
-        validarCamposFormatoProducto($values, $errors);
     }
+    validarCamposFormatoProducto($values, $errors);
 
     $references = validarReferenciasProductoEdicion(
         $connection,

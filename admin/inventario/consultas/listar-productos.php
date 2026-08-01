@@ -39,13 +39,23 @@ function listarProductosInventario(PDO $connection, array $filters): array
             stock_minimo,
             estado_stock,
             actualizado_en,
-            (SELECT c.maneja_fraccionamiento
+            (SELECT c.slug
              FROM productos p
              INNER JOIN categorias c ON c.id_categoria = p.id_categoria
-             WHERE p.id_producto = vi.id_producto) AS maneja_fraccionamiento,
+             WHERE p.id_producto = vi.id_producto) AS categoria_slug,
+            (SELECT p.detalles_opcionales FROM productos p
+             WHERE p.id_producto = vi.id_producto) AS detalles_opcionales,
             (SELECT COUNT(pp.id_presentacion)
              FROM producto_presentaciones pp
-             WHERE pp.id_producto = vi.id_producto AND pp.activo = TRUE) AS presentaciones_activas
+             WHERE pp.id_producto = vi.id_producto AND pp.activo = TRUE) AS presentaciones_activas,
+            (SELECT COUNT(*) FROM stock_lotes sl
+             WHERE sl.id_producto=vi.id_producto AND sl.activo=TRUE) AS lotes_activos,
+            (SELECT MIN(CASE
+                WHEN sl.fecha_vencimiento<CURRENT_DATE THEN 1
+                WHEN sl.fecha_vencimiento<CURRENT_DATE+INTERVAL \'2 months\' THEN 2
+                WHEN sl.fecha_vencimiento<=CURRENT_DATE+INTERVAL \'6 months\' THEN 3
+                ELSE 4 END)
+             FROM stock_lotes sl WHERE sl.id_producto=vi.id_producto AND sl.activo=TRUE) AS lote_prioridad
         FROM vista_inventario vi'
         . $whereSql
         . ' ORDER BY actualizado_en DESC, id_producto DESC LIMIT :limit OFFSET :offset'
@@ -87,12 +97,11 @@ function construirFiltrosSqlInventario(array $filters): array
     }
 
     if ($filters['tipo_stock'] !== '') {
-        $where[] = $filters['tipo_stock'] === 'fraccionable'
-            ? 'EXISTS (SELECT 1 FROM productos fp INNER JOIN categorias fc ON fc.id_categoria = fp.id_categoria WHERE fp.id_producto = vi.id_producto AND fc.maneja_fraccionamiento = TRUE)'
-            : 'EXISTS (SELECT 1 FROM productos up INNER JOIN categorias uc ON uc.id_categoria = up.id_categoria WHERE up.id_producto = vi.id_producto AND uc.maneja_fraccionamiento = FALSE)';
+        $fractionableFilter = "EXISTS (SELECT 1 FROM productos fp INNER JOIN categorias fc ON fc.id_categoria = fp.id_categoria WHERE fp.id_producto = vi.id_producto AND fc.slug = 'alimentos' AND LOWER(TRIM(COALESCE(NULLIF(fp.detalles_opcionales->>'subcategoria_codigo', ''), fp.detalles_opcionales->>'subcategoria', ''))) IN ('alimento-seco', 'alimento seco'))";
+        $where[] = $filters['tipo_stock'] === 'fraccionable' ? $fractionableFilter : 'NOT ' . $fractionableFilter;
     }
 
-    $fractionableCondition = 'EXISTS (SELECT 1 FROM productos sp INNER JOIN categorias sc ON sc.id_categoria = sp.id_categoria WHERE sp.id_producto = vi.id_producto AND sc.maneja_fraccionamiento = TRUE)';
+    $fractionableCondition = "EXISTS (SELECT 1 FROM productos sp INNER JOIN categorias sc ON sc.id_categoria = sp.id_categoria WHERE sp.id_producto = vi.id_producto AND sc.slug = 'alimentos' AND LOWER(TRIM(COALESCE(NULLIF(sp.detalles_opcionales->>'subcategoria_codigo', ''), sp.detalles_opcionales->>'subcategoria', ''))) IN ('alimento-seco', 'alimento seco'))";
     $stockConditions = [
         'en_stock' => 'cantidad_disponible > 0 AND (('
             . $fractionableCondition . ' AND cantidad_disponible >= stock_minimo) OR (NOT '
@@ -117,10 +126,12 @@ function listarProductosInventarioExportacion(PDO $connection, array $filters, i
         'SELECT vi.id_producto, vi.nombre, vi.sku, vi.codigo_barras, vi.categoria, vi.marca,
             vi.tipo_mascota, vi.precio_venta, vi.cantidad_disponible, vi.stock_minimo,
             vi.estado_stock, vi.estado, vi.actualizado_en,
-            (SELECT c.maneja_fraccionamiento
+            (SELECT c.slug
              FROM productos p
              INNER JOIN categorias c ON c.id_categoria = p.id_categoria
-             WHERE p.id_producto = vi.id_producto) AS maneja_fraccionamiento,
+             WHERE p.id_producto = vi.id_producto) AS categoria_slug,
+            (SELECT p.detalles_opcionales FROM productos p
+             WHERE p.id_producto = vi.id_producto) AS detalles_opcionales,
             (SELECT COUNT(pp.id_presentacion) FROM producto_presentaciones pp
              WHERE pp.id_producto = vi.id_producto AND pp.activo = TRUE) AS presentaciones_activas
         FROM vista_inventario vi'

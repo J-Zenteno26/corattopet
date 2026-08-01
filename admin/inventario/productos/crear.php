@@ -5,8 +5,10 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-lotes.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
+require_once dirname(__DIR__, 2) . '/proveedores/includes/consultas-proveedores.php';
 
 requireAuthentication();
 
@@ -26,11 +28,13 @@ if ($errors !== [] || $generalError !== null) {
         'primaryText' => 'Aceptar',
     ];
 }
-$options = ['categorias' => [], 'marcas' => []];
+$options = ['categorias' => [], 'marcas' => [], 'subcategorias' => []];
+$suppliers = [];
 $optionsError = false;
 
 try {
     $options = obtenerOpcionesProducto(database());
+    $suppliers = todosProveedoresActivos(database());
 } catch (Throwable $exception) {
     $optionsError = true;
     $reference = registrarExcepcionAdmin('Product form options error', $exception);
@@ -166,12 +170,29 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                         <option value="">Selecciona una categoría</option>
                         <?php foreach ($options['categorias'] as $category): ?>
                             <option value="<?= escape((string) $category['id_categoria']) ?>"
-                                data-fraccionable="<?= valorBooleanoPostgres($category['maneja_fraccionamiento']) ? '1' : '0' ?>"
+                                data-categoria-slug="<?= escape((string) $category['slug']) ?>"
                                 <?= (string) $values['id_categoria'] === (string) $category['id_categoria'] ? 'selected' : '' ?>><?= escape((string) $category['nombre']) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <?php if (isset($errors['id_categoria'])): ?><span class="admin-field__error"
                             id="categoria-error"><?= escape($errors['id_categoria']) ?></span><?php endif; ?>
+                </div>
+
+                <div id="subcategoria-field"
+                    class="admin-field admin-field--select-compact<?= isset($errors['subcategoria']) ? ' admin-field--invalid' : '' ?>">
+                    <label for="subcategoria">Subcategoría <span class="admin-required">*</span></label>
+                    <select id="subcategoria" name="subcategoria"
+                        <?= isset($errors['subcategoria']) ? 'aria-invalid="true" aria-describedby="subcategoria-error"' : '' ?>>
+                        <option value="">Selecciona una subcategoría</option>
+                        <?php foreach ($options['subcategorias'] as $subcategory): ?>
+                            <option value="<?= escape((string) $subcategory['slug']) ?>"
+                                <?= codigoSubcategoriaProducto($values['subcategoria']) === (string) $subcategory['slug'] ? 'selected' : '' ?>>
+                                <?= escape((string) $subcategory['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (isset($errors['subcategoria'])): ?><span class="admin-field__error"
+                            id="subcategoria-error"><?= escape($errors['subcategoria']) ?></span><?php endif; ?>
                 </div>
 
                 <div
@@ -266,7 +287,6 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             <div class="admin-form-grid">
                 <?php
                 $basicOptionalFields = [
-                    'subcategoria' => ['label' => 'Subcategoría', 'placeholder' => 'Ej.: Alimento seco'],
                     'formato' => ['label' => 'Formato', 'placeholder' => 'Ej.: Saco, bolsa o lata'],
                 ];
                 foreach ($basicOptionalFields as $field => $fieldData):
@@ -280,7 +300,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             : '';
                         ?>
 
-                        <input id="<?= escape($field) ?>" name="<?= escape($field) ?>" type="text"
+                        <input id="<?= escape($field) ?>" name="<?= escape($field) ?>" type="text" maxlength="120"
                             placeholder="<?= escape($fieldData['placeholder']) ?>" value="<?= escape($values[$field]) ?>"
                             <?= $fieldAria ?>>
                         <?php if (isset($errors[$field])): ?>
@@ -299,7 +319,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             id="peso-error"><?= escape($errors['peso_contenido']) ?></span><?php endif; ?>
                 </div>
 
-                <div id="unidad-field" data-presentation-field="1"
+                <div id="unidad-field" data-hide-for-dry-food="1"
                     class="admin-field admin-field--select-inline<?= isset($errors['unidad']) ? ' admin-field--invalid' : '' ?>">
                     <label for="unidad">Unidad</label>
                     <select id="unidad" name="unidad" <?= isset($errors['unidad']) ? 'aria-invalid="true" aria-describedby="unidad-error"' : '' ?>>
@@ -321,7 +341,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 ];
                 foreach ($shortOptionalFields as $field => $fieldData):
                     ?>
-                    <div class="admin-field<?= isset($errors[$field]) ? ' admin-field--invalid' : '' ?>">
+                    <div <?= $field === 'fraccionadora_importador' ? 'id="fraccionadora-importador-field" data-hide-for-dry-food="1"' : '' ?> class="admin-field<?= isset($errors[$field]) ? ' admin-field--invalid' : '' ?>">
                         <label for="<?= $field ?>"><?= escape($fieldData['label']) ?></label>
                         <input id="<?= $field ?>" name="<?= $field ?>" type="text"
                             placeholder="<?= escape($fieldData['placeholder']) ?>" value="<?= escape($values[$field]) ?>"
@@ -351,6 +371,29 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             </div>
         </section>
 
+        <section id="lotes-section" class="admin-panel admin-lots-panel" hidden aria-labelledby="lotes-title">
+            <div class="admin-lots-panel__header"><span class="admin-lots-panel__icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span><div><span class="admin-lots-panel__badge">Solo alimento seco</span><h2 id="lotes-title">Lotes y presentaciones</h2><p>Registra la trazabilidad del stock inicial. Las presentaciones se configuran después de crear el producto.</p></div></div>
+            <div class="admin-lots-toolbar">
+                <div class="admin-field admin-lots-provider<?= isset($errors['id_proveedor'])?' admin-field--invalid':'' ?>"><label for="id_proveedor"><i class="bi bi-truck" aria-hidden="true"></i> Proveedor</label><select id="id_proveedor" name="id_proveedor"><option value="">Asignar después</option><?php foreach($suppliers as $supplier):?><option value="<?= (int)$supplier['id_proveedor'] ?>" <?= (string)($values['id_proveedor']??'')===(string)$supplier['id_proveedor']?'selected':'' ?>><?= escape((string)$supplier['nombre'].($supplier['rut']?' · '.$supplier['rut']:'')) ?></option><?php endforeach;?></select><?php if(isset($errors['id_proveedor'])):?><span class="admin-field__error"><?= escape((string)$errors['id_proveedor']) ?></span><?php elseif($suppliers===[]):?><span class="admin-field__help"><i class="bi bi-info-circle" aria-hidden="true"></i> Aún no hay proveedores registrados.</span><?php else:?><span class="admin-field__help">Opcional. Puedes asignarlo ahora o dejarlo para después.</span><?php endif;?></div>
+            <?php if (isset($errors['lotes'])): ?><p class="admin-field__error"><?= escape((string) $errors['lotes']) ?></p><?php endif; ?>
+            <div class="admin-field admin-lots-count">
+                <label for="cantidad_lotes">Cantidad de lotes <span class="admin-required">*</span></label>
+                <input id="cantidad_lotes" type="number" min="1" step="1" value="<?= max(1, count((array) ($values['lotes'] ?? []))) ?>">
+            </div></div>
+            <div id="lotes-container" class="admin-lots-list"></div>
+            <p class="admin-lots-note"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span><strong>Stock pendiente de distribución.</strong> Sin presentaciones asignadas, el lote se guarda como saldo no vendible.</span></p>
+        </section>
+
+        <template id="lote-template"><fieldset class="admin-lot-card" data-lote>
+            <legend><span class="admin-lot-card__number" data-lote-numero></span><span><strong>Lote</strong><small>Identificación, fechas y peso recibido</small></span></legend>
+            <div class="admin-lot-fields">
+                <div class="admin-field admin-lot-code"><label>Código de lote <span class="admin-required">*</span></label><input data-lote-campo="codigo_lote" maxlength="80" required placeholder="Ej.: LT-2026-001"></div>
+                <div class="admin-field"><label>Fecha elaboración</label><input data-lote-campo="fecha_elaboracion" type="date"></div>
+                <div class="admin-field"><label>Fecha vencimiento <span class="admin-required">*</span></label><input data-lote-campo="fecha_vencimiento" type="date" required></div>
+                <div class="admin-field admin-lot-quantity"><label>Cantidad total <span class="admin-required">*</span></label><div class="admin-input-suffix"><input data-lote-campo="cantidad_total_g" type="number" min="0.001" step="0.001" required placeholder="0"><span>g</span></div></div>
+            </div>
+        </fieldset></template>
+
         <section class="admin-panel admin-form-actions admin-product-create-form__actions" aria-label="Acciones del formulario">
             <a class="admin-button" href="<?= escape(appUrl('admin/inventario/index.php')) ?>">Cancelar</a>
             <button class="admin-button admin-button--primary" type="submit" <?= $canSubmit ? '' : 'disabled' ?>>Guardar
@@ -373,8 +416,16 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             const panelHelp = document.getElementById('sales-stock-help');
             const optionalTitle = document.getElementById('optional-information-title');
             const fractionableInfo = document.getElementById('fractionable-info');
+            const subcategory = document.getElementById('subcategoria');
+            const subcategoryField = document.getElementById('subcategoria-field');
+            const lotesSection = document.getElementById('lotes-section');
+            const lotesContainer = document.getElementById('lotes-container');
+            const cantidadLotes = document.getElementById('cantidad_lotes');
+            const loteTemplate = document.getElementById('lote-template');
+            const lotesPrevios = <?= json_encode(array_values((array) ($values['lotes'] ?? [])), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
             const presentationFields = document.querySelectorAll('[data-presentation-field="1"]');
+            const dryFoodHiddenFields = document.querySelectorAll('[data-hide-for-dry-food="1"]');
 
             if (
                 !category ||
@@ -388,13 +439,25 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 !panelTitle ||
                 !panelHelp ||
                 !optionalTitle ||
-                !fractionableInfo
+                !fractionableInfo || !subcategory || !subcategoryField
             ) {
                 return;
             }
 
             const updateFields = () => {
-                const fractionable = category.selectedOptions[0]?.dataset.fraccionable === '1';
+                const foods = category.selectedOptions[0]?.dataset.categoriaSlug === 'alimentos';
+                subcategoryField.hidden = !foods;
+                subcategory.disabled = !foods;
+                subcategory.required = foods;
+                if (!foods) {
+                    subcategory.value = '';
+                }
+                const subcategoryCode = subcategory.value.trim().toLocaleLowerCase('es')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                const fractionable = foods && subcategoryCode === 'alimento-seco';
+                lotesSection.hidden = !fractionable;
+                cantidadLotes.disabled = !fractionable;
+                for (const input of lotesContainer.querySelectorAll('input')) input.disabled = !fractionable;
 
                 priceField.hidden = fractionable;
                 price.required = !fractionable;
@@ -407,8 +470,15 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     minimumStock.value = '';
                 }
 
+                initialStock.closest('.admin-field').hidden = fractionable;
+                initialStock.disabled = fractionable;
+
                 for (const field of presentationFields) {
                     field.hidden = fractionable;
+                }
+                for (const field of dryFoodHiddenFields) {
+                    field.hidden = fractionable;
+                    for (const control of field.querySelectorAll('input,select,textarea')) control.disabled = fractionable;
                 }
 
                 fractionableInfo.hidden = !fractionable;
@@ -433,6 +503,24 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             };
 
             category.addEventListener('change', updateFields);
+            subcategory.addEventListener('change', updateFields);
+            const renderLotes = () => {
+                const actuales = [...lotesContainer.querySelectorAll('[data-lote]')].map(lote => Object.fromEntries([...lote.querySelectorAll('[data-lote-campo]')].map(input => [input.dataset.loteCampo, input.value])));
+                const cantidad = Math.max(1, Number.parseInt(cantidadLotes.value || '1', 10));
+                lotesContainer.replaceChildren();
+                for (let i = 0; i < cantidad; i++) {
+                    const fragment = loteTemplate.content.cloneNode(true);
+                    fragment.querySelector('[data-lote-numero]').textContent = String(i + 1);
+                    for (const input of fragment.querySelectorAll('[data-lote-campo]')) {
+                        input.name = `lotes[${i}][${input.dataset.loteCampo}]`;
+                        input.value = (actuales[i] ?? lotesPrevios[i] ?? {})[input.dataset.loteCampo] ?? '';
+                    }
+                    lotesContainer.append(fragment);
+                }
+                updateFields();
+            };
+            cantidadLotes.addEventListener('change', renderLotes);
+            renderLotes();
             updateFields();
         })();
     </script>

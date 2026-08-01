@@ -13,7 +13,7 @@ require_once __DIR__ . '/consultas/listar-productos.php';
 requireAuthentication();
 
 $parameters = normalizarParametrosInventario($_GET);
-$summary = ['productos_totales' => 0, 'alimentos_fraccionables' => 0, 'sin_presentaciones' => 0, 'sin_stock' => 0];
+$summary = ['productos_totales' => 0, 'alimentos_fraccionables' => 0, 'sin_presentaciones' => 0, 'sin_stock' => 0, 'lotes_vencidos'=>0, 'lotes_criticos'=>0, 'lotes_proximos'=>0];
 $filterOptions = ['categorias' => [], 'marcas' => []];
 $listing = [
     'registros' => [],
@@ -87,6 +87,12 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
         <article class="admin-summary-card admin-summary-card--warning admin-inventory-summary__card">
             <span>SIN PRESENTACIONES</span>
             <strong><?= escape(number_format((int) $summary['sin_presentaciones'], 0, ',', '.')) ?></strong>
+        </article>
+        <?php $lotAlertClass=(int)$summary['lotes_vencidos']>0?'is-expired':((int)$summary['lotes_criticos']>0?'is-critical':((int)$summary['lotes_proximos']>0?'is-upcoming':'is-current')); ?>
+        <article class="admin-summary-card admin-inventory-summary__card admin-lot-alert-card <?= escape($lotAlertClass) ?>">
+            <span>ALERTAS DE LOTES</span>
+            <strong><?= (int)$summary['lotes_vencidos']+(int)$summary['lotes_criticos']+(int)$summary['lotes_proximos'] ?></strong>
+            <p><b><?= (int)$summary['lotes_vencidos'] ?></b> vencidos · <b><?= (int)$summary['lotes_criticos'] ?></b> críticos · <b><?= (int)$summary['lotes_proximos'] ?></b> próximos</p>
         </article>
         <article class="admin-summary-card admin-summary-card--warning admin-inventory-summary__card">
             <span>SIN STOCK</span>
@@ -190,6 +196,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         <th scope="col">CLASIFICACIÓN</th>
                         <th scope="col">PRECIO</th>
                         <th scope="col">STOCK</th>
+                        <th scope="col">LOTES</th>
                         <th scope="col">ESTADO</th>
                         <th scope="col">ACTUALIZADO</th>
                         <th scope="col">ACCIONES</th>
@@ -202,6 +209,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         $fractionable = esProductoFraccionable($product);
                         $activePresentations = (int) ($product['presentaciones_activas'] ?? 0);
                         $stockState = textoEstadoStockInventario($product);
+                        $lotState = estadoLotesPorPrioridadInventario($product['lote_prioridad'] ?? null);
                         $updatedParts = explode(' ', formatearFechaInventario($product['actualizado_en']), 2);
                         ?>
                         <tr>
@@ -224,6 +232,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                             <td class="admin-stock-cell">
                                 <strong class="admin-stock-cell__value"><?= escape(formatearCantidadStock((int) $product['cantidad_disponible'], $fractionable)) ?></strong>
                             </td>
+                            <td><span class="admin-lot-status is-<?= escape($lotState['key']) ?>"><?= escape($lotState['label']) ?><?php if((int)($product['lotes_activos']??0)>0): ?> · <?= (int)$product['lotes_activos'] ?><?php endif; ?></span></td>
                             <td><span class="admin-status-badge admin-inventory-status<?= $stockState === 'En stock' ? ' is-active' : ($stockState === 'Sin stock' ? ' is-inactive' : ' admin-inventory-status--attention') ?>"><?= escape($stockState) ?></span></td>
                             <td><time class="admin-inventory-date"><span><?= escape($updatedParts[0]) ?></span><?php if (isset($updatedParts[1])): ?><small><?= escape($updatedParts[1]) ?></small><?php endif; ?></time></td>
                             <td>
@@ -234,6 +243,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                                     <a class="admin-icon-button admin-icon-button--edit" href="<?= escape(appUrl('admin/inventario/productos/editar.php?id=' . $product['id_producto'])) ?>" title="Editar" aria-label="Editar <?= escape((string) $product['nombre']) ?>">
                                         <svg class="admin-icon-button__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.2 16 4 20Zm10.3-13.1 2.8 2.8M13 20h7"/></svg><span class="admin-sr-only">Editar producto</span>
                                     </a>
+                                    <a class="admin-icon-button admin-icon-button--lots" href="<?= escape(appUrl('admin/inventario/productos/lotes.php?id_producto=' . $product['id_producto'])) ?>" title="Lotes" aria-label="Ver lotes de <?= escape((string)$product['nombre']) ?>"><i class="bi bi-boxes" aria-hidden="true"></i><span class="admin-sr-only">Lotes</span></a>
                                     <?php if ($fractionable): ?>
                                         <a class="admin-icon-button admin-icon-button--view<?= $activePresentations === 0 ? ' admin-icon-button--warning' : '' ?>" href="<?= escape(appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $product['id_producto'])) ?>" title="<?= $activePresentations === 0 ? 'Agregar presentaciones' : 'Ver presentaciones' ?>" aria-label="<?= $activePresentations === 0 ? 'Agregar presentaciones a ' : 'Ver presentaciones de ' ?><?= escape((string) $product['nombre']) ?>">
                                             <svg class="admin-icon-button__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/><?php if ($activePresentations === 0): ?><path d="M17 12v6m-3-3h6"/><?php endif; ?></svg><span class="admin-sr-only"><?= $activePresentations === 0 ? 'Agregar presentaciones' : 'Ver presentaciones' ?></span>
@@ -247,7 +257,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
 
                     <?php if ($listing['registros'] === []): ?>
                         <tr class="admin-empty-state">
-                            <td colspan="8">
+                            <td colspan="9">
                                 <?php if ($databaseError): ?>
                                     <strong role="alert">No fue posible cargar el inventario en este momento</strong>
                                     <span>Intenta nuevamente más tarde.</span>

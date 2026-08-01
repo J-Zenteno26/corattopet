@@ -30,15 +30,27 @@ $connection = null;
 try {
     $connection = database();
     $connection->beginTransaction();
+    $activeCategories = [];
+    foreach ($connection->query('SELECT id_categoria, slug FROM categorias WHERE activo = TRUE')->fetchAll() as $category) {
+        $activeCategories[(int) $category['id_categoria']] = $category;
+    }
     $existingSlugs = array_fill_keys(array_map('strtolower', $connection->query('SELECT slug FROM productos')->fetchAll(PDO::FETCH_COLUMN)), true);
     $existingProducts = [];
-    foreach ($connection->query("SELECT id_producto, LOWER(TRIM(sku)) AS sku FROM productos WHERE sku IS NOT NULL AND TRIM(sku) <> ''")->fetchAll() as $product) {
+    $fractionableProductIds = [];
+    foreach ($connection->query("SELECT p.id_producto, LOWER(TRIM(p.sku)) AS sku, p.detalles_opcionales, c.slug AS categoria_slug FROM productos p INNER JOIN categorias c ON c.id_categoria = p.id_categoria WHERE p.sku IS NOT NULL AND TRIM(p.sku) <> ''")->fetchAll() as $product) {
         $existingProducts[(string) $product['sku']] = (int) $product['id_producto'];
+        if (esProductoFraccionable($product)) $fractionableProductIds[(int) $product['id_producto']] = true;
     }
     $productStatement = $connection->prepare("INSERT INTO productos (id_categoria, id_marca, nombre, slug, tipo_mascota, precio_venta, sku, codigo_barras, detalles_opcionales, estado) VALUES (:id_categoria, :id_marca, :nombre, :slug, :tipo_mascota, :precio_venta, :sku, :codigo_barras, CAST(:detalles AS jsonb), :estado) RETURNING id_producto");
     $stockStatement = $connection->prepare('INSERT INTO stock (id_producto, cantidad_actual, cantidad_reservada, stock_minimo) VALUES (:id_producto, :cantidad, 0, :stock_minimo)');
     $movementStatement = $connection->prepare("INSERT INTO movimientos_stock (id_producto, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_final, origen, motivo) VALUES (:id_producto, :id_usuario, 'carga_inicial', :cantidad, 0, :cantidad_final, 'manual', 'Importación Excel')");
     foreach ($result['productos'] as $product) {
+        $category = $activeCategories[(int) $product['id_categoria']] ?? null;
+        if ($category === null) throw new RuntimeException('La categoria del producto ya no existe o esta inactiva.');
+        if (esCategoriaAlimentos($category) && trim((string) $product['subcategoria']) === '') {
+            throw new RuntimeException('La subcategoria es obligatoria para los productos de Alimentos.');
+        }
+        $fractionable = esProductoFraccionable(['categoria_slug' => $category['slug'], 'subcategoria' => $product['subcategoria']]);
         $petType = mb_strtolower(trim((string) ($product['tipo_mascota'] ?? '')));
         if (!in_array($petType, ['perro', 'gato', 'ambos', 'otro'], true)) {
             throw new RuntimeException('tipo_mascota inválido para el producto ' . (string) ($product['nombre'] ?? 'sin nombre'));
@@ -51,6 +63,9 @@ try {
         foreach (['subcategoria', 'descripcion', 'ingredientes_materiales', 'analisis_caracteristicas', 'etapa_vida_tamano', 'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios'] as $field) {
             if ((string) $product[$field] !== '') $details[$field] = (string) $product[$field];
         }
+        if (isset($details['subcategoria'])) {
+            $details['subcategoria_codigo'] = codigoSubcategoriaProducto($details['subcategoria']);
+        }
         $productStatement->execute([
             'id_categoria' => (int) $product['id_categoria'], 'id_marca' => (int) $product['id_marca'],
             'nombre' => (string) $product['nombre'], 'slug' => $slug, 'tipo_mascota' => $petType,
@@ -59,8 +74,9 @@ try {
             'detalles' => json_encode((object) $details, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), 'estado' => $product['estado'],
         ]);
         $productId = (int) $productStatement->fetchColumn();
+        if ($fractionable) $fractionableProductIds[$productId] = true;
         if ((string) $product['sku'] !== '') $existingProducts[mb_strtolower(trim((string) $product['sku']))] = $productId;
-        $stockStatement->execute(['id_producto' => $productId, 'cantidad' => (int) $product['stock_inicial'], 'stock_minimo' => $product['fraccionable'] ? 5000 : 5]);
+        $stockStatement->execute(['id_producto' => $productId, 'cantidad' => (int) $product['stock_inicial'], 'stock_minimo' => $fractionable ? 5000 : 5]);
         if ((int) $product['stock_inicial'] > 0) {
             $movementStatement->execute(['id_producto' => $productId, 'id_usuario' => (int) $_SESSION['id_usuario'], 'cantidad' => (int) $product['stock_inicial'], 'cantidad_final' => (int) $product['stock_inicial']]);
         }
@@ -69,6 +85,7 @@ try {
     foreach ($result['presentaciones'] as $presentation) {
         $productId = $existingProducts[(string) $presentation['sku_producto_base']] ?? null;
         if ($productId === null) throw new RuntimeException('No se encontró el producto base de una presentación.');
+        if (!isset($fractionableProductIds[$productId])) throw new RuntimeException('Las presentaciones solo aplican a productos fraccionables.');
         $presentationStatement->execute([
             'id_producto' => $productId, 'nombre' => (string) $presentation['nombre_presentacion'],
             'cantidad_gramos' => (int) $presentation['cantidad_gramos'], 'precio_venta' => (int) $presentation['precio_venta'],
@@ -76,6 +93,7 @@ try {
             'activo' => (bool) $presentation['activo'], 'orden' => (int) $presentation['orden'],
         ]);
     }
+    registrarImportacionCompletada($connection, $result, (int) $_SESSION['id_usuario']);
     $connection->commit();
     eliminarImportacionTemporal();
     header('Location: ' . appUrl('admin/inventario/index.php?importado=1'), true, 303);

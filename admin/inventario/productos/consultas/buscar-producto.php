@@ -20,6 +20,7 @@ function buscarProductoParaEditar(PDO $connection, int $productId): ?array
             s.stock_minimo,
             s.cantidad_actual,
             c.nombre AS categoria,
+            c.slug AS categoria_slug,
             c.maneja_fraccionamiento,
             m.nombre AS marca
         FROM productos p

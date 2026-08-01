@@ -12,12 +12,29 @@ function valoresInicialesProducto(): array
         'analisis_caracteristicas' => '', 'etapa_vida_tamano' => '', 'pais_origen' => '',
         'fraccionadora_importador' => '', 'datos_reglamentarios' => '', 'activo' => true,
         'cantidad_actual' => '0',
+        'lotes' => [], 'id_proveedor' => '',
     ];
+}
+
+function calcularStockInicialLotesProducto(array $lotes): float
+{
+    $total = 0.0;
+    foreach ($lotes as $lote) {
+        if (!is_array($lote)) {
+            continue;
+        }
+        $cantidad = str_replace(',', '.', trim((string) ($lote['cantidad_total_g'] ?? '')));
+        if (is_numeric($cantidad) && (float) $cantidad > 0) {
+            $total += (float) $cantidad;
+        }
+    }
+
+    return $total;
 }
 
 function obtenerOpcionesProducto(PDO $connection, ?int $currentCategoryId = null, ?int $currentBrandId = null): array
 {
-    $categorySql = 'SELECT id_categoria, nombre, maneja_fraccionamiento, activo FROM categorias WHERE activo = TRUE';
+    $categorySql = 'SELECT id_categoria, nombre, slug, maneja_fraccionamiento, activo FROM categorias WHERE activo = TRUE';
     $categoryParameters = [];
     if ($currentCategoryId !== null) {
         $categorySql .= ' OR id_categoria = :current_category_id';
@@ -35,13 +52,49 @@ function obtenerOpcionesProducto(PDO $connection, ?int $currentCategoryId = null
     $brands = $connection->prepare($brandSql . ' ORDER BY nombre');
     $brands->execute($brandParameters);
 
-    return ['categorias' => $categories->fetchAll(), 'marcas' => $brands->fetchAll()];
+    $subcategories = $connection->query(
+        "SELECT s.id_subcategoria, s.id_categoria, s.nombre, s.slug
+         FROM subcategorias s
+         INNER JOIN categorias c ON c.id_categoria = s.id_categoria
+         WHERE s.activo = TRUE AND c.activo = TRUE AND c.slug = 'alimentos'
+         ORDER BY s.orden, s.nombre"
+    );
+
+    return [
+        'categorias' => $categories->fetchAll(),
+        'marcas' => $brands->fetchAll(),
+        'subcategorias' => $subcategories->fetchAll(),
+    ];
+}
+
+function obtenerSubcategoriaActivaProducto(PDO $connection, int $categoryId, string $value): ?array
+{
+    $statement = $connection->prepare(
+        'SELECT s.id_subcategoria, s.nombre, s.slug
+         FROM subcategorias s
+         INNER JOIN categorias c ON c.id_categoria = s.id_categoria
+         WHERE s.id_categoria = :id_categoria
+           AND s.activo = TRUE
+           AND c.activo = TRUE
+           AND c.slug = :categoria_slug
+           AND (s.slug = :valor_slug OR LOWER(TRIM(s.nombre)) = LOWER(TRIM(:valor_nombre)))
+         LIMIT 1'
+    );
+    $statement->execute([
+        'id_categoria' => $categoryId,
+        'categoria_slug' => CATEGORIA_ALIMENTOS_SLUG,
+        'valor_slug' => codigoSubcategoriaProducto($value),
+        'valor_nombre' => $value,
+    ]);
+    $subcategory = $statement->fetch();
+
+    return is_array($subcategory) ? $subcategory : null;
 }
 
 function obtenerCategoriaProducto(PDO $connection, int $categoryId): ?array
 {
     $statement = $connection->prepare(
-        'SELECT id_categoria, maneja_fraccionamiento, activo FROM categorias WHERE id_categoria = :id_categoria'
+        'SELECT id_categoria, nombre, slug, maneja_fraccionamiento, activo FROM categorias WHERE id_categoria = :id_categoria'
     );
     $statement->execute(['id_categoria' => $categoryId]);
     $category = $statement->fetch();
@@ -178,6 +231,10 @@ function construirDetallesOpcionales(array $values): array
         }
     }
 
+    if (($values['subcategoria'] ?? '') !== '') {
+        $details['subcategoria_codigo'] = codigoSubcategoriaProducto($values['subcategoria']);
+    }
+
     if ($values['peso_contenido'] !== '') {
         $details['peso_contenido'] = (float) $values['peso_contenido'];
     }
@@ -194,7 +251,7 @@ function valoresEdicionProducto(array $product): array
     $recognizedDetails = array_intersect_key(
         is_array($details) ? $details : [],
         array_flip([
-            'subcategoria', 'formato', 'peso_contenido', 'unidad', 'descripcion',
+            'subcategoria', 'subcategoria_codigo', 'formato', 'peso_contenido', 'unidad', 'descripcion',
             'ingredientes_materiales', 'analisis_caracteristicas', 'etapa_vida_tamano',
             'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios',
         ])

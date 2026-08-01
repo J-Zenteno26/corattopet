@@ -1,0 +1,532 @@
+/* =========================================================
+   INGREDIENT UNIVERSE
+   ========================================================= */
+
+.ingredient-universe {
+    position: relative;
+    isolation: isolate;
+    min-height: 900px;
+    padding: 3.875rem 1.5rem 2.125rem;
+    overflow: hidden;
+    color: #fff7e9;
+    background:
+        radial-gradient(circle at 50% 53%, rgb(205 151 73 / 20%), transparent 31rem),
+        radial-gradient(circle at 12% 25%, rgb(217 181 115 / 8%), transparent 22rem),
+        linear-gradient(145deg, #17120f 0%, #271c16 52%, #100e0c 100%);
+}
+
+.ingredient-universe__background {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.ingredient-universe__background span {
+    position: absolute;
+    width: 18rem;
+    height: 18rem;
+    border: 1px solid rgb(217 181 115 / 7%);
+    border-radius: 48% 52% 44% 56%;
+}
+
+.ingredient-universe__background span:nth-child(1) {
+    left: -8rem;
+    top: 12rem;
+    transform: rotate(18deg);
+}
+
+.ingredient-universe__background span:nth-child(2) {
+    right: -9rem;
+    top: 5rem;
+    transform: rotate(-24deg) scale(1.25);
+}
+
+.ingredient-universe__background span:nth-child(3) {
+    right: 9%;
+    bottom: -12rem;
+    transform: rotate(9deg) scale(1.45);
+}
+
+.ingredient-universe__layout {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 1320px);
+    margin-inline: auto;
+}
+
+.ingredient-universe .home-section-heading {
+    position: relative;
+    z-index: 10;
+    max-width: 70rem;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.ingredient-universe .home-section-heading>span {
+    display: block;
+    margin-bottom: .625rem;
+    color: #d9b573;
+    font-size: .75rem;
+    font-weight: 900;
+    letter-spacing: .17em;
+    text-transform: uppercase;
+}
+
+.ingredient-universe .home-section-heading h2 {
+    margin: 0;
+    color: #fff7e9;
+    font-family: var(--serif);
+    font-size: clamp(3rem, 5vw, 4.75rem);
+    font-weight: 600;
+    line-height: .96;
+    letter-spacing: -.045em;
+}
+
+.ingredient-universe .home-section-heading p {
+    margin: .875rem 0 0;
+    color: rgb(248 226 197 / 72%);
+    font-size: clamp(.95rem, 1.2vw, 1.0625rem);
+}
+
+.ingredient-universe__stage {
+    position: relative;
+    isolation: isolate;
+    min-height: 660px;
+    margin-inline: auto;
+}
+
+.ingredient-universe__stage::before,
+.ingredient-universe__stage::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 1;
+    border: 1px solid rgb(217 181 115 / 13%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.ingredient-universe__stage::before {
+    width: min(80vw, 1030px);
+    height: 560px;
+}
+
+.ingredient-universe__stage::after {
+    width: 700px;
+    height: 410px;
+    border-color: rgb(217 181 115 / 19%);
+}
+
+.ingredient-universe__plate {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 5;
+    width: clamp(500px, 38vw, 540px);
+    height: 455px;
+    margin: 0;
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    pointer-events: none;
+}
+
+.ingredient-universe__plate::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 5%;
+    z-index: -2;
+    width: 88%;
+    height: 20%;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 45%);
+    filter: blur(22px);
+    transform: translateX(-50%);
+}
+
+.ingredient-universe__plate::after {
+    content: "";
+    position: absolute;
+    inset: 10%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(217 181 115 / 22%), transparent 69%);
+    filter: blur(14px);
+}
+
+.ingredient-universe__plate-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.ingredient-universe__criteria,
+.ingredient-universe__ingredients {
+    position: absolute;
+    inset: 0;
+}
+
+.ingredient-universe__criteria {
+    z-index: 8;
+    pointer-events: none;
+}
+
+.ingredient-universe__ingredients {
+    z-index: auto;
+    pointer-events: none;
+}
+
+.ingredient-chip {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    width: 245px;
+    min-height: 46px;
+    color: #fff7e9;
+}
+
+.ingredient-chip>span {
+    display: grid;
+    place-items: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgb(217 181 115 / 34%);
+    border-radius: 50%;
+    color: #d9b573;
+    background: #17221f;
+}
+
+.ingredient-chip svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ingredient-chip h3 {
+    max-width: 185px;
+    margin: 0;
+    color: #fff7e9;
+    font-size: clamp(.9375rem, 1.2vw, 1.0625rem);
+    font-weight: 700;
+    line-height: 1.24;
+    text-wrap: balance;
+}
+
+.ingredient-chip--2 {
+    left: 7%;
+    top: 10%;
+    rotate: 4deg;
+}
+
+.ingredient-chip--3 {
+    right: 7%;
+    top: 10%;
+    rotate: -4deg;
+}
+
+.ingredient-chip--1 {
+    left: 5%;
+    top: 34%;
+    rotate: 1.5deg;
+}
+
+.ingredient-chip--4 {
+    right: 5%;
+    top: 34%;
+    rotate: -1.5deg;
+}
+
+.ingredient-chip--8 {
+    left: 2%;
+    top: 62%;
+    rotate: -1.5deg;
+}
+
+.ingredient-chip--5 {
+    right: 2%;
+    top: 62%;
+    rotate: 1.5deg;
+}
+
+.ingredient-chip--7 {
+    left: 8%;
+    top: 80%;
+    rotate: -4deg;
+}
+
+.ingredient-chip--6 {
+    right: 8%;
+    top: 80%;
+    rotate: 4deg;
+}
+
+.ingredient-chip--3,
+.ingredient-chip--4,
+.ingredient-chip--5,
+.ingredient-chip--6 {
+    flex-direction: row-reverse;
+    text-align: right;
+}
+
+.ingredient-universe__ingredient {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 3;
+    margin: 0;
+    transform-origin: center;
+    will-change: transform, opacity;
+}
+
+.ingredient-universe__ingredient-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 46% 54% 48% 52%;
+    object-fit: cover;
+    filter:
+        saturate(.98)
+        brightness(1.02)
+        drop-shadow(0 9px 16px rgb(0 0 0 / 30%))
+        drop-shadow(0 0 10px rgb(217 181 115 / 8%));
+    mask-image: radial-gradient(
+        ellipse 58% 56% at center,
+        #000 0%,
+        #000 62%,
+        rgb(0 0 0 / 96%) 72%,
+        transparent 88%
+    );
+    transform: scale(1.18);
+}
+
+.ingredient-universe__ingredient--one {
+    width: 205px;
+    height: 188px;
+}
+
+.ingredient-universe__ingredient--two {
+    width: 182px;
+    height: 168px;
+}
+
+.ingredient-universe__ingredient--three {
+    width: 164px;
+    height: 152px;
+}
+
+@media (max-width: 1099px) {
+    .ingredient-universe {
+        min-height: 1020px;
+        padding-inline: 20px;
+    }
+
+    .ingredient-universe__stage {
+        min-height: 790px;
+    }
+
+    .ingredient-universe__stage::before,
+    .ingredient-universe__stage::after,
+    .ingredient-universe__plate,
+    .ingredient-universe__ingredients {
+        top: 252px;
+    }
+
+    .ingredient-universe__stage::before {
+        width: min(92vw, 760px);
+        height: 400px;
+    }
+
+    .ingredient-universe__stage::after {
+        width: min(68vw, 540px);
+        height: 310px;
+    }
+
+    .ingredient-universe__plate {
+        width: clamp(390px, 48vw, 460px);
+        height: 390px;
+    }
+
+    .ingredient-universe__ingredients {
+        inset: 0;
+        top: 0;
+        height: 505px;
+    }
+
+    .ingredient-universe__criteria {
+        inset: 525px auto auto 50%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas: "protein digest" "life functional" "hydration coat" "condition care";
+        gap: 18px 34px;
+        width: min(100%, 760px);
+        transform: translateX(-50%);
+    }
+
+    .ingredient-chip {
+        position: relative;
+        inset: auto;
+        width: auto;
+        min-height: 50px;
+        rotate: none;
+    }
+
+    .ingredient-chip--1 {
+        grid-area: life;
+    }
+
+    .ingredient-chip--2 {
+        grid-area: protein;
+    }
+
+    .ingredient-chip--3 {
+        grid-area: digest;
+    }
+
+    .ingredient-chip--4 {
+        grid-area: functional;
+    }
+
+    .ingredient-chip--5 {
+        grid-area: coat;
+    }
+
+    .ingredient-chip--6 {
+        grid-area: care;
+    }
+
+    .ingredient-chip--7 {
+        grid-area: condition;
+    }
+
+    .ingredient-chip--8 {
+        grid-area: hydration;
+    }
+
+    .ingredient-chip--3,
+    .ingredient-chip--4,
+    .ingredient-chip--5,
+    .ingredient-chip--6 {
+        flex-direction: row;
+        text-align: left;
+    }
+
+    .ingredient-chip h3 {
+        max-width: none;
+    }
+}
+
+@media (max-width: 699px) {
+    .ingredient-universe {
+        min-height: 920px;
+        padding: 44px 14px 28px;
+    }
+
+    .ingredient-universe .home-section-heading h2 {
+        font-size: clamp(2.625rem, 12vw, 3.375rem);
+    }
+
+    .ingredient-universe .home-section-heading p {
+        font-size: .9375rem;
+    }
+
+    .ingredient-universe__stage {
+        min-height: 720px;
+    }
+
+    .ingredient-universe__stage::before,
+    .ingredient-universe__stage::after,
+    .ingredient-universe__plate {
+        top: 200px;
+    }
+
+    .ingredient-universe__stage::before {
+        width: 460px;
+        height: 285px;
+        opacity: .65;
+    }
+
+    .ingredient-universe__stage::after {
+        width: 310px;
+        height: 220px;
+    }
+
+    .ingredient-universe__plate {
+        width: min(78vw, 300px);
+        height: 275px;
+    }
+
+    .ingredient-universe__ingredients {
+        inset: 0;
+        height: 400px;
+    }
+
+    .ingredient-universe__ingredient-image {
+        transform: scale(1.25);
+    }
+
+    .ingredient-universe__ingredient--one {
+        width: 116px;
+        height: 107px;
+    }
+
+    .ingredient-universe__ingredient--two {
+        width: 108px;
+        height: 100px;
+    }
+
+    .ingredient-universe__ingredient--three {
+        width: 100px;
+        height: 93px;
+    }
+
+    .ingredient-universe__criteria {
+        inset: 460px auto auto 50%;
+        gap: 14px 12px;
+        width: 100%;
+    }
+
+    .ingredient-chip {
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 0;
+        min-height: 50px;
+    }
+
+    .ingredient-chip>span {
+        flex-basis: 40px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .ingredient-chip svg {
+        width: 19px;
+        height: 19px;
+    }
+
+    .ingredient-chip h3 {
+        padding-top: 4px;
+        font-size: .8125rem;
+        line-height: 1.25;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .ingredient-universe .home-section-heading,
+    .ingredient-universe__plate,
+    .ingredient-universe__ingredient,
+    .ingredient-chip {
+        opacity: 1 !important;
+    }
+}

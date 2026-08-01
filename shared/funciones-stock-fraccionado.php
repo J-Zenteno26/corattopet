@@ -2,9 +2,48 @@
 
 declare(strict_types=1);
 
+const CATEGORIA_ALIMENTOS_SLUG = 'alimentos';
+const SUBCATEGORIA_ALIMENTO_SECO_CODIGO = 'alimento-seco';
+
+function codigoSubcategoriaProducto(mixed $value): string
+{
+    $text = mb_strtolower(trim(is_scalar($value) ? (string) $value : ''));
+    if ($text === '') {
+        return '';
+    }
+
+    $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+    $code = preg_replace('/[^a-z0-9]+/', '-', $transliterated === false ? $text : $transliterated) ?? '';
+
+    return trim($code, '-');
+}
+
+function esCategoriaAlimentos(array $category): bool
+{
+    return mb_strtolower(trim((string) ($category['categoria_slug'] ?? $category['slug'] ?? '')))
+        === CATEGORIA_ALIMENTOS_SLUG;
+}
+
 function esProductoFraccionable(array $product): bool
 {
-    return in_array($product['maneja_fraccionamiento'] ?? false, [true, 1, '1', 't', 'true'], true);
+    if (!esCategoriaAlimentos($product)) {
+        return false;
+    }
+
+    $details = $product['detalles_opcionales'] ?? null;
+    if (is_string($details)) {
+        $decoded = json_decode($details, true);
+        $details = is_array($decoded) ? $decoded : [];
+    }
+    if (!is_array($details)) {
+        $details = [];
+    }
+
+    $subcategoryCode = $product['subcategoria_codigo']
+        ?? $details['subcategoria_codigo']
+        ?? codigoSubcategoriaProducto($product['subcategoria'] ?? $details['subcategoria'] ?? '');
+
+    return codigoSubcategoriaProducto($subcategoryCode) === SUBCATEGORIA_ALIMENTO_SECO_CODIGO;
 }
 
 function formatearCantidadStock(int $quantity, bool $fractionable): string

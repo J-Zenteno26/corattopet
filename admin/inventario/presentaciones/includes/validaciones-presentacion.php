@@ -10,13 +10,13 @@ function idPositivoPresentacion(mixed $value): ?int
 
 function valoresInicialesPresentacion(): array
 {
-    return ['nombre' => '', 'cantidad_gramos' => '', 'precio_venta' => '', 'sku' => '', 'orden' => '0', 'activo' => true];
+    return ['nombre' => '', 'cantidad_gramos' => '', 'precio_venta' => '', 'sku' => '', 'orden' => '0', 'id_lote' => '', 'unidades_iniciales' => '0', 'activo' => true];
 }
 
 function validarPresentacion(array $input): array
 {
     $values = [];
-    foreach (['nombre', 'cantidad_gramos', 'precio_venta', 'sku', 'orden'] as $field) {
+    foreach (['nombre', 'cantidad_gramos', 'precio_venta', 'sku', 'orden', 'id_lote', 'unidades_iniciales'] as $field) {
         $values[$field] = is_scalar($input[$field] ?? null) ? trim((string) $input[$field]) : '';
     }
     $values['activo'] = ($input['activo'] ?? null) === '1';
@@ -27,6 +27,12 @@ function validarPresentacion(array $input): array
     if (!ctype_digit($values['precio_venta'])) $errors['precio_venta'] = 'El precio debe ser un entero igual o mayor que 0.';
     if (mb_strlen($values['sku']) > 100) $errors['sku'] = 'El SKU no puede superar los 100 caracteres.';
     if (!ctype_digit($values['orden'])) $errors['orden'] = 'El orden debe ser un entero igual o mayor que 0.';
+    if (!ctype_digit($values['unidades_iniciales'])) {
+        $errors['unidades_iniciales'] = 'Las unidades deben ser un entero igual o mayor que 0.';
+    } elseif ((int) $values['unidades_iniciales'] > 0 && idPositivoPresentacion($values['id_lote']) === null) {
+        $errors['id_lote'] = 'Selecciona el lote de origen para crear unidades.';
+    }
+    if ($values['id_lote'] !== '' && idPositivoPresentacion($values['id_lote']) === null) $errors['id_lote'] = 'Selecciona un lote válido.';
     return [$values, $errors];
 }
 

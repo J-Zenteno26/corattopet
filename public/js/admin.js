@@ -1,19 +1,94 @@
 (() => {
     const toggle = document.querySelector('.admin-menu-toggle');
     const sidebar = document.querySelector('.admin-sidebar');
-    const overlay = document.querySelector('[data-menu-close]');
+    const overlay = document.querySelector('.admin-overlay[data-menu-close]');
+    const closeButton = sidebar?.querySelector('[data-menu-close]');
     if (toggle && sidebar && overlay) {
         const setMenuOpen = (isOpen) => {
             document.body.classList.toggle('admin-menu-open', isOpen);
+            sidebar.classList.toggle('admin-sidebar--open', isOpen);
+            overlay.classList.toggle('admin-overlay--visible', isOpen);
             toggle.setAttribute('aria-expanded', String(isOpen));
             toggle.setAttribute('aria-label', isOpen ? 'Cerrar menú administrativo' : 'Abrir menú administrativo');
             overlay.hidden = !isOpen;
+            if (isOpen) closeButton?.focus();
         };
         toggle.addEventListener('click', () => setMenuOpen(toggle.getAttribute('aria-expanded') !== 'true'));
-        overlay.addEventListener('click', () => setMenuOpen(false));
+        overlay.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setMenuOpen(false);
+            toggle.focus();
+        });
+        closeButton?.addEventListener('click', () => { setMenuOpen(false); toggle.focus(); });
         sidebar.addEventListener('click', (event) => { if (event.target.closest('a')) setMenuOpen(false); });
-        document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setMenuOpen(false); });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+                setMenuOpen(false);
+                toggle.focus();
+            }
+        });
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && toggle.getAttribute('aria-expanded') === 'true') setMenuOpen(false);
+        });
     }
+})();
+
+(() => {
+    const filterForms = document.querySelectorAll([
+        '.admin-inventory-filters',
+        '.admin-order-filters',
+        '.admin-customer-filters',
+        '.admin-users-filters',
+    ].join(','));
+
+    filterForms.forEach((form, index) => {
+        const search = form.querySelector('input[type="search"], input[name="buscar"], input[name="q"], input[name="nombre"]');
+        const primary = search?.closest('.admin-field, label');
+        if (!search || !primary) return;
+
+        const controls = [...form.querySelectorAll('input:not([type="hidden"]), select')];
+        const hasSecondaryValue = controls.some((control) => control !== search && String(control.value).trim() !== '');
+        const formId = form.id || `admin-filters-${index + 1}`;
+        form.id = formId;
+        form.classList.add('admin-filters--enhanced');
+        form.classList.toggle('is-expanded', hasSecondaryValue);
+        primary.classList.add('admin-filter-primary');
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'admin-filter-toggle';
+        button.setAttribute('aria-controls', formId);
+        button.setAttribute('aria-expanded', String(hasSecondaryValue));
+        button.innerHTML = '<i class="bi bi-sliders" aria-hidden="true"></i><span>Filtros</span><b aria-hidden="true">+</b>';
+
+        const primaryRow = primary.closest('.admin-inventory-filter-row--primary');
+        const anchor = primaryRow || primary;
+        anchor.insertAdjacentElement('afterend', button);
+        button.addEventListener('click', () => {
+            const expanded = !form.classList.contains('is-expanded');
+            form.classList.toggle('is-expanded', expanded);
+            button.setAttribute('aria-expanded', String(expanded));
+        });
+    });
+
+    document.querySelectorAll('.admin-main table').forEach((table) => {
+        if (table.matches('.admin-import-preview-table') || table.closest('.admin-stock-history')) {
+            table.classList.add('admin-table--mobile-scroll');
+            return;
+        }
+
+        const headings = [...table.querySelectorAll('thead th')].map((heading) => heading.textContent.trim());
+        if (headings.length === 0) return;
+        table.classList.add('admin-table--mobile-cards');
+        table.querySelectorAll('tbody tr').forEach((row) => {
+            [...row.children].forEach((cell, index) => {
+                if (cell instanceof HTMLTableCellElement && !cell.hasAttribute('data-label')) {
+                    cell.dataset.label = headings[index] || (index === headings.length - 1 ? 'Acciones' : 'Detalle');
+                }
+            });
+        });
+    });
 })();
 
 (() => {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-lotes.php';
 require_once __DIR__ . '/includes/consultas-presentaciones.php';
 require_once __DIR__ . '/includes/validaciones-presentacion.php';
 requireAuthentication();
@@ -39,7 +40,8 @@ try {
         header('Location: ' . $formUrl, true, 303);
         exit;
     }
-    $statement = $connection->prepare('INSERT INTO producto_presentaciones (id_producto, nombre, cantidad_gramos, precio_venta, sku, activo, orden) VALUES (:id_producto, :nombre, :cantidad_gramos, :precio_venta, :sku, :activo, :orden)');
+    $connection->beginTransaction();
+    $statement = $connection->prepare('INSERT INTO producto_presentaciones (id_producto, nombre, cantidad_gramos, precio_venta, sku, activo, orden) VALUES (:id_producto, :nombre, :cantidad_gramos, :precio_venta, :sku, :activo, :orden) RETURNING id_presentacion');
     $statement->bindValue(':id_producto', $productId, PDO::PARAM_INT);
     $statement->bindValue(':nombre', $values['nombre']);
     $statement->bindValue(':cantidad_gramos', (int) $values['cantidad_gramos'], PDO::PARAM_INT);
@@ -48,10 +50,30 @@ try {
     $statement->bindValue(':activo', $values['activo'], PDO::PARAM_BOOL);
     $statement->bindValue(':orden', (int) $values['orden'], PDO::PARAM_INT);
     $statement->execute();
+    $presentationId = (int) $statement->fetchColumn();
+    $initialUnits = (int) $values['unidades_iniciales'];
+    if ($initialUnits > 0) {
+        asignarStockPresentacionDesdeLote(
+            $connection,
+            $productId,
+            $presentationId,
+            (int) $values['id_lote'],
+            $initialUnits,
+            (int) $values['cantidad_gramos']
+        );
+    }
+    $connection->commit();
     guardarModalAdmin('success', 'Presentación guardada', 'La presentación fue registrada correctamente.');
     header('Location: ' . appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId), true, 303);
     exit;
+} catch (DomainException $exception) {
+    if (isset($connection) && $connection instanceof PDO && $connection->inTransaction()) $connection->rollBack();
+    $errors['id_lote'] = $exception->getMessage();
+    guardarEstadoPresentacion($key, $values, $errors);
+    header('Location: ' . $formUrl, true, 303);
+    exit;
 } catch (Throwable $exception) {
+    if (isset($connection) && $connection instanceof PDO && $connection->inTransaction()) $connection->rollBack();
     error_log('Presentation creation error: ' . $exception->getMessage());
     guardarEstadoPresentacion($key, $values, $errors, 'No fue posible guardar la presentación.');
     header('Location: ' . $formUrl, true, 303);

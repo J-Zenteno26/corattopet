@@ -15,10 +15,6 @@ function validarDatosProducto(array $input, bool $editing = false): array
         $errors['tipo_mascota'] = 'Selecciona un tipo de mascota válido.';
     }
 
-    if (!$editing && $values['stock_inicial'] === '') {
-        $errors['stock_inicial'] = 'Ingresa el stock inicial.';
-    }
-
     validarTextoOpcional($values, $errors, 'sku', 'SKU', 100);
     validarTextoOpcional($values, $errors, 'codigo_barras', 'Código de barras', 100);
     validarTextoOpcional($values, $errors, 'subcategoria', 'Subcategoría', 120);
@@ -77,18 +73,7 @@ function validarProductoPorCategoria(array &$values, array &$errors, bool $fract
     if ($fractionable) {
         $values['_precio_venta_entero'] = 0;
         $values['_stock_minimo_entero'] = 5000;
-
-        if (!$editing) {
-            if ($values['stock_inicial'] === '') {
-                $errors['stock_inicial'] = 'Ingresa el stock inicial en gramos.';
-                return;
-            }
-            if (!ctype_digit($values['stock_inicial'])) {
-                $errors['stock_inicial'] = 'Ingresa una cantidad entera de gramos igual o mayor que 0.';
-            } else {
-                $values['_stock_inicial_entero'] = (int) $values['stock_inicial'];
-            }
-        }
+        unset($errors['stock_inicial']);
 
         return;
     }
@@ -105,6 +90,11 @@ function validarProductoPorCategoria(array &$values, array &$errors, bool $fract
             continue;
         }
 
+        if ($field === 'stock_inicial' && $values[$field] === '') {
+            $errors[$field] = 'Ingresa el stock inicial.';
+            continue;
+        }
+
         if (!ctype_digit($values[$field])) {
             $errors[$field] = 'Ingresa una cantidad entera igual o mayor que 0.';
             continue;
@@ -112,6 +102,24 @@ function validarProductoPorCategoria(array &$values, array &$errors, bool $fract
 
         $values['_' . $field . '_entero'] = (int) $values[$field];
     }
+}
+
+function aplicarReglaSubcategoriaProducto(array &$values, array &$errors, ?array $category): bool
+{
+    if ($category === null || !esCategoriaAlimentos($category)) {
+        $values['subcategoria'] = '';
+        return false;
+    }
+
+    if ($values['subcategoria'] === '') {
+        $errors['subcategoria'] = 'Selecciona una subcategoría para los productos de Alimentos.';
+        return false;
+    }
+
+    return esProductoFraccionable([
+        'categoria_slug' => $category['slug'] ?? '',
+        'subcategoria' => $values['subcategoria'],
+    ]);
 }
 
 function validarTextoRequerido(

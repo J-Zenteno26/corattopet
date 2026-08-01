@@ -5,8 +5,10 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/shared/seguridad.php';
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
+require_once dirname(__DIR__, 3) . '/shared/funciones-stock-lotes.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
 require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
+require_once dirname(__DIR__, 2) . '/proveedores/includes/consultas-proveedores.php';
 require_once __DIR__ . '/includes/funciones-stock.php';
 require_once __DIR__ . '/includes/validaciones-stock.php';
 require_once __DIR__ . '/consultas/buscar-producto-stock.php';
@@ -52,6 +54,11 @@ try {
         $connection,
         $productId
     );
+    $presentations = presentacionesActivasProducto($connection, $productId);
+    $lotCountStatement = $connection->prepare('SELECT COUNT(*) FROM stock_lotes WHERE id_producto=:id AND activo=TRUE');
+    $lotCountStatement->execute(['id'=>$productId]);
+    $activeLotCount = (int)$lotCountStatement->fetchColumn();
+    $suppliers = todosProveedoresActivos($connection);
 } catch (Throwable $exception) {
     $reference = registrarExcepcionAdmin('Stock page query error', $exception);
     guardarModalAdmin('error', 'No fue posible abrir la gestión de stock', 'Intenta nuevamente. Si el problema continúa, revisa el registro del sistema.', ['reference' => $reference]);
@@ -97,6 +104,10 @@ if ($errors !== [] || $generalError !== null) {
 $currentStock = (int) $product['cantidad_actual'];
 $minimumStock = (int) $product['stock_minimo'];
 $fractionable = esProductoFraccionable($product);
+$presentations = $presentations ?? [];
+$activeLotCount = $activeLotCount ?? 0;
+$suppliers = $suppliers ?? [];
+$selectedSupplierId = (string) ($state['valores']['id_proveedor'] ?? '');
 
 $stockStatus = estadoStockProducto(
     $currentStock,
@@ -127,6 +138,9 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
 ?>
 
 <main class="admin-main" id="contenido-principal">
+    <?php if ($fractionable && $currentStock > 0 && $activeLotCount === 0): ?>
+        <div class="admin-alert admin-alert--warning" role="alert"><strong>Stock antiguo sin lotes</strong><p>Este alimento seco tiene stock histórico. No se recalculó ni eliminó; regularízalo con lotes antes de vender por presentación.</p></div>
+    <?php endif; ?>
 
     <header class="admin-page-header">
         <div>
@@ -188,7 +202,6 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 </p>
             </div>
         </header>
-
         <div class="admin-stock-overview">
 
             <div class="admin-stock-overview__item">
@@ -278,6 +291,9 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     name="id_producto"
                     value="<?= (int) $productId ?>"
                 >
+                <?php if ($fractionable && $activeLotCount === 0 && $currentStock > 0): ?>
+                    <label class="admin-alert admin-alert--warning"><input id="confirmar_regularizacion" type="checkbox" name="confirmar_regularizacion" value="1" required> Confirmo que esta entrada regularizará el stock histórico y que el nuevo stock vendible quedará determinado solo por las unidades asignadas a lotes.</label>
+                <?php endif; ?>
 
                 <div class="admin-stock-form-grid">
 
@@ -326,7 +342,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                         <?php endif; ?>
                     </div>
 
-                    <div
+                    <div <?= $fractionable ? 'hidden' : '' ?>
                         class="admin-field<?= isset(
                             $errors['cantidad']
                         )
@@ -346,6 +362,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             step="1"
                             placeholder="<?= $fractionable ? 'Ej.: 1000' : 'Ej.: 10' ?>"
                             required
+                            <?= $fractionable ? 'disabled' : '' ?>
                             value="<?= escape(
                                 (string) $values['cantidad']
                             ) ?>"
@@ -362,6 +379,35 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     <div class="admin-field">
                         <span class="admin-field__help"><?= $fractionable ? 'Ejemplo: 1 kg = 1000 g, 250 g = 250.' : 'Ingresa una cantidad entera de unidades.' ?></span>
                     </div>
+
+                    <?php if ($fractionable): ?>
+                    <div class="admin-field admin-field--full" id="salida-presentacion-fields" hidden>
+                        <label for="id_presentacion">Presentación física</label>
+                        <select id="id_presentacion" name="id_presentacion">
+                            <option value="">Seleccionar presentación</option>
+                            <?php foreach($presentations as $presentation): ?>
+                                <option value="<?= (int)$presentation['id_presentacion'] ?>"><?= escape((string)$presentation['nombre'].' · '.formatearCantidadStock((int)$presentation['cantidad_gramos'],true)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <label for="unidades_presentacion">Unidades a descontar</label>
+                        <input id="unidades_presentacion" name="unidades_presentacion" type="number" min="1" step="1">
+                    </div>
+                    <div class="admin-field admin-field--full admin-lots-panel admin-lots-panel--stock" id="entrada-lotes-fields" hidden>
+                        <div class="admin-lots-panel__header"><span class="admin-lots-panel__icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span><div><span class="admin-lots-panel__badge">Solo alimento seco</span><h4>Lotes y presentaciones</h4><p>Registra el origen, vencimiento y distribución física de esta entrada.</p></div></div>
+                        <div class="admin-field admin-lots-provider"><label for="id_proveedor"><i class="bi bi-truck" aria-hidden="true"></i> Proveedor</label><select id="id_proveedor" name="id_proveedor"><option value="">Asignar después</option><?php foreach($suppliers as $supplier): ?><option value="<?= (int)$supplier['id_proveedor'] ?>" <?= $selectedSupplierId===(string)$supplier['id_proveedor']?'selected':'' ?>><?= escape((string)$supplier['nombre'].($supplier['rut']?' · '.$supplier['rut']:'')) ?></option><?php endforeach; ?></select><?php if($suppliers===[]):?><span class="admin-field__help"><i class="bi bi-info-circle" aria-hidden="true"></i> Aún no hay proveedores registrados.</span><?php else:?><span class="admin-field__help">Opcional. Puedes asignarlo ahora o dejarlo para después.</span><?php endif;?></div>
+                        <?php if($presentations===[]): ?><p class="admin-alert admin-alert--warning">Primero debes crear al menos una presentación activa.</p><?php endif; ?>
+                        <div id="lotes-container" class="admin-lots-list"></div>
+                        <button class="admin-button admin-lots-add" type="button" id="agregar-lote"><i class="bi bi-plus-circle" aria-hidden="true"></i> Agregar lote</button>
+                    </div>
+                    <template id="lote-template"><fieldset class="admin-lot-card" data-lote><legend><span class="admin-lot-card__number"><i class="bi bi-box" aria-hidden="true"></i></span><span><strong>Nuevo lote</strong><small>Identificación, fechas y unidades</small></span></legend>
+                        <div class="admin-lot-fields"><label class="admin-field admin-lot-code">Código de lote<input data-name="codigo_lote" maxlength="80" required placeholder="Ej.: LT-2026-001"></label>
+                        <label class="admin-field">Fecha elaboración<input data-name="fecha_elaboracion" type="date"></label>
+                        <label class="admin-field">Fecha vencimiento<input data-name="fecha_vencimiento" type="date" required></label>
+                        <label class="admin-field admin-lot-quantity">Cantidad total (g)<input data-name="cantidad_total_g" type="number" min="0.001" step="0.001" required placeholder="0"></label></div>
+                        <?php if($presentations!==[]):?><div class="admin-lot-presentations"><strong>Distribución por presentación</strong><div><?php foreach($presentations as $presentation): ?><label class="admin-field"><?= escape((string)$presentation['nombre']) ?> <small><?= escape((string)$presentation['cantidad_gramos']) ?> g</small><input data-presentation="<?= (int)$presentation['id_presentacion'] ?>" type="number" min="0" step="1" value="0"></label><?php endforeach; ?></div></div><?php endif;?>
+                        <div class="admin-lot-card__footer"><p data-lote-resumen><i class="bi bi-calculator" aria-hidden="true"></i> Asignados: 0 g · saldo no asignado: 0 g</p><button type="button" class="admin-button admin-button--small" data-quitar-lote><i class="bi bi-trash3" aria-hidden="true"></i> Quitar</button></div>
+                    </fieldset></template>
+                    <?php endif; ?>
 
                     <div
                         class="admin-field<?= isset(
@@ -502,6 +548,16 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 typeSelect.addEventListener('change', updateReasons);
                 reasonSelect.addEventListener('change', updateObservation);
                 updateObservation();
+                <?php if($fractionable): ?>
+                const entrada=document.getElementById('entrada-lotes-fields'); const salida=document.getElementById('salida-presentacion-fields');
+                const container=document.getElementById('lotes-container'); const template=document.getElementById('lote-template');
+                const renumerar=()=>[...container.children].forEach((lote,i)=>{ lote.querySelectorAll('[data-name]').forEach(el=>el.name=`lotes[${i}][${el.dataset.name}]`); lote.querySelectorAll('[data-presentation]').forEach(el=>el.name=`lotes[${i}][presentaciones][${el.dataset.presentation}]`); });
+                const resumen=lote=>{const total=Number(lote.querySelector('[data-name="cantidad_total_g"]').value||0);let asignados=0;lote.querySelectorAll('[data-presentation]').forEach(el=>{const label=el.closest('label').textContent;const g=Number((label.match(/\(([\d.]+) g\)/)||[])[1]||0);asignados+=Number(el.value||0)*g;});lote.querySelector('[data-lote-resumen]').textContent=`Asignados: ${asignados} g · saldo no asignado: ${Math.max(0,total-asignados)} g`;};
+                const agregar=()=>{const lote=template.content.firstElementChild.cloneNode(true);container.append(lote);lote.addEventListener('input',()=>resumen(lote));lote.querySelector('[data-quitar-lote]').onclick=()=>{lote.remove();renumerar();};renumerar();};
+                document.getElementById('agregar-lote').onclick=agregar;
+                const updateLotMode=()=>{const esEntrada=typeSelect.value==='entrada',esSalida=typeSelect.value==='salida';entrada.hidden=!esEntrada;salida.hidden=!esSalida;if(esEntrada&&container.children.length===0)agregar();entrada.querySelectorAll('input').forEach(el=>el.disabled=!esEntrada);salida.querySelectorAll('select,input').forEach(el=>el.disabled=!esSalida);document.getElementById('id_presentacion').required=esSalida;document.getElementById('unidades_presentacion').required=esSalida;const confirmacion=document.getElementById('confirmar_regularizacion');if(confirmacion)confirmacion.disabled=!esEntrada;};
+                typeSelect.addEventListener('change',updateLotMode);updateLotMode();
+                <?php endif; ?>
             })();
             </script>
         </section>

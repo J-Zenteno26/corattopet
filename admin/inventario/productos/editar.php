@@ -322,7 +322,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                     );
                                     ?>
 
-                                    <option value="<?= (int) $category['id_categoria'] ?>" <?php if ((string) $values['id_categoria'] === (string) $category['id_categoria']): ?> selected <?php endif; ?>>
+                                    <option value="<?= (int) $category['id_categoria'] ?>" data-categoria-slug="<?= escape((string) $category['slug']) ?>" <?php if ((string) $values['id_categoria'] === (string) $category['id_categoria']): ?> selected <?php endif; ?>>
                                         <?= escape(
                                             (string) $category['nombre']
                                             . ($categoryActive
@@ -339,6 +339,26 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                         (string) $errors['id_categoria']
                                     ) ?>
                                 </span>
+                            <?php endif; ?>
+                        </div>
+
+                        <div id="subcategoria-field" class="admin-field<?= isset($errors['subcategoria'])
+                            ? ' admin-field--invalid'
+                            : '' ?>">
+                            <label for="subcategoria">Subcategoría <span class="admin-required">*</span></label>
+                            <select id="subcategoria" name="subcategoria" <?= isset($errors['subcategoria'])
+                                ? 'aria-invalid="true" aria-describedby="subcategoria-error"'
+                                : '' ?>>
+                                <option value="">Selecciona una subcategoría</option>
+                                <?php foreach ($options['subcategorias'] as $subcategory): ?>
+                                    <option value="<?= escape((string) $subcategory['slug']) ?>"
+                                        <?= codigoSubcategoriaProducto($values['subcategoria']) === (string) $subcategory['slug'] ? 'selected' : '' ?>>
+                                        <?= escape((string) $subcategory['nombre']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (isset($errors['subcategoria'])): ?>
+                                <span class="admin-field__error" id="subcategoria-error"><?= escape((string) $errors['subcategoria']) ?></span>
                             <?php endif; ?>
                         </div>
 
@@ -416,16 +436,15 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             <?php endif; ?>
                         </div>
 
-                        <?php if (!$fractionable): ?>
-                            <div class="admin-field<?= isset($errors['precio_venta'])
+                            <div id="precio-venta-field" class="admin-field<?= isset($errors['precio_venta'])
                                 ? ' admin-field--invalid'
-                                : '' ?>">
+                                : '' ?>" <?= $fractionable ? 'hidden' : '' ?>>
                                 <label for="precio_venta">
                                     Precio de venta
                                     <span class="admin-required">*</span>
                                 </label>
 
-                                <input id="precio_venta" name="precio_venta" type="text" inputmode="numeric" required value="<?= escape(
+                                <input id="precio_venta" name="precio_venta" type="text" inputmode="numeric" <?= $fractionable ? 'disabled' : 'required' ?> value="<?= escape(
                                     (string) $values['precio_venta']
                                 ) ?>">
 
@@ -437,13 +456,11 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                     </span>
                                 <?php endif; ?>
                             </div>
-                        <?php else: ?>
-                            <div class="admin-field admin-field--full">
+                            <div id="fractionable-info" class="admin-field admin-field--full" <?= $fractionable ? '' : 'hidden' ?>>
                                 <strong>Producto fraccionable</strong>
                                 <span class="admin-field__help">Stock administrado en gramos. El precio de venta se gestiona
                                     en las presentaciones.</span>
                             </div>
-                        <?php endif; ?>
 
                         <?php
                         $identifierFields = [
@@ -513,7 +530,6 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
 
                         <?php
                         $additionalFields = [
-                            'subcategoria' => 'Subcategoría',
                             'formato' => 'Formato',
                             'etapa_vida_tamano' => 'Etapa de vida o tamaño',
                             'pais_origen' => 'País de origen',
@@ -522,14 +538,14 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                         ?>
 
                         <?php foreach ($additionalFields as $field => $label): ?>
-                            <div class="admin-field<?= isset($errors[$field])
+                            <div <?= $field === 'formato' ? 'data-presentation-field="1"' : '' ?> class="admin-field<?= isset($errors[$field])
                                 ? ' admin-field--invalid'
                                 : '' ?>">
                                 <label for="<?= escape($field) ?>">
                                     <?= escape($label) ?>
                                 </label>
 
-                                <input id="<?= escape($field) ?>" name="<?= escape($field) ?>" type="text" value="<?= escape(
+                                <input id="<?= escape($field) ?>" name="<?= escape($field) ?>" type="text" maxlength="<?= $field === 'subcategoria' ? '120' : '255' ?>" value="<?= escape(
                                         (string) $values[$field]
                                     ) ?>">
 
@@ -543,7 +559,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             </div>
                         <?php endforeach; ?>
 
-                        <div class="admin-field<?= isset($errors['peso_contenido'])
+                        <div data-presentation-field="1" class="admin-field<?= isset($errors['peso_contenido'])
                             ? ' admin-field--invalid'
                             : '' ?>">
                             <label for="peso_contenido">
@@ -737,4 +753,34 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
         </div>
     </div>
 
+    <script>
+        (() => {
+            const category = document.getElementById('id_categoria');
+            const subcategory = document.getElementById('subcategoria');
+            const subcategoryField = document.getElementById('subcategoria-field');
+            const priceField = document.getElementById('precio-venta-field');
+            const price = document.getElementById('precio_venta');
+            const fractionableInfo = document.getElementById('fractionable-info');
+            if (!category || !subcategory || !subcategoryField || !priceField || !price || !fractionableInfo) return;
+
+            const updateProductType = () => {
+                const foods = category.selectedOptions[0]?.dataset.categoriaSlug === 'alimentos';
+                subcategoryField.hidden = !foods;
+                subcategory.disabled = !foods;
+                subcategory.required = foods;
+                if (!foods) subcategory.value = '';
+                const code = subcategory.value.trim().toLocaleLowerCase('es').normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                const fractionable = foods && code === 'alimento-seco';
+                priceField.hidden = fractionable;
+                price.disabled = fractionable;
+                price.required = !fractionable;
+                fractionableInfo.hidden = !fractionable;
+                document.querySelectorAll('[data-presentation-field="1"]').forEach((field) => { field.hidden = fractionable; });
+            };
+            category.addEventListener('change', updateProductType);
+            subcategory.addEventListener('change', updateProductType);
+            updateProductType();
+        })();
+    </script>
     <?php require dirname(__DIR__, 3) . '/shared/admin-footer.php'; ?>

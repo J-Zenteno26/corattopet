@@ -1,7 +1,7 @@
         </main>
     </div>
     <footer class="admin-footer">
-        <p>&copy; <?= escape(date('Y')) ?> Coratto Pet. Panel administrativo.</p>
+        <p>&copy; <?= escape(date('Y')) ?> <strong>Coratto Pet</strong> · Panel administrativo.</p>
     </footer>
     <?php
     require_once __DIR__ . '/admin-flash.php';

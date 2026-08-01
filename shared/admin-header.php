@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 $pageTitle = isset($pageTitle) ? (string) $pageTitle : 'Panel administrativo';
 $csrfToken = isset($csrfToken) ? (string) $csrfToken : csrfToken();
+$adminLogoUrl = appUrl('public/img/logo-coratto-pet.png');
 ?>
 <!doctype html>
 <html lang="es">
@@ -37,9 +38,23 @@ $csrfToken = isset($csrfToken) ? (string) $csrfToken : csrfToken();
                 aria-label="Abrir menú administrativo"
                 aria-controls="admin-sidebar"
                 aria-expanded="false"
-            >☰</button>
-            <a href="<?= escape(appUrl('admin/dashboard/index.php')) ?>">Coratto Pet</a>
-            <span>Administración</span>
+            >
+                <i class="bi bi-list" aria-hidden="true"></i>
+            </button>
+
+            <a class="admin-brand-link" href="<?= escape(appUrl('admin/dashboard/index.php')) ?>">
+                <img
+                    class="admin-brand-logo"
+                    src="<?= escape($adminLogoUrl) ?>"
+                    alt="Coratto Pet"
+                    width="132"
+                    height="48"
+                >
+                <span class="admin-brand-copy">
+                    <strong>Coratto Pet</strong>
+                    <small>Administración</small>
+                </span>
+            </a>
         </div>
         <div class="admin-header__account">
             <div class="admin-user">

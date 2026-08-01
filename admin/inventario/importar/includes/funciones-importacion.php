@@ -224,7 +224,7 @@ function cargarCatalogosImportacion(PDO $connection): array
 {
     $categories = $connection->query('SELECT id_categoria, nombre, slug, maneja_fraccionamiento FROM categorias WHERE activo = TRUE')->fetchAll();
     $brands = $connection->query('SELECT id_marca, nombre FROM marcas WHERE activo = TRUE')->fetchAll();
-    $products = $connection->query('SELECT p.id_producto, p.sku, p.codigo_barras, c.maneja_fraccionamiento FROM productos p INNER JOIN categorias c ON c.id_categoria = p.id_categoria')->fetchAll();
+    $products = $connection->query('SELECT p.id_producto, p.sku, p.codigo_barras, p.detalles_opcionales, c.slug AS categoria_slug FROM productos p INNER JOIN categorias c ON c.id_categoria = p.id_categoria')->fetchAll();
     $presentationSkus = $connection->query("SELECT sku FROM producto_presentaciones WHERE sku IS NOT NULL AND TRIM(sku) <> ''")->fetchAll(PDO::FETCH_COLUMN);
 
     $catalogs = ['categorias' => [], 'marcas' => [], 'productos_sku' => [], 'codigos' => [], 'presentaciones_sku' => []];
@@ -237,6 +237,7 @@ function cargarCatalogosImportacion(PDO $connection): array
         $catalogs['marcas'][normalizarClaveImportacion((string) $brand['nombre'])] = $brand;
     }
     foreach ($products as $product) {
+        $product['fraccionable'] = esProductoFraccionable($product);
         if ($product['sku'] !== null && trim((string) $product['sku']) !== '') {
             $catalogs['productos_sku'][mb_strtolower(trim((string) $product['sku']))] = $product;
         }
@@ -298,7 +299,13 @@ function validarLibroImportacion(PDO $connection, array $sheets): array
         $stock = enteroImportacion($data['stock_inicial']);
         if ($stock === null)
             $errors[] = 'stock_inicial debe ser un entero mayor o igual a 0, expresado sin unidades.';
-        $fractionable = $category !== null && valorBooleanoPostgres($category['maneja_fraccionamiento']);
+        $categoryIsFoods = $category !== null && esCategoriaAlimentos($category);
+        if ($categoryIsFoods && $data['subcategoria'] === '')
+            $errors[] = 'subcategoria es obligatoria para la categoria Alimentos.';
+        $fractionable = $categoryIsFoods && esProductoFraccionable([
+            'categoria_slug' => $category['slug'] ?? '',
+            'subcategoria' => $data['subcategoria'],
+        ]);
         $price = $fractionable ? 0 : enteroImportacion($data['precio_venta']);
         if (!$fractionable && $price === null)
             $errors[] = 'precio_venta es obligatorio y debe ser un entero mayor o igual a 0.';
@@ -337,7 +344,7 @@ function validarLibroImportacion(PDO $connection, array $sheets): array
         $base = $products[$baseKey] ?? $catalogs['productos_sku'][$baseKey] ?? null;
         if ($baseKey === '' || $base === null)
             $errors[] = 'sku_producto_base no existe en Productos ni en la base de datos.';
-        elseif (!valorBooleanoPostgres($base['fraccionable'] ?? $base['maneja_fraccionamiento'] ?? false))
+        elseif (!valorBooleanoPostgres($base['fraccionable'] ?? false))
             $errors[] = 'Las presentaciones solo aplican a productos fraccionables.';
         if (mb_strlen($data['nombre_presentacion']) < 3 || mb_strlen($data['nombre_presentacion']) > 120)
             $errors[] = 'nombre_presentacion debe tener entre 3 y 120 caracteres.';
@@ -436,4 +443,41 @@ function eliminarImportacionTemporal(): void
             @unlink($path);
     }
     unset($_SESSION[IMPORT_SESSION_KEY]);
+}
+
+function existeTablaImportaciones(PDO $connection): bool
+{
+    $statement = $connection->query("SELECT to_regclass('public.importaciones') IS NOT NULL");
+    return valorBooleanoPostgres($statement->fetchColumn());
+}
+
+function registrarImportacionCompletada(PDO $connection, array $result, int $userId): void
+{
+    if (!existeTablaImportaciones($connection)) {
+        return;
+    }
+
+    $summary = is_array($result['resumen'] ?? null) ? $result['resumen'] : [];
+    $processed = (int) ($summary['productos_detectados'] ?? 0)
+        + (int) ($summary['presentaciones_detectadas'] ?? 0);
+    $successful = (int) ($summary['productos_validos'] ?? 0)
+        + (int) ($summary['presentaciones_validas'] ?? 0);
+    $errors = (int) ($summary['errores'] ?? 0);
+    $statement = $connection->prepare(
+        "INSERT INTO importaciones
+            (id_usuario, nombre_archivo, estado, total_filas, productos_creados,
+             productos_actualizados, filas_con_error, resumen_errores, finalizado_en)
+         VALUES
+            (:id_usuario, :archivo, :estado, :procesados, :exitosos,
+             0, :errores, CAST(:resumen AS jsonb), NOW())"
+    );
+    $statement->execute([
+        'id_usuario' => $userId,
+        'archivo' => mb_substr((string) ($result['archivo'] ?? 'Importacion.xlsx'), 0, 255),
+        'procesados' => $processed,
+        'exitosos' => $successful,
+        'errores' => $errors,
+        'estado' => $errors === 0 ? 'completado' : 'error',
+        'resumen' => json_encode([], JSON_THROW_ON_ERROR),
+    ]);
 }

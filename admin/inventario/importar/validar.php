@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     try {
         $result = validarLibroImportacion(database(), leerHojasXlsx((string) $file['tmp_name']));
+        $result['archivo'] = basename((string) $file['name']);
         $token = guardarImportacionValidada($result);
         header('Location: ' . appUrl('admin/inventario/importar/validar.php?token=' . $token), true, 303); exit;
     } catch (Throwable $exception) {
