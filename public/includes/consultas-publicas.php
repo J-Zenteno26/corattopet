@@ -73,8 +73,9 @@ function obtenerProductosCatalogoPublico(PDO $pdo, array $filters = []): array
 
     $search = trim((string) ($filters['buscar'] ?? ''));
     if ($search !== '') {
-        $where[] = '(p.nombre ILIKE :buscar OR m.nombre ILIKE :buscar OR p.sku ILIKE :buscar)';
-        $bindings['buscar'] = '%' . $search . '%';
+        $where[] = "(p.nombre ILIKE :buscar ESCAPE '\\' OR m.nombre ILIKE :buscar ESCAPE '\\' OR p.sku ILIKE :buscar ESCAPE '\\' OR c.nombre ILIKE :buscar ESCAPE '\\')";
+        $escapedSearch = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+        $bindings['buscar'] = '%' . $escapedSearch . '%';
     }
     foreach (['tipo_mascota' => 'p.tipo_mascota', 'categoria' => 'p.id_categoria', 'marca' => 'p.id_marca'] as $key => $column) {
         $value = trim((string) ($filters[$key] ?? ''));
@@ -173,4 +174,16 @@ function obtenerFiltrosCatalogoPublico(PDO $pdo): array
         'categorias' => $pdo->query("SELECT id_categoria AS id, nombre FROM categorias WHERE activo = TRUE ORDER BY orden, nombre")->fetchAll(),
         'marcas' => $pdo->query("SELECT id_marca AS id, nombre FROM marcas WHERE activo = TRUE ORDER BY nombre")->fetchAll(),
     ];
+}
+
+function obtenerCategoriasPublicas(PDO $pdo): array
+{
+    $statement = $pdo->prepare(
+        "SELECT id_categoria AS id, nombre
+         FROM categorias
+         WHERE activo = TRUE
+         ORDER BY orden NULLS LAST, nombre"
+    );
+    $statement->execute();
+    return $statement->fetchAll();
 }

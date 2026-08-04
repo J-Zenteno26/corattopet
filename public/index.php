@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/config/database.php';
+require_once dirname(__DIR__) . '/shared/seguridad.php';
 require_once __DIR__ . '/includes/consultas-publicas.php';
 
 $config = [];
@@ -28,11 +29,17 @@ try {
             : [];
         $products[] = $product;
     }
-} catch (Throwable) {
+} catch (Throwable $exception) {
+    error_log(sprintf(
+        '[home-products] Product loading failed; type=%s; code=%s',
+        get_class($exception),
+        (string) $exception->getCode()
+    ));
     // La portada conserva su contenido editorial si la base no está disponible.
 }
 
 $whatsappUrl = obtenerWhatsappPublico($config);
+$currentPage = 'inicio';
 
 /**
  * Renderiza un recurso visual de la home.
@@ -149,6 +156,89 @@ $learningCards = [
         'icon' => 'care',
     ],
 ];
+
+$faqItems = [
+    [
+        'question' => '¿Por qué elegir Coratto Pet?',
+        'answer' => 'En Coratto Pet seleccionamos cuidadosamente las mejores marcas, ofrecemos asesoría personalizada, productos originales y una experiencia de compra enfocada en el bienestar de las mascotas.',
+        'category' => 'Coratto y nuestros productos',
+    ],
+    [
+        'question' => '¿Qué significa que los productos de Coratto Pet sean Súper Premium?',
+        'answer' => 'En Coratto Pet creemos que nuestras mascotas merecen lo mejor. Por eso seleccionamos cuidadosamente cada producto que forma parte de nuestro catálogo, trabajando exclusivamente con marcas reconocidas a nivel mundial. Nuestros alimentos destacan por utilizar ingredientes de la más alta calidad y fórmulas desarrolladas bajo rigurosos estándares nutricionales, mientras que nuestros accesorios son elegidos por su diseño, seguridad, durabilidad y funcionalidad. Nuestro compromiso es ofrecer productos que contribuyan al bienestar, la salud y la felicidad de cada integrante de tu familia de cuatro patas.',
+        'category' => 'Coratto y nuestros productos',
+    ],
+    [
+        'question' => '¿Por qué Coratto Pet ofrece alimentos Súper Premium fraccionados?',
+        'answer' => 'Queremos que más familias puedan acceder a una alimentación de la más alta calidad sin necesidad de comprar un saco completo. Nuestro servicio de fraccionamiento permite adquirir la cantidad que realmente necesitas, manteniendo la frescura y las propiedades del alimento gracias a un proceso realizado bajo estrictos protocolos de higiene y utilizando envases de alta barrera especialmente diseñados para conservar su calidad. Es una alternativa práctica, segura y conveniente para probar nuevas fórmulas, complementar la alimentación o administrar mejor el presupuesto familiar.',
+        'category' => 'Alimentos fraccionados',
+    ],
+    [
+        'question' => '¿El alimento fraccionado mantiene la misma calidad que un saco original?',
+        'answer' => 'Sí, absolutamente. El alimento se envasa cuidadosamente para conservar su aroma, frescura y propiedades nutricionales. Utilizamos envases de alta barrera, similares a los empleados en la industria del café premium, que ayudan a proteger el producto de la humedad, la luz y el aire. Nuestro objetivo es que tu mascota disfrute la misma calidad desde el primer hasta el último bocado.',
+        'category' => 'Alimentos fraccionados',
+    ],
+    [
+        'question' => '¿Cómo debo almacenar el alimento para conservar toda su calidad?',
+        'answer' => 'Para mantener el alimento en óptimas condiciones, recomendamos conservarlo en un lugar fresco, seco y protegido de la luz solar directa. Mantén el envase siempre bien cerrado después de cada uso para preservar su aroma, sabor y valor nutricional.',
+        'category' => 'Alimentos fraccionados',
+    ],
+    [
+        'question' => '¿Realizan envíos a todo Chile? ¿Cuánto demora la entrega?',
+        'answer' => 'Sí. Realizamos envíos a todo Chile. Al finalizar tu compra, nuestro sistema calculará automáticamente el costo del despacho y el tiempo estimado de entrega según tu ubicación, para que siempre conozcas esta información antes de confirmar tu pedido.',
+        'category' => 'Compra y despacho',
+    ],
+    [
+        'question' => '¿Qué métodos de pago aceptan?',
+        'answer' => "Queremos que comprar en Coratto Pet sea cómodo y seguro.\nAceptamos tarjetas de crédito y débito mediante Webpay, y transferencias bancarias electrónicas.\nTodas las transacciones se realizan mediante plataformas seguras que protegen tu información en todo momento.",
+        'category' => 'Compra y despacho',
+    ],
+    [
+        'question' => 'Mi mascota es muy exigente… ¿Qué ocurre si el alimento no le gusta?',
+        'answer' => '¡Los paladares más exigentes también tienen un lugar en Coratto Pet! Es completamente normal que algunas mascotas necesiten un período de adaptación cuando cambian de alimento. Por ello recomendamos realizar una transición gradual durante varios días. Si, aun siguiendo este proceso, tu mascota continúa rechazando el alimento, contáctanos. Por razones de seguridad e higiene no podemos aceptar devoluciones de alimentos abiertos. Sin embargo, queremos ayudarte a encontrar la mejor alternativa. Como parte de nuestro compromiso contigo, recibirás una bonificación del 20% de descuento para tu próxima compra, la cual podrás utilizar en alimentos húmedos o snacks Súper Premium que harán del momento de comer una experiencia aún más atractiva para tu compañero.',
+        'category' => 'Compra y despacho',
+    ],
+    [
+        'question' => '¿Cómo sé cuál es el alimento o producto ideal para mi mascota?',
+        'answer' => 'Cada mascota es única. Si tienes dudas sobre la alimentación, suplementos o accesorios más adecuados según su edad, tamaño, raza o necesidades específicas, nuestro equipo estará encantado de orientarte. Escríbenos por WhatsApp y recibirás una asesoría personalizada para ayudarte a tomar la mejor decisión.',
+        'category' => 'Asesoría y atención',
+    ],
+    [
+        'question' => '¿Cómo sé que estoy comprando un producto original?',
+        'answer' => 'Trabajamos únicamente con distribuidores oficiales y marcas reconocidas internacionalmente. Esto nos permite garantizar que todos nuestros alimentos, suplementos y accesorios son originales y cumplen con los estándares de calidad exigidos por cada fabricante. Comprar en Coratto Pet es comprar con tranquilidad y confianza.',
+        'category' => 'Coratto y nuestros productos',
+    ],
+    [
+        'question' => '¿Qué debo hacer si mi pedido llega dañado o incompleto?',
+        'answer' => 'Tu tranquilidad es nuestra prioridad. Si recibes un producto con daños en su empaque, algún artículo incorrecto o falta parte de tu pedido, contáctanos dentro de las primeras 24 horas posteriores a la recepción. Solo necesitaremos algunas fotografías del producto y del embalaje para revisar el caso. Nuestro equipo gestionará una solución rápida y sin costo adicional para ti.',
+        'category' => 'Compra y despacho',
+    ],
+    [
+        'question' => '¿Puedo cambiar o cancelar mi pedido?',
+        'answer' => 'Si tu compra aún no ha sido despachada, contáctanos lo antes posible por WhatsApp. Haremos todo lo posible por ayudarte a modificar o cancelar tu pedido. Una vez entregado al transportista, ya no será posible realizar cambios, aunque siempre buscaremos la mejor solución para cada situación.',
+        'category' => 'Compra y despacho',
+    ],
+    [
+        'question' => '¿Venden medicamentos de farmacia veterinaria?',
+        'answer' => 'No. En Coratto Pet nos especializamos en nutrición Súper Premium, suplementos preventivos, productos de higiene y cuidado, además de accesorios de alta calidad. No comercializamos medicamentos con receta veterinaria, ya que creemos que estos deben ser indicados y supervisados por un médico veterinario. Si tu mascota requiere un tratamiento específico, te invitamos a visitar la sección "Veterinarias" de nuestro sitio web, donde encontrarás un directorio con clínicas veterinarias para ayudarte a encontrar atención profesional. De todas formas, siempre recomendamos acudir a tu médico veterinario de confianza para obtener un diagnóstico y tratamiento adecuados. Porque el bienestar de tu mascota siempre será nuestra prioridad.',
+        'category' => 'Coratto y nuestros productos',
+    ],
+    [
+        'question' => '¿Tienen tienda física?',
+        'answer' => 'Actualmente operamos de forma 100% online, lo que nos permite llegar a todo Chile con un servicio ágil, eficiente y una experiencia de compra moderna. En nuestra tienda encontrarás información detallada, fotografías de alta calidad y todas las especificaciones necesarias para comprar con total confianza desde la comodidad de tu hogar.',
+        'category' => 'Coratto y nuestros productos',
+    ],
+    [
+        'question' => '¿Puedo solicitar asesoría antes o después de mi compra?',
+        'answer' => '¡Por supuesto! Nuestro compromiso no termina cuando realizas tu pedido. Si necesitas orientación para elegir un producto, realizar la transición de alimento o resolver cualquier consulta relacionada con tu compra, estaremos felices de acompañarte antes, durante y después del proceso. Porque para nosotros lo más importante es el bienestar de tu mascota y tu tranquilidad como familia.',
+        'category' => 'Asesoría y atención',
+    ],
+    [
+        'question' => '¿Cómo puedo contactarlos si tengo otra consulta?',
+        'answer' => "¡Será un gusto ayudarte! Siempre encontrarás un equipo dispuesto a orientarte y ayudarte a elegir lo mejor para tu mascota.\nWhatsApp: +56 9 6229 1562.\nCorreo electrónico: CorattoPet@gmail.com\nInstagram: @CorattoPet\nAtención: lunes a domingo, las 24 horas.\nEn Coratto Pet no solo vendemos alimentos y accesorios. Creemos que cada perro y cada gato merece vivir con salud, bienestar y mucho amor. Por eso seleccionamos cuidadosamente cada producto, entregamos una atención cercana y acompañamos a cada familia antes, durante y después de su compra.",
+        'category' => 'Asesoría y atención',
+    ],
+];
 ?>
 <!doctype html>
 <html lang="es">
@@ -164,6 +254,9 @@ $learningCards = [
     <link rel="stylesheet" href="assets/css/home.css?v=9">
     <link rel="stylesheet" href="assets/css/home-ingredients.css?v=2">
     <link rel="stylesheet" href="assets/css/home-experience.css?v=2">
+    <link rel="stylesheet" href="assets/css/home-learning.css?v=1">
+    <link rel="stylesheet" href="assets/css/home-faq.css?v=1">
+    <link rel="stylesheet" href="assets/css/public-pages.css?v=<?= filemtime(__DIR__ . '/assets/css/public-pages.css') ?>">
 </head>
 
 <body class="home-page">
@@ -279,6 +372,7 @@ $learningCards = [
                     <div class="home-actions">
                         <a class="button" href="#guia-eleccion">Ayúdame a elegir</a>
                         <a class="button button-outline" href="#seleccion">Explorar alimentos</a>
+                        <span class="button home-actions__calculator is-disabled" aria-disabled="true">Calculadora</span>
                     </div>
 
                     <ul class="home-hero__promises" aria-label="Beneficios principales">
@@ -590,6 +684,21 @@ $learningCards = [
                                 $productHref = !empty($product['sku'])
                                     ? 'catalogo.php?sku=' . rawurlencode((string) $product['sku'])
                                     : 'catalogo.php';
+                                    $productImageUrl = ltrim(
+                                            str_replace('\\', '/', trim((string) ($product['imagen'] ?? ''))),
+                                            '/'
+                                        );
+
+                                        if ($productImageUrl !== '' && str_contains($productImageUrl, '..')) {
+                                            $productImageUrl = '';
+                                        }
+
+                                        if (
+                                            $productImageUrl !== ''
+                                            && !str_starts_with($productImageUrl, 'uploads/productos/')
+                                        ) {
+                                            $productImageUrl = 'uploads/productos/' . $productImageUrl;
+                                        }
                                 $isFractioned = !empty($product['fraccionable']);
                                 $presentationPrices = [];
                                 foreach (($product['presentaciones'] ?? []) as $presentation) {
@@ -616,9 +725,13 @@ $learningCards = [
                                 <article class="<?= e(implode(' ', $productClasses)) ?>">
                                     <a href="<?= e($productHref) ?>">
                                         <figure class="selection-product__visual">
-                                            <?php if (!empty($product['imagen'])): ?>
-                                                <img src="uploads/productos/<?= e(basename((string) $product['imagen'])) ?>"
-                                                    alt="<?= e((string) $product['nombre']) ?>" loading="lazy" decoding="async">
+                                            <?php if ($productImageUrl !== ''): ?>
+                                                <img
+                                                    src="<?= e($productImageUrl) ?>"
+                                                    alt="<?= e((string) $product['nombre']) ?>"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                >
                                             <?php else: ?>
                                                 <span class="home-media-placeholder selection-product__placeholder" role="img"
                                                     aria-label="<?= e((string) $product['nombre']) ?>">
@@ -733,11 +846,31 @@ $learningCards = [
         <!-- 7. FRACCIONADOS: vitrina interactiva de formatos de prueba. -->
         <section class="home-trial" id="fraccionados" aria-labelledby="trial-title" data-section="trial">
             <div class="container home-trial__layout">
-                <div class="home-trial__copy">
-                    <span>Prueba antes de decidir</span>
-                    <h2 id="trial-title">No necesitas comenzar con el saco completo</h2>
-                    <p>Prueba 250 g o 1 kg, observa cómo responde tu mascota y elige con más confianza.</p>
-                    <a class="button" href="<?= e($whatsappUrl) ?>">Consultar formatos</a>
+                <div class="home-trial__story">
+                    <div class="home-trial__pet-slot">
+                        <div class="home-trial__pet-stage">
+                            <div class="home-trial__pet-oval" aria-hidden="true"></div>
+
+                            <img
+                                class="home-trial__pet-image"
+                                src="assets/img/home/fraccionados/simon.png"
+                                alt="Simón, el corazón de Coratto"
+                                loading="lazy"
+                                decoding="async"
+                            >
+                        <div class="home-trial__pet-message">
+                            <strong>¡Guau!</strong>
+                            <p>Partamos de a poco y veamos cómo me adapto</p>
+                        </div>
+                        </div>
+                    </div>
+
+                    <div class="home-trial__copy">
+                        <span>El consejo de Simón</span>
+                        <h2 class="home-section-title" id="trial-title">Prueba primero, decide con calma</h2>
+                        <p>Puedes probar 250 g o 1 kg antes de llevar el saco completo. Así ves cómo responde tu mascota y compras con más confianza.</p>
+                        <a class="button" href="<?= e($whatsappUrl) ?>">Explorar fraccionados</a>
+                    </div>
                 </div>
 
                 <div class="home-trial__stage" data-trial-showcase tabindex="0" aria-label="Selector de formatos fraccionados">
@@ -791,88 +924,136 @@ $learningCards = [
             </div>
         </section>
 
-        <!-- 8. APRENDE: módulo visual inspirado en una experiencia educativa. -->
+        <!-- 8. APRENDE: boletín editorial con guías breves y cercanas. -->
         <section class="home-learning" id="aprende" aria-labelledby="learning-title" data-section="learning">
             <div class="container">
                 <header class="home-learning__header">
-                    <div>
+                    <div class="home-learning__topline">
                         <span>Aprende con Coratto</span>
-                        <h2 id="learning-title">Una pequeña escuela para cuidar mejor</h2>
+                        <a class="home-learning__cta" href="blog.php">
+                            Visitar el blog
+                            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+                        </a>
                     </div>
-
-                    <a href="blog.php">
-                        Ir a la comunidad
-                        <svg aria-hidden="true">
-                            <use href="#i-arrow"></use>
-                        </svg>
-                    </a>
+                    <h2 id="learning-title">Consejos claros para cuidar mejor</h2>
+                    <p>Guías, folletos y recomendaciones creadas por nuestro equipo para acompañarte en las decisiones de cada día.</p>
                 </header>
 
-                <div class="home-learning__dashboard">
-                    <aside class="home-learning__sidebar">
-                        <span class="home-learning__avatar" aria-hidden="true">C</span>
-                        <strong>Tu ruta Coratto</strong>
-                        <p>Contenido breve, claro y pensado para aplicar.</p>
+                <div class="home-learning__ticker" aria-label="Temas del boletín Coratto">
+                    <div class="home-learning__ticker-track">
+                        <?php for ($tickerCopy = 0; $tickerCopy < 2; $tickerCopy++): ?>
+                            <div class="home-learning__ticker-group"<?= $tickerCopy ? ' aria-hidden="true"' : '' ?>>
+                                <span>Nutrición</span><i>·</i>
+                                <span>Adaptación</span><i>·</i>
+                                <span>Bienestar</span><i>·</i>
+                                <span>Cuidado diario</span><i>·</i>
+                            </div>
+                        <?php endfor; ?>
+                    </div>
+                </div>
 
-                        <div class="home-learning__progress">
-                            <span>Próximamente</span>
-                            <div><i></i></div>
+                <div class="home-learning__publications">
+                    <?php $featuredLearning = $learningCards[0]; ?>
+                    <a class="home-learning__featured" href="blog.php">
+                        <div class="home-learning__featured-visual">
+                            <span class="home-learning__fold" aria-hidden="true"></span>
+                            <svg aria-hidden="true">
+                                <use href="#i-<?= e($featuredLearning['icon']) ?>"></use>
+                            </svg>
+                            <small>Folleto en preparación</small>
                         </div>
-                    </aside>
 
-                    <div class="home-learning__courses">
-                        <?php foreach ($learningCards as $index => $card): ?>
-                            <article class="learning-card" data-course="<?= $index + 1 ?>">
-                                <div class="learning-card__top">
+                        <div class="home-learning__featured-copy">
+                            <span class="home-learning__badge">Guía destacada</span>
+                            <small><?= e($featuredLearning['category']) ?></small>
+                            <h3><?= e($featuredLearning['title']) ?></h3>
+                            <p><?= e($featuredLearning['text']) ?></p>
+                            <span class="home-learning__read-more">
+                                Leer artículo
+                                <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+                            </span>
+                        </div>
+                    </a>
+
+                    <div class="home-learning__secondary-list">
+                        <?php foreach (array_slice($learningCards, 1) as $card): ?>
+                            <a class="home-learning__note" href="blog.php">
+                                <div class="home-learning__note-visual">
+                                    <svg aria-hidden="true"><use href="#i-<?= e($card['icon']) ?>"></use></svg>
+                                    <small>Folleto en preparación</small>
+                                </div>
+                                <div class="home-learning__note-copy">
                                     <span><?= e($card['level']) ?></span>
-                                    <span class="learning-card__icon">
-                                        <svg aria-hidden="true">
-                                            <use href="#i-<?= e($card['icon']) ?>"></use>
-                                        </svg>
+                                    <small><?= e($card['category']) ?></small>
+                                    <h3><?= e($card['title']) ?></h3>
+                                    <p><?= e($card['text']) ?></p>
+                                    <span class="home-learning__read-more">
+                                        Ver adelanto
+                                        <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
                                     </span>
                                 </div>
-
-                                <small><?= e($card['category']) ?></small>
-                                <h3><?= e($card['title']) ?></h3>
-                                <p><?= e($card['text']) ?></p>
-
-                                <a href="blog.php">
-                                    Ver adelanto
-                                    <svg aria-hidden="true">
-                                        <use href="#i-arrow"></use>
-                                    </svg>
-                                </a>
-                            </article>
+                            </a>
                         <?php endforeach; ?>
                     </div>
                 </div>
+
+                <p class="home-learning__signature">Preparado por el equipo Coratto · Información cercana y fácil de aplicar</p>
             </div>
         </section>
 
-        <!-- 9. CIERRE: escena emocional y CTA final. -->
-        <section class="home-closing" aria-labelledby="closing-title" data-section="closing">
-            <div class="home-closing__paws" aria-hidden="true">
-                <span></span><span></span><span></span><span></span>
-            </div>
+        <!-- 9. PREGUNTAS FRECUENTES: orientación clara antes del cierre. -->
+        <section class="home-faq" id="preguntas-frecuentes" aria-labelledby="faq-title" data-section="faq">
+            <div class="home-faq__container">
+                <header class="home-faq__intro">
+                    <span class="home-faq__eyebrow">Estamos para ayudarte</span>
+                    <h2 id="faq-title">Todo lo que necesitas saber</h2>
+                    <p>Queremos que comprar en Coratto sea simple, seguro y cercano. Reunimos aquí las dudas más habituales de nuestra comunidad.</p>
+                </header>
 
-            <div class="container home-closing__layout">
-                <figure class="home-closing__pets" data-float="closing-pets">
-                    <?php renderHomeAsset(
-                        'assets/img/home/cierre/mascotas-coratto.webp',
-                        'Perro y gato de Coratto Pet',
-                        'home-closing__pets-image'
-                    ); ?>
-                </figure>
+                <div class="home-faq__list" data-faq>
+                    <?php foreach ($faqItems as $index => $item): ?>
+                        <?php
+                        $faqNumber = $index + 1;
+                        $faqAnswerId = 'faq-answer-' . $faqNumber;
+                        $faqQuestionId = 'faq-question-' . $faqNumber;
+                        ?>
+                        <article class="home-faq__item">
+                            <h3>
+                                <button
+                                    class="home-faq__question"
+                                    id="<?= e($faqQuestionId) ?>"
+                                    type="button"
+                                    aria-expanded="false"
+                                    aria-controls="<?= e($faqAnswerId) ?>"
+                                >
+                                    <span class="home-faq__number"><?= str_pad((string) $faqNumber, 2, '0', STR_PAD_LEFT) ?></span>
+                                    <span class="home-faq__question-text"><?= e($item['question']) ?></span>
+                                    <span class="home-faq__toggle" aria-hidden="true"></span>
+                                </button>
+                            </h3>
 
-                <div class="home-closing__copy">
-                    <span>Nuestra promesa</span>
-                    <h2 id="closing-title">Elegimos con el mismo cariño con que tú cuidas a tu mascota</h2>
-                    <p>Nutrición, bienestar y confianza para acompañarlos en cada etapa.</p>
+                            <div
+                                class="home-faq__answer"
+                                id="<?= e($faqAnswerId) ?>"
+                                role="region"
+                                aria-labelledby="<?= e($faqQuestionId) ?>"
+                                aria-hidden="true"
+                            >
+                                <div class="home-faq__answer-inner">
+                                    <small><?= e($item['category']) ?></small>
+                                    <p><?= nl2br(e($item['answer'])) ?></p>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
 
-                    <div class="home-actions">
-                        <a class="button" href="catalogo.php">Explorar catálogo</a>
-                        <a class="button button-light" href="<?= e($whatsappUrl) ?>">Hablar por WhatsApp</a>
+                <div class="home-faq__contact">
+                    <div>
+                        <span>¿No encontraste tu respuesta?</span>
+                        <p>Cuéntanos tu duda y te orientamos personalmente.</p>
                     </div>
+                    <a class="home-faq__contact-button" href="<?= e($whatsappUrl) ?>">Hablar con Coratto</a>
                 </div>
             </div>
         </section>
@@ -882,7 +1063,8 @@ $learningCards = [
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
-    <script src="assets/js/home.js?v=8" defer></script>
+    <script src="assets/js/public-navigation.js?v=<?= filemtime(__DIR__ . '/assets/js/public-navigation.js') ?>" defer></script>
+    <script src="assets/js/home.js?v=<?= filemtime(__DIR__ . '/assets/js/home.js') ?>" defer></script>
 </body>
 
 </html>

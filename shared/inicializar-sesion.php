@@ -1,7 +1,25 @@
 <?php
 
 declare(strict_types=1);
+$sessionPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage'
+    . DIRECTORY_SEPARATOR . 'sessions';
 
+if (!is_dir($sessionPath)) {
+    if (!mkdir($sessionPath, 0770, true) && !is_dir($sessionPath)) {
+        throw new RuntimeException(
+            'No fue posible crear el directorio de sesiones.'
+        );
+    }
+}
+
+if (!is_writable($sessionPath)) {
+    throw new RuntimeException(
+        'El directorio de sesiones no tiene permisos de escritura.'
+    );
+}
+
+session_save_path($sessionPath);
+session_start();
 if (session_status() !== PHP_SESSION_ACTIVE) {
     $sessionConfig = require dirname(__DIR__) . '/config/session.php';
 

@@ -1,10 +1,112 @@
-<?php declare(strict_types=1); ?>
-<footer class="site-footer" id="contacto">
-  <div class="container footer-grid">
-    <div class="footer-brand"><img src="../public/img/logo-coratto-pet.png" alt="Coratto Pet"><p>Alimentación premium con un porqué. Elegimos con cariño y explicamos con claridad.</p></div>
-    <div><h3>Explora</h3><a href="#guia-eleccion">Necesidades</a><a href="#criterios-alimento">Cómo elegir</a><a href="#seleccion">Selección Coratto</a><a href="#aprende">Guías</a></div>
-    <div><h3>Contacto</h3><?php if (!empty($config['email_contacto'])): ?><a href="mailto:<?= e($config['email_contacto']) ?>"><?= e($config['email_contacto']) ?></a><?php endif; ?><a href="<?= e($whatsappUrl) ?>">WhatsApp</a><?php if (!empty($config['instagram'])): ?><a href="<?= e($config['instagram']) ?>" target="_blank" rel="noopener">Instagram</a><?php endif; ?><?php if (!empty($config['horario_atencion'])): ?><p><?= nl2br(e($config['horario_atencion'])) ?></p><?php endif; ?></div>
-    <div><h3>Una elección informada</h3><p>La información del sitio es orientativa y no reemplaza la recomendación de un médico veterinario.</p></div>
-  </div>
-  <div class="footer-bottom"><div class="container">© <?= date('Y') ?> Coratto Pet. Todos los derechos reservados.</div></div>
+<?php
+
+declare(strict_types=1);
+
+$footerEmail = trim((string) ($config['email_contacto'] ?? ''));
+?>
+
+<footer class="site-footer">
+    <div class="container site-footer__main">
+
+        <div class="site-footer__identity">
+            <img
+                src="<?= e(appUrl('public/assets/img/frase-mascota-footer.png')) ?>"
+                alt="Nutrición, bienestar y confianza para tu mascota"
+                class="site-footer__phrase"
+                loading="lazy"
+                decoding="async"
+            >
+        </div>
+
+        <nav class="site-footer__column" aria-label="Enlaces del sitio">
+            <h2>Enlaces</h2>
+
+            <a href="<?= e(appUrl('public/index.php')) ?>">Inicio</a>
+            <a href="<?= e(appUrl('public/nosotros.php')) ?>">Nosotros</a>
+            <a href="<?= e(appUrl('public/catalogo.php')) ?>">Productos</a>
+            <a href="<?= e(appUrl('public/blog.php')) ?>">Blog</a>
+            <a href="<?= e(appUrl('public/contacto.php')) ?>">Contacto</a>
+        </nav>
+
+        <nav class="site-footer__column" aria-label="Ayuda">
+            <h2>Ayuda</h2>
+
+            <a href="<?= e(appUrl('public/preguntas-frecuentes.php')) ?>">
+                Preguntas frecuentes
+            </a>
+
+            <a href="<?= e(appUrl('public/politicas-envio.php')) ?>">
+                Políticas de envío
+            </a>
+
+            <a href="<?= e(appUrl('public/cambios-devoluciones.php')) ?>">
+                Cambios y devoluciones
+            </a>
+
+            <a href="<?= e(appUrl('public/terminos-condiciones.php')) ?>">
+                Términos y condiciones
+            </a>
+        </nav>
+
+        <div class="site-footer__column site-footer__contact">
+            <h2>Contacto</h2>
+
+            <?php if ($footerEmail !== ''): ?>
+                <a href="mailto:<?= e($footerEmail) ?>">
+                    <span aria-hidden="true">✉</span>
+                    <?= e($footerEmail) ?>
+                </a>
+            <?php endif; ?>
+
+            <?php if (!empty($whatsappUrl) && !str_starts_with($whatsappUrl, '#')): ?>
+                <a href="<?= e($whatsappUrl) ?>">
+                    <span aria-hidden="true">⌕</span>
+                    WhatsApp Coratto
+                </a>
+            <?php endif; ?>
+
+            <a href="<?= e(appUrl('public/contacto.php')) ?>">
+                <span aria-hidden="true">♡</span>
+                Formulario de contacto
+            </a>
+        </div>
+
+        <div class="site-footer__newsletter newsletter">
+            <h2>Suscríbete a nuestro newsletter</h2>
+
+            <p>
+                Recibe novedades, consejos y promociones exclusivas para tu mascota.
+            </p>
+
+            <form class="site-footer__newsletter-form">
+                <label class="sr-only" for="footer-newsletter-email">
+                    Tu correo electrónico
+                </label> 
+
+                <input
+                    id="footer-newsletter-email"
+                    name="email"
+                    type="email"
+                    placeholder="Tu correo electrónico"
+                    autocomplete="email"
+                    required
+                >
+
+              <button type="submit" aria-label="Suscribirme al newsletter">
+                  <span class="site-footer__newsletter-paw" aria-hidden="true"></span>
+              </button>
+            </form>
+        </div>
+
+    </div>
+
+    <div class="site-footer__bottom">
+        <div class="container">
+            <p>
+                © <?= date('Y') ?> Coratto Pet. Todos los derechos reservados.
+            </p>
+
+            <span class="site-footer__bottom-paw" aria-hidden="true">🐾</span>
+        </div>
+    </div>
 </footer>

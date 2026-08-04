@@ -21,3 +21,7 @@ public/uploads/productos/*
 # Operating system files
 .DS_Store
 Thumbs.db
+
+
+/storage/sessions/*
+!/storage/sessions/.gitkeep
