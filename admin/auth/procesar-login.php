@@ -67,7 +67,7 @@ try {
         'rol' => (string) $user['rol'],
     ];
 
-    header('Location: ' . appUrl('admin/dashboard/index.php'), true, 303);
+    header('Location: ' . appUrl(adminLandingPath((string) $user['rol'])), true, 303);
     exit;
 } catch (Throwable $exception) {
     error_log('Authentication error: ' . $exception->getMessage());

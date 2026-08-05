@@ -26,10 +26,6 @@ function esCategoriaAlimentos(array $category): bool
 
 function esProductoFraccionable(array $product): bool
 {
-    if (!esCategoriaAlimentos($product)) {
-        return false;
-    }
-
     $details = $product['detalles_opcionales'] ?? null;
     if (is_string($details)) {
         $decoded = json_decode($details, true);
@@ -39,11 +35,8 @@ function esProductoFraccionable(array $product): bool
         $details = [];
     }
 
-    $subcategoryCode = $product['subcategoria_codigo']
-        ?? $details['subcategoria_codigo']
-        ?? codigoSubcategoriaProducto($product['subcategoria'] ?? $details['subcategoria'] ?? '');
-
-    return codigoSubcategoriaProducto($subcategoryCode) === SUBCATEGORIA_ALIMENTO_SECO_CODIGO;
+    $subcategory = $product['subcategoria'] ?? $details['subcategoria'] ?? '';
+    return mb_strtoupper(is_scalar($subcategory) ? (string) $subcategory : '') === 'ALIMENTO SECO';
 }
 
 function formatearCantidadStock(int $quantity, bool $fractionable): string

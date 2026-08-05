@@ -73,7 +73,7 @@ try {
     $fractionable = aplicarReglaSubcategoriaProducto($values, $errors, $category);
     $lotes = normalizarLotesFormulario($_POST['lotes'] ?? []);
     if ($fractionable) {
-        $lotErrors = validarLotesStock($lotes, []);
+        $lotErrors = validarLotesStock($lotes);
         $stockFromLots = calcularStockInicialLotesProducto($lotes);
         if ($lotes === [] || $stockFromLots <= 0) {
             $lotErrors['lotes'] = 'Ingresa al menos un lote con cantidad válida.';
@@ -131,9 +131,8 @@ try {
         (object) construirDetallesOpcionales($values),
         JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
     );
-    // En alimento seco, los lotes representan stock físico. Solo las unidades
-    // asignadas a presentaciones cuentan como stock vendible.
-    $stockInitial = $fractionable ? 0 : (int) $values['_stock_inicial_entero'];
+    // En alimento seco, todo el peso vigente de los lotes es stock vendible.
+    $stockInitial = (int) $values['_stock_inicial_entero'];
     $minimumStock = $fractionable
         ? 5000
         : ($values['stock_minimo'] === '' ? 5 : (int) $values['_stock_minimo_entero']);
@@ -177,7 +176,7 @@ try {
             $connection->prepare('INSERT INTO proveedor_productos (id_proveedor,id_producto,activo) VALUES (:proveedor,:producto,TRUE) ON CONFLICT (id_proveedor,id_producto) DO UPDATE SET activo=TRUE')
                 ->execute(['proveedor' => $supplierId, 'producto' => $productId]);
         }
-        guardarLotesStock($connection, $productId, $lotes, [], $supplierId);
+        guardarLotesStock($connection, $productId, $lotes, $supplierId);
     }
 
     if ($stockInitial > 0) {

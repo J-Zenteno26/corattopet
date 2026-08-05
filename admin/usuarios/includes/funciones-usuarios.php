@@ -5,7 +5,7 @@ declare(strict_types=1);
 /** @return array<string, string> */
 function rolesUsuarios(): array
 {
-    return ['administrador' => 'Administrador', 'operador' => 'Operador'];
+    return ['administrador' => 'Administrador', 'operador' => 'Operador', 'Blog' => 'Blog'];
 }
 
 function idUsuarioValido(mixed $value): ?int
@@ -75,4 +75,3 @@ function referenciaErrorUsuario(string $context, Throwable $exception): string
     error_log(sprintf('[%s] %s: %s in %s:%d', $reference, $context, $exception->getMessage(), $exception->getFile(), $exception->getLine()));
     return $reference;
 }
-

@@ -1,27 +1,17 @@
-# Environment files and secrets
 .env
 .env.*
-!.env.example
+config/local.php
 
-# Runtime data
-storage/importaciones/*
-!storage/importaciones/.gitkeep
-storage/logs/*
-!storage/logs/.gitkeep
-public/uploads/productos/*
-!public/uploads/productos/.gitkeep
-!public/uploads/productos/.htaccess
-
-# Dependencies and tooling
 /vendor/
-/.idea/
-/.vscode/
+/node_modules/
+
+public/uploads/
+storage/
+tmp/
+logs/
 *.log
 
-# Operating system files
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
-
-
-/storage/sessions/*
-!/storage/sessions/.gitkeep

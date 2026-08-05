@@ -39,6 +39,8 @@ $active = static fn (string $page): string => $currentPage === $page ? ' active'
       </div>
       <a class="<?= trim($active('nosotros')) ?>" href="<?= e(appUrl('public/nosotros.php')) ?>">Nosotros</a>
       <a class="<?= trim($active('blog')) ?>" href="<?= e(appUrl('public/blog.php')) ?>">Blog</a>
+      <a href="<?= e(appUrl('index.php#aprende')) ?>">Aprende</a>
+      <a href="<?= e(appUrl('index.php#preguntas-frecuentes')) ?>">Preguntas frecuentes</a>
       <a class="<?= trim($active('contacto')) ?>" href="<?= e(appUrl('public/contacto.php')) ?>">Contacto</a>
     </nav>
     <div class="header-actions">

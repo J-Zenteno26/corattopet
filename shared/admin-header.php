@@ -5,6 +5,7 @@ declare(strict_types=1);
 $pageTitle = isset($pageTitle) ? (string) $pageTitle : 'Panel administrativo';
 $csrfToken = isset($csrfToken) ? (string) $csrfToken : csrfToken();
 $adminLogoUrl = appUrl('public/img/logo-coratto-pet.png');
+$adminHomeUrl = appUrl(adminLandingPath());
 ?>
 <!doctype html>
 <html lang="es">
@@ -42,7 +43,7 @@ $adminLogoUrl = appUrl('public/img/logo-coratto-pet.png');
                 <i class="bi bi-list" aria-hidden="true"></i>
             </button>
 
-            <a class="admin-brand-link" href="<?= escape(appUrl('admin/dashboard/index.php')) ?>">
+            <a class="admin-brand-link" href="<?= escape($adminHomeUrl) ?>">
                 <img
                     class="admin-brand-logo"
                     src="<?= escape($adminLogoUrl) ?>"

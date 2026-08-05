@@ -34,3 +34,14 @@ function consumirEstadoCliente(int $id): array
     $key = 'cliente_form_' . $id; $state = $_SESSION[$key] ?? []; unset($_SESSION[$key]);
     return is_array($state) ? $state : [];
 }
+
+function guardarEstadoNuevoCliente(array $values, array $errors = [], ?string $general = null, ?string $reference = null): void
+{
+    $_SESSION['cliente_nuevo_form'] = compact('values', 'errors', 'general', 'reference');
+}
+
+function consumirEstadoNuevoCliente(): array
+{
+    $key = 'cliente_nuevo_form'; $state = $_SESSION[$key] ?? []; unset($_SESSION[$key]);
+    return is_array($state) ? $state : [];
+}

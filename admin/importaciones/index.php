@@ -27,7 +27,7 @@ require dirname(__DIR__, 2) . '/shared/admin-header.php';
 require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
 ?>
 <main class="admin-main" id="contenido-principal">
-<header class="admin-page-header"><div><h1 class="admin-page-title">Importaciones</h1><p>Historial de cargas de productos y presentaciones realizadas mediante Excel.</p></div><a class="admin-button admin-button--primary" href="<?= escape(appUrl('admin/inventario/importar/index.php')) ?>">Nueva importación</a></header>
+<header class="admin-page-header"><div><h1 class="admin-page-title">Importaciones</h1><p>Historial de cargas de productos y presentaciones realizadas mediante Excel.</p></div><div class="admin-actions"><a class="admin-button admin-button--primary" href="<?= escape(appUrl('admin/inventario/importar/index.php')) ?>">Nueva importación</a><a class="admin-button" href="<?= escape(appUrl('admin/importaciones/drive/index.php')) ?>">Importar imágenes desde Drive</a></div></header>
 <section class="admin-import-history-summary" aria-label="Resumen de importaciones">
 <article><span>Total importaciones</span><strong><?= escape((string) $summary['total']) ?></strong></article>
 <article><span>Última importación</span><strong><?= $summary['ultima'] ? escape(date('d-m-Y H:i', strtotime((string) $summary['ultima']))) : 'Sin registros' ?></strong></article>

@@ -501,7 +501,7 @@ $faqItems = [
                                 <div class="home-category-card__copy">
                                     <h3><?= e($category['title']) ?></h3>
                                     <span class="home-category-card__link">
-                                        Ver productos
+                                        Ver
                                         <svg aria-hidden="true">
                                             <use href="#i-arrow"></use>
                                         </svg>

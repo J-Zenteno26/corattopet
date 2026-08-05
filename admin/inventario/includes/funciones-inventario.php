@@ -21,6 +21,7 @@ function normalizarParametrosInventario(array $source): array
     $petTypes = ['perro', 'gato', 'ambos', 'otro'];
     $stockStatuses = ['en_stock', 'stock_bajo', 'sin_stock'];
     $stockTypes = ['fraccionable', 'unidad'];
+    $subcategories = ['alimento_seco', 'alimento_humedo', 'snacks', 'higiene_bienestar'];
     $search = trim((string) ($source['buscar'] ?? ''));
 
     return [
@@ -35,6 +36,9 @@ function normalizarParametrosInventario(array $source): array
             : '',
         'tipo_stock' => in_array($source['tipo_stock'] ?? '', $stockTypes, true)
             ? (string) $source['tipo_stock']
+            : '',
+        'subcategoria' => in_array($source['subcategoria'] ?? '', $subcategories, true)
+            ? (string) $source['subcategoria']
             : '',
         'pagina' => validarPagina($source['pagina'] ?? 1),
         'por_pagina' => validarCantidadPorPagina($source['por_pagina'] ?? 8),
@@ -70,7 +74,8 @@ function hayFiltrosInventarioActivos(array $parameters): bool
         || $parameters['id_marca'] !== null
         || $parameters['tipo_mascota'] !== ''
         || $parameters['estado_stock'] !== ''
-        || $parameters['tipo_stock'] !== '';
+        || $parameters['tipo_stock'] !== ''
+        || $parameters['subcategoria'] !== '';
 }
 
 function formatearPrecioClp(mixed $price): string

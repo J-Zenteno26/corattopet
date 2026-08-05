@@ -468,29 +468,133 @@
 
 @media (max-width: 620px) {
     .home-learning {
-        padding-block: 4rem;
+        padding-block: 2.75rem 3rem;
     }
 
     .home-learning .container {
-        width: min(calc(100% - 2rem), 1240px);
+        width: min(calc(100% - 2rem), 39rem);
+    }
+
+    .home-learning__header {
+        display: flex;
+        padding-bottom: 1.25rem;
+        flex-direction: column;
     }
 
     .home-learning__topline {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: .65rem;
+        display: contents;
+    }
+
+    .home-learning__topline > span {
+        order: 1;
+        margin-bottom: .45rem;
+        font-size: .72rem;
+        font-weight: 800;
     }
 
     .home-learning__header h2 {
-        font-size: clamp(3rem, 14vw, 4rem);
+        order: 2;
+        width: 100%;
+        margin: 0;
+        font-size: clamp(2.15rem, 10.5vw, 2.8rem);
+        line-height: .96;
+        letter-spacing: -.035em;
+        text-wrap: wrap;
+    }
+
+    .home-learning__header > p {
+        order: 3;
+        max-width: 21rem;
+        margin-top: .7rem;
+        font-size: .92rem;
+        line-height: 1.55;
+    }
+
+    .home-learning__cta {
+        order: 4;
+        align-self: flex-start;
+        margin-top: .8rem;
+        padding: .55rem 0;
+        font-size: .76rem;
+        font-weight: 750;
+    }
+
+    .home-learning__ticker {
+        margin: 1rem 0 1.5rem;
+    }
+
+    .home-learning__ticker-track {
+        animation-duration: 22s;
+    }
+
+    .home-learning__ticker-group {
+        gap: .85rem;
+        padding: .55rem .9rem .55rem 0;
+    }
+
+    .home-learning__ticker-group span {
+        font-size: .68rem;
+        font-weight: 750;
+        letter-spacing: .12em;
+    }
+
+    .home-learning__publications {
+        gap: 1.25rem;
     }
 
     .home-learning__featured {
         grid-template-columns: 1fr;
+        min-height: 0;
     }
 
     .home-learning__featured-visual {
-        min-height: 20rem;
+        min-height: 14rem;
+        padding: 1.25rem;
+    }
+
+    .home-learning__featured-visual::after {
+        left: 1rem;
+        top: 1rem;
+        font-size: 1rem;
+    }
+
+    .home-learning__featured-visual > svg {
+        width: 5rem;
+        height: 5rem;
+    }
+
+    .home-learning__featured-visual small {
+        font-size: .68rem;
+    }
+
+    .home-learning__fold {
+        width: 2.25rem;
+        height: 2.25rem;
+    }
+
+    .home-learning__featured-copy {
+        padding: 1.35rem 1.2rem 1.5rem;
+    }
+
+    .home-learning__badge {
+        margin-bottom: .85rem;
+        padding: .32rem .6rem;
+    }
+
+    .home-learning__featured h3 {
+        margin: .45rem 0 .7rem;
+        font-size: clamp(1.75rem, 8vw, 2.15rem);
+        line-height: 1;
+    }
+
+    .home-learning__featured p {
+        margin: 0 0 1rem;
+        font-size: .9rem;
+        line-height: 1.5;
+    }
+
+    .home-learning__read-more {
+        font-size: .76rem;
     }
 
     .home-learning__secondary-list {
@@ -498,7 +602,43 @@
     }
 
     .home-learning__note {
-        grid-template-columns: 6.5rem minmax(0, 1fr);
+        grid-template-columns: 5.5rem minmax(0, 1fr);
+        gap: .9rem;
+        padding: 1rem 0;
+    }
+
+    .home-learning__note-visual {
+        min-height: 6.5rem;
+        padding: .65rem;
+    }
+
+    .home-learning__note-visual svg {
+        width: 2.65rem;
+        height: 2.65rem;
+    }
+
+    .home-learning__note-copy > span:first-child {
+        font-size: .95rem;
+    }
+
+    .home-learning__note-copy > small {
+        font-size: .7rem;
+    }
+
+    .home-learning__note h3 {
+        margin: .3rem 0 .4rem;
+        font-size: clamp(1.25rem, 6vw, 1.5rem);
+        line-height: 1.05;
+    }
+
+    .home-learning__note p {
+        margin: 0 0 .65rem;
+        font-size: .86rem;
+        line-height: 1.45;
+    }
+
+    .home-learning__note .home-learning__read-more {
+        font-size: .74rem;
     }
 
     .home-learning__note + .home-learning__note {
@@ -508,6 +648,9 @@
     }
 
     .home-learning__signature {
+        margin-top: 1.25rem;
+        padding-top: .75rem;
+        font-size: .72rem;
         text-align: left;
     }
 }

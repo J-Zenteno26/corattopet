@@ -60,7 +60,8 @@ function enriquecerProductoPublico(array $product): array
 {
     $details = json_decode((string) ($product['detalles_opcionales'] ?? ''), true);
     $product['detalles'] = is_array($details) ? $details : [];
-    $product['fraccionable'] = valorBooleanoPublico($product['maneja_fraccionamiento'] ?? false);
+    $details = $product['detalles'];
+    $product['fraccionable'] = mb_strtoupper((string) ($details['subcategoria'] ?? '')) === 'ALIMENTO SECO';
     $product['disponible'] = (float) ($product['cantidad_disponible'] ?? 0) > 0;
 
     return $product;
@@ -85,8 +86,8 @@ function obtenerProductosCatalogoPublico(PDO $pdo, array $filters = []): array
         }
     }
     if (in_array(($filters['fraccionable'] ?? ''), ['si', 'no'], true)) {
-        $where[] = 'c.maneja_fraccionamiento = :fraccionable';
-        $bindings['fraccionable'] = $filters['fraccionable'] === 'si';
+        $condition = "COALESCE(UPPER(p.detalles_opcionales->>'subcategoria') = 'ALIMENTO SECO', FALSE)";
+        $where[] = $filters['fraccionable'] === 'si' ? $condition : 'NOT (' . $condition . ')';
     }
     if (($filters['disponibilidad'] ?? '') === 'disponible') {
         $where[] = 'COALESCE(s.cantidad_actual - s.cantidad_reservada, 0) > 0';
@@ -151,10 +152,11 @@ function obtenerPresentacionesPublicasProducto(PDO $pdo, int $idProducto): array
 {
     $statement = $pdo->prepare(
         "SELECT pp.nombre, pp.cantidad_gramos, pp.precio_venta, pp.sku,
-                CASE WHEN c.slug = 'alimentos' AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo',''),p.detalles_opcionales->>'subcategoria',''))) IN ('alimento-seco','alimento seco')
-                     THEN (SELECT COALESCE(SUM(slp.unidades_disponibles),0) FROM stock_lote_presentaciones slp INNER JOIN stock_lotes sl ON sl.id_lote=slp.id_lote
-                                  WHERE slp.id_presentacion=pp.id_presentacion AND sl.activo=TRUE AND slp.activo=TRUE
-                                    AND sl.fecha_vencimiento>=CURRENT_DATE) > 0
+                CASE WHEN UPPER(p.detalles_opcionales->>'subcategoria') = 'ALIMENTO SECO'
+                     THEN EXISTS(SELECT 1 FROM stock_lotes sl
+                                 WHERE sl.id_producto=pp.id_producto AND sl.activo=TRUE
+                                   AND sl.fecha_vencimiento>=CURRENT_DATE
+                                   AND sl.cantidad_disponible_g>=pp.cantidad_gramos)
                      ELSE (COALESCE(s.cantidad_actual - s.cantidad_reservada, 0) >= pp.cantidad_gramos)
                 END AS disponible
          FROM producto_presentaciones pp
@@ -186,4 +188,104 @@ function obtenerCategoriasPublicas(PDO $pdo): array
     );
     $statement->execute();
     return $statement->fetchAll();
+}
+
+function obtenerCategoriasBlogPublico(PDO $pdo): array
+{
+    $statement = $pdo->prepare(
+        'SELECT id_categoria_blog, nombre, slug
+         FROM blog_categorias
+         WHERE activo = TRUE
+         ORDER BY orden, nombre'
+    );
+    $statement->execute();
+    return $statement->fetchAll();
+}
+
+function obtenerArticuloDestacadoBlogPublico(PDO $pdo): ?array
+{
+    $statement = $pdo->prepare(
+        "SELECT a.id_articulo, a.titulo, a.slug, a.extracto, a.imagen_portada,
+                a.autor_publico, a.fecha_publicacion, c.nombre AS categoria
+         FROM blog_articulos a
+         INNER JOIN blog_categorias c ON c.id_categoria_blog = a.id_categoria_blog
+         WHERE a.estado = 'publicado' AND a.destacado = TRUE AND c.activo = TRUE
+         ORDER BY a.fecha_publicacion DESC NULLS LAST, a.id_articulo DESC
+         LIMIT 1"
+    );
+    $statement->execute();
+    $article = $statement->fetch();
+    return is_array($article) ? $article : null;
+}
+
+function contarArticulosBlogPublico(PDO $pdo, ?string $categorySlug, ?int $excludedArticleId): int
+{
+    $where = ["a.estado = 'publicado'", 'c.activo = TRUE'];
+    $bindings = [];
+    if ($categorySlug !== null) {
+        $where[] = 'c.slug = :categoria';
+        $bindings['categoria'] = $categorySlug;
+    }
+    if ($excludedArticleId !== null) {
+        $where[] = 'a.id_articulo <> :excluido';
+        $bindings['excluido'] = $excludedArticleId;
+    }
+    $statement = $pdo->prepare(
+        'SELECT COUNT(a.id_articulo)
+         FROM blog_articulos a
+         INNER JOIN blog_categorias c ON c.id_categoria_blog = a.id_categoria_blog
+         WHERE ' . implode(' AND ', $where)
+    );
+    foreach ($bindings as $name => $value) {
+        $statement->bindValue(':' . $name, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $statement->execute();
+    return (int) $statement->fetchColumn();
+}
+
+function obtenerArticulosBlogPublico(PDO $pdo, ?string $categorySlug, ?int $excludedArticleId, int $page, int $perPage = 6): array
+{
+    $where = ["a.estado = 'publicado'", 'c.activo = TRUE'];
+    $bindings = [];
+    if ($categorySlug !== null) {
+        $where[] = 'c.slug = :categoria';
+        $bindings['categoria'] = $categorySlug;
+    }
+    if ($excludedArticleId !== null) {
+        $where[] = 'a.id_articulo <> :excluido';
+        $bindings['excluido'] = $excludedArticleId;
+    }
+    $statement = $pdo->prepare(
+        'SELECT a.id_articulo, a.titulo, a.slug, a.extracto, a.imagen_portada,
+                a.autor_publico, a.fecha_publicacion, c.nombre AS categoria
+         FROM blog_articulos a
+         INNER JOIN blog_categorias c ON c.id_categoria_blog = a.id_categoria_blog
+         WHERE ' . implode(' AND ', $where) . '
+         ORDER BY a.fecha_publicacion DESC NULLS LAST, a.id_articulo DESC
+         LIMIT :limite OFFSET :desplazamiento'
+    );
+    foreach ($bindings as $name => $value) {
+        $statement->bindValue(':' . $name, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $statement->bindValue(':limite', $perPage, PDO::PARAM_INT);
+    $statement->bindValue(':desplazamiento', ($page - 1) * $perPage, PDO::PARAM_INT);
+    $statement->execute();
+    return $statement->fetchAll();
+}
+
+function obtenerArticuloBlogPublicoPorSlug(PDO $pdo, string $slug): ?array
+{
+    $statement = $pdo->prepare(
+        "SELECT a.id_articulo, a.titulo, a.slug, a.extracto, a.contenido_html,
+                a.imagen_portada, a.video_url, a.autor_publico, a.fecha_publicacion,
+                a.seo_titulo, a.seo_descripcion, c.nombre AS categoria
+         FROM blog_articulos a
+         INNER JOIN blog_categorias c ON c.id_categoria_blog = a.id_categoria_blog
+         WHERE a.slug = :slug AND a.estado = 'publicado' AND c.activo = TRUE
+         LIMIT 1"
+    );
+    $statement->bindValue(':slug', $slug, PDO::PARAM_STR);
+    $statement->execute();
+    $article = $statement->fetch();
+    return is_array($article) ? $article : null;
 }

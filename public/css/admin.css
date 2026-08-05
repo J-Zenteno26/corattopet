@@ -1765,15 +1765,20 @@ body.admin-modal-open {
 }
 
 .admin-inventory-filter-row--primary {
-    grid-template-columns: minmax(18rem, 2fr) repeat(2, minmax(10rem, 1fr));
+    grid-template-columns:
+        minmax(22rem, 2fr)
+        minmax(12rem, 1fr)
+        minmax(14rem, 1fr);
 }
 
 .admin-inventory-filter-row--secondary {
-    grid-template-columns: repeat(3, minmax(10rem, 1fr)) auto;
+    grid-template-columns: repeat(4, minmax(10rem, 1fr));
 }
 
 .admin-inventory-filters .admin-filter-actions {
+    grid-column: 1 / -1;
     align-self: end;
+    justify-content: flex-end;
 }
 
 .admin-inventory-filters .admin-filter-button {
@@ -8569,7 +8574,74 @@ body.admin-modal-open {
     color: rgba(255, 255, 255, .65);
     font-size: .76rem
 }
+/* Campo de contraseña con control de visibilidad */
+.admin-user-form-card .admin-password-control {
+    position: relative;
+    width: 100%;
+}
 
+.admin-user-form-card .admin-password-control input {
+    padding-right: 3.55rem;
+}
+
+.admin-user-form-card .admin-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.45rem;
+
+    display: grid;
+    place-items: center;
+
+    width: 2.35rem;
+    height: 2.35rem;
+    padding: 0;
+
+    color: var(--admin-gold-dark);
+    background:
+        linear-gradient(
+            145deg,
+            #fff7e8 0%,
+            #f6ead2 100%
+        );
+
+    border: 1px solid #d8cbb8;
+    border-radius: 0.65rem;
+
+    cursor: pointer;
+    transform: translateY(-50%);
+
+    transition:
+        color 160ms ease,
+        background 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.admin-user-form-card .admin-password-toggle:hover,
+.admin-user-form-card .admin-password-toggle:focus-visible {
+    color: #fff;
+    background:
+        linear-gradient(
+            145deg,
+            var(--admin-gold) 0%,
+            var(--admin-gold-dark) 100%
+        );
+
+    border-color: var(--admin-gold-dark);
+
+    box-shadow:
+        0 0.35rem 0.8rem rgb(140 100 40 / 20%);
+}
+
+.admin-user-form-card .admin-password-toggle:focus-visible {
+    outline: 0.2rem solid rgb(197 139 50 / 22%);
+    outline-offset: 0.12rem;
+}
+
+.admin-user-form-card .admin-password-toggle i {
+    font-size: 1rem;
+    line-height: 1;
+}
 .admin-user-form-card>.admin-form-grid {
     padding: 1.25rem
 }

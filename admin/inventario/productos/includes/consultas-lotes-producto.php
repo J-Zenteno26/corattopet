@@ -13,10 +13,7 @@ function obtenerProductoDetalleLotes(PDO $pdo, int $productId): ?array
 
 function obtenerLotesDetalleProducto(PDO $pdo, int $productId): array
 {
-    $st=$pdo->prepare("SELECT sl.*,pr.nombre AS proveedor,
-        COALESCE((SELECT json_agg(json_build_object('nombre',pp.nombre,'unidades',slp.unidades_disponibles,'gramos',slp.gramos_por_unidad) ORDER BY pp.cantidad_gramos,pp.nombre)
-          FROM stock_lote_presentaciones slp INNER JOIN producto_presentaciones pp ON pp.id_presentacion=slp.id_presentacion
-          WHERE slp.id_lote=sl.id_lote AND slp.activo=TRUE),'[]'::json) AS presentaciones
+    $st=$pdo->prepare("SELECT sl.*,pr.nombre AS proveedor
         FROM stock_lotes sl LEFT JOIN proveedores pr ON pr.id_proveedor=sl.id_proveedor
         WHERE sl.id_producto=:id AND sl.activo=TRUE ORDER BY sl.fecha_vencimiento ASC,sl.id_lote ASC");
     $st->execute(['id'=>$productId]);return $st->fetchAll();

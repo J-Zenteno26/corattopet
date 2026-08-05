@@ -52,6 +52,25 @@ function obtenerClientePorId(PDO $pdo, int $id): ?array
     return is_array($row) ? $row : null;
 }
 
+function existeEmailCliente(PDO $pdo, string $email, ?int $excludeId = null): bool
+{
+    $sql = 'SELECT 1 FROM clientes WHERE LOWER(email) = LOWER(:email)';
+    if ($excludeId !== null) { $sql .= ' AND id_cliente <> :exclude_id'; }
+    $statement = $pdo->prepare($sql);
+    $statement->bindValue(':email', $email, PDO::PARAM_STR);
+    if ($excludeId !== null) { $statement->bindValue(':exclude_id', $excludeId, PDO::PARAM_INT); }
+    $statement->execute();
+    return $statement->fetchColumn() !== false;
+}
+
+function insertarCliente(PDO $pdo, array $data): int
+{
+    $statement = $pdo->prepare('INSERT INTO clientes (nombre,email,telefono,rut,direccion,comuna,region,creado_en,actualizado_en) VALUES (:nombre,:email,:telefono,:rut,:direccion,:comuna,:region,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) RETURNING id_cliente');
+    foreach (array_keys(inicialCliente()) as $field) { $statement->bindValue(':' . $field, $data[$field] === '' ? null : $data[$field], $data[$field] === '' ? PDO::PARAM_NULL : PDO::PARAM_STR); }
+    $statement->execute();
+    return (int) $statement->fetchColumn();
+}
+
 function obtenerResumenCliente(PDO $pdo, int $id): array
 {
     $statement = $pdo->prepare("SELECT COUNT(*) AS cantidad_pedidos, COALESCE(SUM(total),0) AS total_comprado,

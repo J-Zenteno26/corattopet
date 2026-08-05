@@ -13,8 +13,8 @@ function obtenerResumenDashboard(PDO $pdo): array
         (SELECT COUNT(*) FROM productos WHERE estado<>'descontinuado') AS productos_activos,
         (SELECT COUNT(*) FROM productos p JOIN categorias c ON c.id_categoria=p.id_categoria JOIN stock s ON s.id_producto=p.id_producto
             WHERE p.estado<>'descontinuado' AND (s.cantidad_actual-s.cantidad_reservada)>0
-            AND (((c.slug='alimentos' AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo',''),p.detalles_opcionales->>'subcategoria',''))) IN ('alimento-seco','alimento seco')) AND (s.cantidad_actual-s.cantidad_reservada)<s.stock_minimo)
-              OR (NOT (c.slug='alimentos' AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo',''),p.detalles_opcionales->>'subcategoria',''))) IN ('alimento-seco','alimento seco')) AND (s.cantidad_actual-s.cantidad_reservada)<=s.stock_minimo))) AS stock_bajo,
+            AND (((UPPER(p.detalles_opcionales->>'subcategoria')='ALIMENTO SECO') AND (s.cantidad_actual-s.cantidad_reservada)<s.stock_minimo)
+              OR (NOT COALESCE(UPPER(p.detalles_opcionales->>'subcategoria')='ALIMENTO SECO',FALSE) AND (s.cantidad_actual-s.cantidad_reservada)<=s.stock_minimo))) AS stock_bajo,
         (SELECT COUNT(*) FROM productos p JOIN stock s ON s.id_producto=p.id_producto WHERE p.estado<>'descontinuado' AND (s.cantidad_actual-s.cantidad_reservada)<=0) AS sin_stock");
     return $statement->fetch() ?: [];
 }
@@ -29,13 +29,13 @@ function obtenerPedidosRecientesDashboard(PDO $pdo, int $limit = 5): array
 function obtenerAlertasStockDashboard(PDO $pdo, int $limit = 8): array
 {
     $statement=$pdo->prepare("SELECT p.id_producto,p.nombre,p.sku,c.nombre AS categoria,
-        (c.slug='alimentos' AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo',''),p.detalles_opcionales->>'subcategoria',''))) IN ('alimento-seco','alimento seco')) AS maneja_fraccionamiento,
+        COALESCE(UPPER(p.detalles_opcionales->>'subcategoria')='ALIMENTO SECO',FALSE) AS maneja_fraccionamiento,
         (s.cantidad_actual-s.cantidad_reservada) AS stock_actual,s.stock_minimo,
         CASE WHEN (s.cantidad_actual-s.cantidad_reservada)<=0 THEN 'sin_stock' ELSE 'stock_bajo' END AS estado_stock
         FROM productos p JOIN categorias c ON c.id_categoria=p.id_categoria JOIN stock s ON s.id_producto=p.id_producto
         WHERE p.estado<>'descontinuado' AND ((s.cantidad_actual-s.cantidad_reservada)<=0 OR
-          ((s.cantidad_actual-s.cantidad_reservada)>0 AND (((c.slug='alimentos' AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo',''),p.detalles_opcionales->>'subcategoria',''))) IN ('alimento-seco','alimento seco')) AND (s.cantidad_actual-s.cantidad_reservada)<s.stock_minimo)
-          OR (NOT (c.slug='alimentos' AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo',''),p.detalles_opcionales->>'subcategoria',''))) IN ('alimento-seco','alimento seco')) AND (s.cantidad_actual-s.cantidad_reservada)<=s.stock_minimo))))
+          ((s.cantidad_actual-s.cantidad_reservada)>0 AND (((UPPER(p.detalles_opcionales->>'subcategoria')='ALIMENTO SECO') AND (s.cantidad_actual-s.cantidad_reservada)<s.stock_minimo)
+          OR (NOT COALESCE(UPPER(p.detalles_opcionales->>'subcategoria')='ALIMENTO SECO',FALSE) AND (s.cantidad_actual-s.cantidad_reservada)<=s.stock_minimo))))
         ORDER BY CASE WHEN (s.cantidad_actual-s.cantidad_reservada)<=0 THEN 0 ELSE 1 END,(s.cantidad_actual-s.cantidad_reservada),p.nombre LIMIT :limit");
     $statement->bindValue(':limit',$limit,PDO::PARAM_INT);$statement->execute();return $statement->fetchAll();
 }
@@ -53,7 +53,7 @@ function obtenerPendientesCatalogoDashboard(PDO $pdo): array
     $statement=$pdo->query("SELECT
         COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM imagenes_producto ip WHERE ip.id_producto=p.id_producto AND ip.activo=TRUE)) AS sin_imagen,
         COUNT(*) FILTER (WHERE (p.sku IS NULL OR TRIM(p.sku)='')) AS sin_sku,
-        COUNT(*) FILTER (WHERE c.slug='alimentos' AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo',''),p.detalles_opcionales->>'subcategoria',''))) IN ('alimento-seco','alimento seco') AND NOT EXISTS (SELECT 1 FROM producto_presentaciones pp WHERE pp.id_producto=p.id_producto AND pp.activo=TRUE)) AS sin_presentaciones,
+        COUNT(*) FILTER (WHERE UPPER(p.detalles_opcionales->>'subcategoria')='ALIMENTO SECO' AND NOT EXISTS (SELECT 1 FROM producto_presentaciones pp WHERE pp.id_producto=p.id_producto AND pp.activo=TRUE)) AS sin_presentaciones,
         COUNT(*) FILTER (WHERE (s.cantidad_actual-s.cantidad_reservada)<=0) AS sin_stock
         FROM productos p JOIN categorias c ON c.id_categoria=p.id_categoria JOIN stock s ON s.id_producto=p.id_producto WHERE p.estado<>'descontinuado'");
     return $statement->fetch() ?: [];

@@ -11,11 +11,9 @@ $productId = idPositivoPresentacion($_GET['id_producto'] ?? null);
 try {
     $connection = database();
     $product = $productId === null ? null : buscarProductoFraccionable($connection, $productId);
-    $lots = $product === null ? [] : listarLotesConSaldoPresentacion($connection, $productId);
 } catch (Throwable $exception) {
     error_log('Presentation create load error: ' . $exception->getMessage());
     $product = null;
-    $lots = [];
 }
 if ($product === null) {
     header('Location: ' . appUrl('admin/inventario/index.php?mensaje=presentaciones_no_disponibles'), true, 302);
@@ -62,17 +60,8 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 <div class="admin-field"><label><input name="activo" type="checkbox" value="1" <?= $values['activo'] ? 'checked' : '' ?>> Presentación activa</label></div>
             </div>
         </section>
-        <section class="admin-panel admin-presentation-stock" aria-labelledby="presentation-stock-title">
-            <div class="admin-panel__header"><h2 id="presentation-stock-title">Stock inicial desde lote</h2><p class="admin-panel__intro">Opcional. Puedes crear la presentación sin unidades y asignar stock después.</p></div>
-            <div class="admin-form-grid">
-                <div class="admin-field<?= isset($errors['id_lote']) ? ' admin-field--invalid' : '' ?>"><label for="id_lote">Lote de origen</label><select id="id_lote" name="id_lote"><option value="">Sin stock inicial</option><?php foreach($lots as $lot): ?><option value="<?= (int)$lot['id_lote'] ?>" data-saldo="<?= escape((string)$lot['saldo_no_asignado_g']) ?>" <?= (string)$values['id_lote']===(string)$lot['id_lote']?'selected':'' ?>><?= escape((string)$lot['codigo_lote']) ?> · vence <?= escape((new DateTimeImmutable((string)$lot['fecha_vencimiento']))->format('d-m-Y')) ?> · <?= escape(number_format((float)$lot['saldo_no_asignado_g'],3,',','.')) ?> g disponibles</option><?php endforeach; ?></select><?php if(isset($errors['id_lote'])):?><span class="admin-field__error"><?= escape((string)$errors['id_lote']) ?></span><?php endif;?><?php if($lots===[]):?><span class="admin-field__help">No hay lotes vigentes con saldo sin asignar.</span><?php endif;?></div>
-                <div class="admin-field<?= isset($errors['unidades_iniciales']) ? ' admin-field--invalid' : '' ?>"><label for="unidades_iniciales">Unidades a crear</label><input id="unidades_iniciales" name="unidades_iniciales" type="number" min="0" step="1" value="<?= escape((string)$values['unidades_iniciales']) ?>"><?php if(isset($errors['unidades_iniciales'])):?><span class="admin-field__error"><?= escape((string)$errors['unidades_iniciales']) ?></span><?php endif;?></div>
-                <div class="admin-field admin-field--full"><div class="admin-presentation-calculation" id="presentation-calculation" role="status"><span>Selecciona un lote e ingresa unidades para calcular la asignación.</span></div></div>
-            </div>
-        </section>
         <section class="admin-panel admin-form-actions"><a class="admin-button"
                 href="<?= escape(appUrl('admin/inventario/presentaciones/index.php?id_producto=' . $productId)) ?>">Cancelar</a><button
                 class="admin-button admin-button--primary" type="submit">Guardar presentación</button></section>
     </form>
-    <script>(()=>{const lot=document.getElementById('id_lote'),units=document.getElementById('unidades_iniciales'),grams=document.getElementById('cantidad_gramos'),output=document.getElementById('presentation-calculation');if(!lot||!units||!grams||!output)return;const format=value=>new Intl.NumberFormat('es-CL',{maximumFractionDigits:3}).format(value);const update=()=>{const balance=Number(lot.selectedOptions[0]?.dataset.saldo||0),quantity=Number(units.value||0),weight=Number(grams.value||0),used=quantity*weight,remaining=balance-used;output.classList.toggle('is-invalid',used>balance&&quantity>0);output.innerHTML=lot.value===''?'<span>Selecciona un lote si deseas crear stock inicial.</span>':`<span>Gramos usados</span><strong>${format(used)} g</strong><span>Saldo restante</span><strong>${format(remaining)} g</strong>${used>balance?'<em>La asignación excede el saldo disponible.</em>':''}`;};lot.addEventListener('change',update);units.addEventListener('input',update);grams.addEventListener('input',update);update();})();</script>
     <?php require dirname(__DIR__, 3) . '/shared/admin-footer.php'; ?>

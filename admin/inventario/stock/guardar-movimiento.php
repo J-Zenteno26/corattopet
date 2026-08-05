@@ -64,7 +64,7 @@ try {
     }
     $fractionable = esProductoFraccionable($stock);
     if ($fractionable) {
-        $presentaciones = presentacionesActivasProducto($connection, $productId);
+            $presentaciones = presentacionesActivasProducto($connection, $productId);
         if ((string)($_POST['tipo_movimiento'] ?? '') === 'entrada') {
             $supplierId = null;
             if (trim((string)($_POST['id_proveedor'] ?? '')) !== '') {
@@ -90,19 +90,19 @@ try {
                 header('Location: '.$formUrl,true,303); exit;
             }
             $lotes = normalizarLotesFormulario($_POST['lotes'] ?? []);
-            $lotErrors = validarLotesStock($lotes, $presentaciones);
+            $lotErrors = validarLotesStock($lotes);
             if ($lotErrors !== []) {
                 $connection->rollBack();
                 guardarEstadoMovimientoStock($productId, array_merge($values, ['tipo_movimiento'=>'entrada','lotes'=>$lotes,'id_proveedor'=>$supplierId===null?'':(string)$supplierId]), $lotErrors);
                 header('Location: ' . $formUrl, true, 303); exit;
             }
             $anterior = stockVendibleLotes($connection,$productId);
-            guardarLotesStock($connection,$productId,$lotes,$presentaciones,$supplierId);
+            guardarLotesStock($connection,$productId,$lotes,$supplierId);
             $final = actualizarStockVendibleLotes($connection,$productId);
             $connection->prepare("INSERT INTO movimientos_stock (id_producto,id_usuario,tipo_movimiento,cantidad,stock_anterior,stock_final,origen,motivo,referencia) VALUES (:producto,:usuario,'entrada',:cantidad,:anterior,:final,'manual','Ingreso de lotes',:referencia)")
                 ->execute(['producto'=>$productId,'usuario'=>(int)$_SESSION['id_usuario'],'cantidad'=>$final-$anterior,'anterior'=>$anterior,'final'=>$final,'referencia'=>trim((string)($_POST['observacion']??''))?:null]);
             $connection->commit();
-            guardarModalAdmin('success','Lotes registrados','El stock vendible fue actualizado según las unidades físicas asignadas.');
+            guardarModalAdmin('success','Lotes registrados','El stock vendible fue actualizado según el peso disponible de los lotes.');
             header('Location: '.$formUrl,true,303); exit;
         }
         if ((string)($_POST['tipo_movimiento'] ?? '') === 'salida') {

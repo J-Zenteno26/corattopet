@@ -26,6 +26,44 @@ function requireAuthentication(): void
         header('Location: ' . appUrl('admin/auth/login.php'), true, 302);
         exit;
     }
+
+    if (($_SESSION['rol'] ?? '') === 'Blog' && !blogRoleCanAccessCurrentScript()) {
+        denyAdminAccess();
+    }
+}
+
+function requireRoles(array $allowedRoles): void
+{
+    requireAuthentication();
+
+    if (!in_array((string) ($_SESSION['rol'] ?? ''), $allowedRoles, true)) {
+        denyAdminAccess();
+    }
+}
+
+function denyAdminAccess(): never
+{
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'Acceso denegado.';
+    exit;
+}
+
+function adminLandingPath(?string $role = null): string
+{
+    $currentRole = $role ?? (is_string($_SESSION['rol'] ?? null) ? $_SESSION['rol'] : '');
+
+    return $currentRole === 'Blog'
+        ? 'admin/blog/index.php'
+        : 'admin/dashboard/index.php';
+}
+
+function blogRoleCanAccessCurrentScript(): bool
+{
+    $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+
+    return str_contains($scriptName, '/admin/blog/')
+        || str_ends_with($scriptName, '/admin/auth/cerrar-sesion.php');
 }
 
 function csrfToken(): string

@@ -8,13 +8,12 @@ function obtenerResumenInventario(PDO $connection): array
         "SELECT
             COUNT(p.id_producto) FILTER (WHERE p.estado <> 'descontinuado') AS productos_totales,
             COUNT(p.id_producto) FILTER (
-                WHERE p.estado <> 'descontinuado' AND c.slug = 'alimentos'
-                AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo', ''), p.detalles_opcionales->>'subcategoria', ''))) IN ('alimento-seco', 'alimento seco')
+                WHERE p.estado <> 'descontinuado'
+                AND UPPER(p.detalles_opcionales->>'subcategoria') = 'ALIMENTO SECO'
             ) AS alimentos_fraccionables,
             COUNT(p.id_producto) FILTER (
                 WHERE p.estado = 'activo'
-                AND c.slug = 'alimentos'
-                AND LOWER(TRIM(COALESCE(NULLIF(p.detalles_opcionales->>'subcategoria_codigo', ''), p.detalles_opcionales->>'subcategoria', ''))) IN ('alimento-seco', 'alimento seco')
+                AND UPPER(p.detalles_opcionales->>'subcategoria') = 'ALIMENTO SECO'
                 AND NOT EXISTS (
                     SELECT 1 FROM producto_presentaciones pp
                     WHERE pp.id_producto = p.id_producto AND pp.activo = TRUE
@@ -22,14 +21,14 @@ function obtenerResumenInventario(PDO $connection): array
             ) AS sin_presentaciones,
             COUNT(p.id_producto) FILTER (
                 WHERE p.estado <> 'descontinuado'
-                AND (s.cantidad_actual - s.cantidad_reservada) = 0
+                AND COALESCE(s.cantidad_actual - s.cantidad_reservada, 0) = 0
             ) AS sin_stock,
             (SELECT COUNT(*) FROM stock_lotes sl WHERE sl.activo=TRUE AND sl.fecha_vencimiento<CURRENT_DATE) AS lotes_vencidos,
             (SELECT COUNT(*) FROM stock_lotes sl WHERE sl.activo=TRUE AND sl.fecha_vencimiento>=CURRENT_DATE AND sl.fecha_vencimiento<CURRENT_DATE+INTERVAL '2 months') AS lotes_criticos,
             (SELECT COUNT(*) FROM stock_lotes sl WHERE sl.activo=TRUE AND sl.fecha_vencimiento>=CURRENT_DATE+INTERVAL '2 months' AND sl.fecha_vencimiento<=CURRENT_DATE+INTERVAL '6 months') AS lotes_proximos
         FROM productos p
         INNER JOIN categorias c ON c.id_categoria = p.id_categoria
-        INNER JOIN stock s ON s.id_producto = p.id_producto"
+        LEFT JOIN stock s ON s.id_producto = p.id_producto"
     );
     $statement->execute();
     $summary = $statement->fetch();

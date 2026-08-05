@@ -289,12 +289,92 @@
             const quantity = form.querySelector('[name="cantidad"]');
             const reason = form.querySelector('[name="motivo"]');
             const observation = form.querySelector('[name="observacion"]');
-            const movementType = type.value;
+
+            const movementType = type?.value || '';
             const fractionable = button.dataset.stockFractionable === '1';
-            const numericQuantity = Number.parseInt(quantity.value, 10);
-            const formattedQuantity = fractionable
-                ? (numericQuantity >= 1000 ? `${new Intl.NumberFormat('es-CL', { maximumFractionDigits: 3 }).format(numericQuantity / 1000)} kg` : `${numericQuantity} g`)
-                : `${numericQuantity} ${numericQuantity === 1 ? 'unidad' : 'unidades'}`;
+
+            const quantityFormatter = new Intl.NumberFormat('es-CL', {
+                maximumFractionDigits: 3,
+            });
+
+            const formatStockQuantity = (value, isFractionable) => {
+                if (!Number.isFinite(value)) {
+                    return 'Cantidad no disponible';
+                }
+
+                if (isFractionable) {
+                    return value >= 1000
+                        ? `${quantityFormatter.format(value / 1000)} kg`
+                        : `${quantityFormatter.format(value)} g`;
+                }
+
+                return `${value} ${value === 1 ? 'unidad' : 'unidades'}`;
+            };
+
+            let numericQuantity = Number.NaN;
+
+            if (!fractionable) {
+                numericQuantity = Number.parseInt(
+                    quantity?.value || '',
+                    10
+                );
+            } else if (movementType === 'entrada') {
+                numericQuantity = [
+                    ...form.querySelectorAll(
+                        '#lotes-container [data-presentation]'
+                    ),
+                ].reduce((total, input) => {
+                    const units = Number.parseInt(
+                        input.value || '0',
+                        10
+                    );
+
+                    const gramsPerUnit = Number(
+                        input.dataset.grams || '0'
+                    );
+
+                    if (
+                        !Number.isFinite(units)
+                        || !Number.isFinite(gramsPerUnit)
+                    ) {
+                        return total;
+                    }
+
+                    return total + (units * gramsPerUnit);
+                }, 0);
+            } else if (movementType === 'salida') {
+                const presentationSelect = form.querySelector(
+                    '[name="id_presentacion"]'
+                );
+
+                const unitsInput = form.querySelector(
+                    '[name="unidades_presentacion"]'
+                );
+
+                const selectedPresentation =
+                    presentationSelect?.selectedOptions?.[0];
+
+                const gramsPerUnit = Number(
+                    selectedPresentation?.dataset.grams || '0'
+                );
+
+                const units = Number.parseInt(
+                    unitsInput?.value || '',
+                    10
+                );
+
+                if (
+                    Number.isFinite(gramsPerUnit)
+                    && Number.isFinite(units)
+                ) {
+                    numericQuantity = gramsPerUnit * units;
+                }
+            }
+
+            const formattedQuantity = formatStockQuantity(
+                numericQuantity,
+                fractionable
+            );
             const settings = {
                 entrada: { title: 'Confirmar entrada de stock', message: 'Se sumará esta cantidad al stock actual del producto.', primary: 'Registrar entrada' },
                 salida: { title: 'Confirmar salida de stock', message: `Se descontará esta cantidad del stock actual del producto. Esta acción quedará registrada en el historial.${fractionable ? ' Recuerda que los alimentos descuentan stock en gramos.' : ''}`, primary: 'Registrar salida' },

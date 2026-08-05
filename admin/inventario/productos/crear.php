@@ -372,7 +372,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
         </section>
 
         <section id="lotes-section" class="admin-panel admin-lots-panel" hidden aria-labelledby="lotes-title">
-            <div class="admin-lots-panel__header"><span class="admin-lots-panel__icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span><div><span class="admin-lots-panel__badge">Solo alimento seco</span><h2 id="lotes-title">Lotes y presentaciones</h2><p>Registra la trazabilidad del stock inicial. Las presentaciones se configuran después de crear el producto.</p></div></div>
+            <div class="admin-lots-panel__header"><span class="admin-lots-panel__icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span><div><span class="admin-lots-panel__badge">Solo alimento seco</span><h2 id="lotes-title">Lotes de stock</h2><p>Registra el peso real y la trazabilidad del stock inicial.</p></div></div>
             <div class="admin-lots-toolbar">
                 <div class="admin-field admin-lots-provider<?= isset($errors['id_proveedor'])?' admin-field--invalid':'' ?>"><label for="id_proveedor"><i class="bi bi-truck" aria-hidden="true"></i> Proveedor</label><select id="id_proveedor" name="id_proveedor"><option value="">Asignar después</option><?php foreach($suppliers as $supplier):?><option value="<?= (int)$supplier['id_proveedor'] ?>" <?= (string)($values['id_proveedor']??'')===(string)$supplier['id_proveedor']?'selected':'' ?>><?= escape((string)$supplier['nombre'].($supplier['rut']?' · '.$supplier['rut']:'')) ?></option><?php endforeach;?></select><?php if(isset($errors['id_proveedor'])):?><span class="admin-field__error"><?= escape((string)$errors['id_proveedor']) ?></span><?php elseif($suppliers===[]):?><span class="admin-field__help"><i class="bi bi-info-circle" aria-hidden="true"></i> Aún no hay proveedores registrados.</span><?php else:?><span class="admin-field__help">Opcional. Puedes asignarlo ahora o dejarlo para después.</span><?php endif;?></div>
             <?php if (isset($errors['lotes'])): ?><p class="admin-field__error"><?= escape((string) $errors['lotes']) ?></p><?php endif; ?>
@@ -381,7 +381,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 <input id="cantidad_lotes" type="number" min="1" step="1" value="<?= max(1, count((array) ($values['lotes'] ?? []))) ?>">
             </div></div>
             <div id="lotes-container" class="admin-lots-list"></div>
-            <p class="admin-lots-note"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span><strong>Stock pendiente de distribución.</strong> Sin presentaciones asignadas, el lote se guarda como saldo no vendible.</span></p>
+            <p class="admin-lots-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>Todo el peso disponible del lote podrá venderse mediante cualquiera de las presentaciones compatibles.</span></p>
         </section>
 
         <template id="lote-template"><fieldset class="admin-lot-card" data-lote>

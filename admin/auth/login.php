@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/shared/seguridad.php';
 
 if (isAuthenticated()) {
-    header('Location: ' . appUrl('admin/dashboard/index.php'), true, 302);
+    header('Location: ' . appUrl(adminLandingPath()), true, 302);
     exit;
 }
 

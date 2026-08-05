@@ -38,7 +38,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php'; ?>
         <div><span>Relaciones comerciales</span>
             <h1 class="admin-page-title admin-page-title--paw">Clientes</h1>
             <p>Consulta clientes, datos de contacto e historial de compras.</p>
-        </div>
+        </div><a class="admin-button admin-button--primary" href="<?= escape(appUrl('admin/clientes/crear.php')) ?>">Añadir cliente</a>
     </header>
     <section class="admin-customer-summary" aria-label="Resumen de clientes">
         <?php foreach ([['registrados', 'Clientes registrados'], ['con_pedidos', 'Clientes con pedidos'], ['nuevos_mes', 'Nuevos este mes'], ['pedidos_asociados', 'Pedidos asociados']] as [$k, $l]): ?>
@@ -109,7 +109,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php'; ?>
             <div class="admin-customer-empty"><span>CP</span>
                 <h3><?= $databaseError ? 'No fue posible cargar los clientes' : ($hasFilters ? 'No encontramos clientes' : 'Aún no hay clientes registrados') ?>
                 </h3>
-                <p><?= $hasFilters ? 'Prueba con otros criterios o limpia los filtros.' : 'Los clientes aparecerán aquí cuando sean asociados a pedidos.' ?>
+                <p><?= $hasFilters ? 'Prueba con otros criterios o limpia los filtros.' : 'Los clientes aparecerán aquí cuando sean creados manualmente o asociados a pedidos.' ?>
                 </p>
             </div><?php endif; ?>
         <?php if ($pages > 1): ?>

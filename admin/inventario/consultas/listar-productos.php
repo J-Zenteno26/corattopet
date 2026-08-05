@@ -97,11 +97,22 @@ function construirFiltrosSqlInventario(array $filters): array
     }
 
     if ($filters['tipo_stock'] !== '') {
-        $fractionableFilter = "EXISTS (SELECT 1 FROM productos fp INNER JOIN categorias fc ON fc.id_categoria = fp.id_categoria WHERE fp.id_producto = vi.id_producto AND fc.slug = 'alimentos' AND LOWER(TRIM(COALESCE(NULLIF(fp.detalles_opcionales->>'subcategoria_codigo', ''), fp.detalles_opcionales->>'subcategoria', ''))) IN ('alimento-seco', 'alimento seco'))";
+        $fractionableFilter = "EXISTS (SELECT 1 FROM productos fp WHERE fp.id_producto = vi.id_producto AND UPPER(fp.detalles_opcionales->>'subcategoria') = 'ALIMENTO SECO')";
         $where[] = $filters['tipo_stock'] === 'fraccionable' ? $fractionableFilter : 'NOT ' . $fractionableFilter;
     }
 
-    $fractionableCondition = "EXISTS (SELECT 1 FROM productos sp INNER JOIN categorias sc ON sc.id_categoria = sp.id_categoria WHERE sp.id_producto = vi.id_producto AND sc.slug = 'alimentos' AND LOWER(TRIM(COALESCE(NULLIF(sp.detalles_opcionales->>'subcategoria_codigo', ''), sp.detalles_opcionales->>'subcategoria', ''))) IN ('alimento-seco', 'alimento seco'))";
+    $subcategoryNames = [
+        'alimento_seco' => 'ALIMENTO SECO',
+        'alimento_humedo' => 'ALIMENTO HÚMEDO',
+        'snacks' => 'SNACKS',
+        'higiene_bienestar' => 'HIGIENE / BIENESTAR',
+    ];
+    if (isset($subcategoryNames[$filters['subcategoria']])) {
+        $where[] = "EXISTS (SELECT 1 FROM productos sf WHERE sf.id_producto=vi.id_producto AND UPPER(sf.detalles_opcionales->>'subcategoria') = :subcategoria)";
+        $bindings['subcategoria'] = $subcategoryNames[$filters['subcategoria']];
+    }
+
+    $fractionableCondition = "EXISTS (SELECT 1 FROM productos sp WHERE sp.id_producto = vi.id_producto AND UPPER(sp.detalles_opcionales->>'subcategoria') = 'ALIMENTO SECO')";
     $stockConditions = [
         'en_stock' => 'cantidad_disponible > 0 AND (('
             . $fractionableCondition . ' AND cantidad_disponible >= stock_minimo) OR (NOT '

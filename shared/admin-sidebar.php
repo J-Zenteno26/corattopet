@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 $activeSection = isset($activeSection) ? (string) $activeSection : '';
 $adminLogoUrl = appUrl('public/img/logo-coratto-pet.png');
+$adminHomeUrl = appUrl(adminLandingPath());
+$currentAdminRole = (string) ($_SESSION['rol'] ?? '');
 
 $navigationItems = [
     'dashboard' => ['Dashboard', 'admin/dashboard/index.php', 'bi-speedometer2'],
@@ -15,17 +17,20 @@ $navigationItems = [
     'proveedores' => ['Proveedores', 'admin/proveedores/index.php', 'bi-truck'],
     'configuracion' => ['Configuración', 'admin/configuracion/index.php', 'bi-sliders'],
     'importaciones' => ['Importaciones', 'admin/importaciones/index.php', 'bi-file-earmark-spreadsheet'],
+    'blog' => ['Blog', 'admin/blog/index.php', 'bi-journal-richtext'],
     'usuarios' => ['Usuarios', 'admin/usuarios/index.php', 'bi-person-gear'],
 ];
 
-if (($_SESSION['rol'] ?? '') !== 'administrador') {
+if ($currentAdminRole === 'Blog') {
+    $navigationItems = ['blog' => $navigationItems['blog']];
+} elseif ($currentAdminRole !== 'administrador') {
     unset($navigationItems['usuarios']);
 }
 ?>
 <nav class="admin-sidebar" id="admin-sidebar" aria-label="Navegación administrativa">
     <button class="admin-sidebar__close" type="button" data-menu-close aria-label="Cerrar menú administrativo">×</button>
 
-    <a class="admin-sidebar__brand" href="<?= escape(appUrl('admin/dashboard/index.php')) ?>">
+    <a class="admin-sidebar__brand" href="<?= escape($adminHomeUrl) ?>">
         <img
             src="<?= escape($adminLogoUrl) ?>"
             alt="Coratto Pet"
