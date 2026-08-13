@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/config/database.php';
 require_once dirname(__DIR__) . '/shared/seguridad.php';
+require_once dirname(__DIR__) . '/shared/funciones-contenido-blog.php';
 require_once __DIR__ . '/includes/consultas-publicas.php';
 
 $config = [];
 $products = [];
+$featuredLearning = null;
+$recentLearning = [];
 
 try {
     $pdo = database();
@@ -36,6 +39,32 @@ try {
         (string) $exception->getCode()
     ));
     // La portada conserva su contenido editorial si la base no está disponible.
+}
+
+try {
+    $blogPdo = database();
+
+    $featuredLearning = obtenerArticuloDestacadoBlogPublico($blogPdo);
+
+    $recentLearning = obtenerArticulosBlogPublico(
+        $blogPdo,
+        null,
+        is_array($featuredLearning)
+            ? (int) $featuredLearning['id_articulo']
+            : null,
+        1,
+        is_array($featuredLearning) ? 2 : 3
+    );
+
+    if (!is_array($featuredLearning) && $recentLearning !== []) {
+        $featuredLearning = array_shift($recentLearning);
+    }
+} catch (Throwable $exception) {
+    error_log(sprintf(
+        '[home-blog] Article loading failed; type=%s; code=%s',
+        get_class($exception),
+        (string) $exception->getCode()
+    ));
 }
 
 $whatsappUrl = obtenerWhatsappPublico($config);
@@ -87,27 +116,27 @@ $productCategories = [
     [
         'title' => 'Alimentos',
         'image' => 'alimentos.png',
-        'href' => 'catalogo.php?categoria=alimentos',
+        'href' => 'catalogo.php?categoria=6',
     ],
     [
         'title' => 'Accesorios',
         'image' => 'accesorios.png',
-        'href' => 'catalogo.php?categoria=accesorios',
+        'href' => 'catalogo.php?categoria=4',
     ],
     [
         'title' => 'Higiene',
         'image' => 'higiene.png',
-        'href' => 'catalogo.php?categoria=higiene',
+        'href' => 'catalogo.php?categoria=1',
     ],
     [
         'title' => 'Juguetes',
         'image' => 'juguetes.png',
-        'href' => 'catalogo.php?categoria=juguetes',
+        'href' => 'catalogo.php?categoria=7',
     ],
     [
         'title' => 'Viaje y paseo',
         'image' => 'viaje_paseo.png',
-        'href' => 'catalogo.php?categoria=viaje-y-paseo',
+        'href' => 'catalogo.php?categoria=3',
     ],
 ];
 
@@ -131,30 +160,6 @@ $criteria = [
     ['Cuidado digestivo', 'care'],
     ['Condición corporal', 'balance'],
     ['Hidratación', 'drop'],
-];
-
-$learningCards = [
-    [
-        'level' => 'Lección 01',
-        'category' => 'Guía esencial',
-        'title' => 'Cómo leer una etiqueta de alimento',
-        'text' => 'Aprende a reconocer los datos que realmente importan.',
-        'icon' => 'label',
-    ],
-    [
-        'level' => 'Lección 02',
-        'category' => 'Bienestar digestivo',
-        'title' => 'Qué mirar ante una digestión sensible',
-        'text' => 'Ingredientes, transición y señales para observar.',
-        'icon' => 'digest',
-    ],
-    [
-        'level' => 'Lección 03',
-        'category' => 'Cambio responsable',
-        'title' => 'Cómo cambiar su alimento sin apuros',
-        'text' => 'Una pauta gradual para una adaptación más amable.',
-        'icon' => 'care',
-    ],
 ];
 
 $faqItems = [
@@ -256,7 +261,8 @@ $faqItems = [
     <link rel="stylesheet" href="assets/css/home-experience.css?v=2">
     <link rel="stylesheet" href="assets/css/home-learning.css?v=1">
     <link rel="stylesheet" href="assets/css/home-faq.css?v=1">
-    <link rel="stylesheet" href="assets/css/public-pages.css?v=<?= filemtime(__DIR__ . '/assets/css/public-pages.css') ?>">
+    <link rel="stylesheet"
+        href="assets/css/public-pages.css?v=<?= filemtime(__DIR__ . '/assets/css/public-pages.css') ?>">
 </head>
 
 <body class="home-page">
@@ -371,15 +377,45 @@ $faqItems = [
 
                     <div class="home-actions">
                         <a class="button" href="#guia-eleccion">Ayúdame a elegir</a>
-                        <a class="button button-outline" href="#seleccion">Explorar alimentos</a>
-                        <span class="button home-actions__calculator is-disabled" aria-disabled="true">Calculadora</span>
+                        <a class="button home-actions__calculator"
+                            href="<?= e(appUrl('public/calculadora.php')) ?>">Calculadora</a>
                     </div>
+                    <nav class="home-hero__brand-access" aria-label="Accesos rápidos Coratto">
+                        <a class="home-hero__brand-link" href="catalogo.php?buscar=Alimentos"
+                            aria-label="Alimentos Premium">
+                            <img src="assets/img/home/hero/rubros/rubro-alimentos-premium.png" alt="" aria-hidden="true"
+                                loading="eager" decoding="async">
+                                <span class="home-hero__brand-name">Alimentos</span>
+                                <span class="home-hero__brand-tooltip" aria-hidden="true">Alimentos Premium</span>
+                        </a>
 
-                    <ul class="home-hero__promises" aria-label="Beneficios principales">
-                        <li>Elegimos con intención</li>
-                        <li>Formatos para probar</li>
-                        <li>Orientación cercana</li>
-                    </ul>
+                        <a class="home-hero__brand-link" href="catalogo.php?buscar=Accesorios"
+                            aria-label="Accesorios Exclusivos" >
+                            <img src="assets/img/home/hero/rubros/rubro-accesorios-exclusivos.png" alt=""
+                                aria-hidden="true" loading="eager" decoding="async">
+                                <span class="home-hero__brand-name">Accesorios</span>
+                            <span class="home-hero__brand-tooltip" aria-hidden="true">Accesorios Exclusivos</span>
+                        </a>
+
+                        <a class="home-hero__brand-link" href="<?= e(appUrl('public/blog.php')) ?>"
+                            aria-label="Cuidado y Bienestar">
+                            <img src="assets/img/home/hero/rubros/rubro-cuidado-bienestar.png" alt="" aria-hidden="true"
+                                loading="eager" decoding="async">
+                                <span class="home-hero__brand-name">Bienestar</span>
+                                <span class="home-hero__brand-tooltip" aria-hidden="true">Cuidado y Bienestar</span>
+                        </a>
+
+                        <a class="home-hero__brand-link home-hero__brand-link--veterinary"
+                            href="<?= e(appUrl('public/blog.php?slug=veterinarias-chillan')) ?>"
+                            aria-label="Servicios Veterinarios: veterinarias cercanas en Chillán">
+                            <img src="assets/img/home/hero/rubros/rubro-servicios-veterinarios.png" alt=""
+                                aria-hidden="true" loading="eager" decoding="async">
+                                <span class="home-hero__brand-name">Veterinarias</span>
+                            <span class="home-hero__brand-tooltip" aria-hidden="true">Veterinarias cercanas en
+                                Chillán</span>
+                        </a>
+                    </nav>
+
                 </div>
 
                 <div class="home-hero__stage" data-animate="hero-stage">
@@ -405,6 +441,8 @@ $faqItems = [
                     </span>
                 </div>
             </div>
+
+
             <a class="home-hero__origin" href="#historia-coratto" aria-label="Conoce la historia de María y Simón">
 
                 <figure class="home-hero__origin-photo">
@@ -420,10 +458,6 @@ $faqItems = [
                     <strong>Conoce el corazón de Coratto</strong>
                     <span class="home-hero__origin-microcopy">La historia que dio vida a esta tienda.</span>
                 </span>
-
-                <svg class="home-hero__origin-arrow" aria-hidden="true">
-                    <use href="#i-arrow"></use>
-                </svg>
             </a>
 
             <div class="home-hero__wave" aria-hidden="true">
@@ -684,21 +718,29 @@ $faqItems = [
                                 $productHref = !empty($product['sku'])
                                     ? 'catalogo.php?sku=' . rawurlencode((string) $product['sku'])
                                     : 'catalogo.php';
-                                    $productImageUrl = ltrim(
-                                            str_replace('\\', '/', trim((string) ($product['imagen'] ?? ''))),
-                                            '/'
-                                        );
+                                $productImageUrl = ltrim(
+                                    str_replace('\\', '/', trim((string) ($product['imagen'] ?? ''))),
+                                    '/'
+                                );
 
-                                        if ($productImageUrl !== '' && str_contains($productImageUrl, '..')) {
-                                            $productImageUrl = '';
-                                        }
+                                if ($productImageUrl !== '' && str_contains($productImageUrl, '..')) {
+                                    $productImageUrl = '';
+                                }
 
-                                        if (
-                                            $productImageUrl !== ''
-                                            && !str_starts_with($productImageUrl, 'uploads/productos/')
-                                        ) {
-                                            $productImageUrl = 'uploads/productos/' . $productImageUrl;
-                                        }
+                                if (str_starts_with($productImageUrl, 'public/')) {
+                                    $productImageUrl = substr($productImageUrl, 7);
+                                }
+
+                                if (
+                                    $productImageUrl !== ''
+                                    && !str_starts_with($productImageUrl, 'uploads/productos/')
+                                ) {
+                                    $productImageUrl = 'uploads/productos/' . $productImageUrl;
+                                }
+
+                                if ($productImageUrl !== '') {
+                                    $productImageUrl = 'https://corattopet.cl/public/' . $productImageUrl;
+                                }
                                 $isFractioned = !empty($product['fraccionable']);
                                 $presentationPrices = [];
                                 foreach (($product['presentaciones'] ?? []) as $presentation) {
@@ -719,19 +761,17 @@ $faqItems = [
                                     ? (int) round((1 - ($futureSalePrice / $futureOriginalPrice)) * 100)
                                     : 0;
                                 $productClasses = ['selection-product', 'selection-product--featured'];
-                                if ($isFractioned) $productClasses[] = 'selection-product--fractioned';
-                                if ($hasSale) $productClasses[] = 'selection-product--sale';
+                                if ($isFractioned)
+                                    $productClasses[] = 'selection-product--fractioned';
+                                if ($hasSale)
+                                    $productClasses[] = 'selection-product--sale';
                                 ?>
                                 <article class="<?= e(implode(' ', $productClasses)) ?>">
                                     <a href="<?= e($productHref) ?>">
                                         <figure class="selection-product__visual">
                                             <?php if ($productImageUrl !== ''): ?>
-                                                <img
-                                                    src="<?= e($productImageUrl) ?>"
-                                                    alt="<?= e((string) $product['nombre']) ?>"
-                                                    loading="lazy"
-                                                    decoding="async"
-                                                >
+                                                <img src="<?= e($productImageUrl) ?>" alt="<?= e((string) $product['nombre']) ?>"
+                                                    loading="lazy" decoding="async">
                                             <?php else: ?>
                                                 <span class="home-media-placeholder selection-product__placeholder" role="img"
                                                     aria-label="<?= e((string) $product['nombre']) ?>">
@@ -740,9 +780,11 @@ $faqItems = [
                                                 </span>
                                             <?php endif; ?>
 
-                                            <span class="selection-product__badge"><?= $isFractioned ? 'Disponible fraccionado' : 'Selección Coratto' ?></span>
+                                            <span
+                                                class="selection-product__badge"><?= $isFractioned ? 'Disponible fraccionado' : 'Selección Coratto' ?></span>
                                             <?php if ($hasSale && $discountPercentage > 0): ?>
-                                                <span class="selection-product__discount">-<?= e((string) $discountPercentage) ?>%</span>
+                                                <span
+                                                    class="selection-product__discount">-<?= e((string) $discountPercentage) ?>%</span>
                                             <?php endif; ?>
                                         </figure>
 
@@ -763,9 +805,12 @@ $faqItems = [
 
                                             <div class="selection-product__price">
                                                 <?php if ($currentPrice > 0): ?>
-                                                    <?php if ($isFractioned): ?><span class="selection-product__price-label">Desde</span><?php endif; ?>
-                                                    <?php if ($hasSale): ?><span class="selection-product__price-original">$<?= e(number_format($futureOriginalPrice, 0, ',', '.')) ?></span><?php endif; ?>
-                                                    <strong class="selection-product__price-current">$<?= e(number_format($currentPrice, 0, ',', '.')) ?></strong>
+                                                    <?php if ($isFractioned): ?><span
+                                                            class="selection-product__price-label">Desde</span><?php endif; ?>
+                                                    <?php if ($hasSale): ?><span
+                                                            class="selection-product__price-original">$<?= e(number_format($futureOriginalPrice, 0, ',', '.')) ?></span><?php endif; ?>
+                                                    <strong
+                                                        class="selection-product__price-current">$<?= e(number_format($currentPrice, 0, ',', '.')) ?></strong>
                                                 <?php endif; ?>
                                             </div>
 
@@ -803,6 +848,18 @@ $faqItems = [
                     <span data-slider-progress="selection"></span>
                     <button type="button" data-slider-next="selection" aria-label="Producto siguiente">→</button>
                 </div>
+
+                <aside class="home-selection__calculator" aria-label="Calculadora nutricional Coratto">
+                    <div>
+                        <span>Orientación nutricional</span>
+                        <h3>Una porción pensada para su bienestar</h3>
+                        <p>Ocupa la calculadora dosificadora para encontrar el alimento ideal para tu mascota.</p>
+                    </div>
+                    <a href="calculadora.php">
+                        Ir a la calculadora
+                        <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+                    </a>
+                </aside>
             </div>
         </section>
 
@@ -851,46 +908,40 @@ $faqItems = [
                         <div class="home-trial__pet-stage">
                             <div class="home-trial__pet-oval" aria-hidden="true"></div>
 
-                            <img
-                                class="home-trial__pet-image"
-                                src="assets/img/home/fraccionados/simon.png"
-                                alt="Simón, el corazón de Coratto"
-                                loading="lazy"
-                                decoding="async"
-                            >
-                        <div class="home-trial__pet-message">
-                            <strong>¡Guau!</strong>
-                            <p>Partamos de a poco y veamos cómo me adapto</p>
-                        </div>
+                            <img class="home-trial__pet-image" src="assets/img/home/fraccionados/simon.png"
+                                alt="Simón, el corazón de Coratto" loading="lazy" decoding="async">
+                            <div class="home-trial__pet-message">
+                                <strong>¡Guau!</strong>
+                                <p>Partamos de a poco y veamos cómo me adapto</p>
+                            </div>
                         </div>
                     </div>
 
                     <div class="home-trial__copy">
                         <span>El consejo de Simón</span>
                         <h2 class="home-section-title" id="trial-title">Prueba primero, decide con calma</h2>
-                        <p>Puedes probar 250 g o 1 kg antes de llevar el saco completo. Así ves cómo responde tu mascota y compras con más confianza.</p>
+                        <p>Puedes probar 250 g o 1 kg antes de llevar el saco completo. Así ves cómo responde tu mascota
+                            y compras con más confianza.</p>
                         <a class="button" href="<?= e($whatsappUrl) ?>">Explorar fraccionados</a>
                     </div>
                 </div>
 
-                <div class="home-trial__stage" data-trial-showcase tabindex="0" aria-label="Selector de formatos fraccionados">
+                <div class="home-trial__stage" data-trial-showcase tabindex="0"
+                    aria-label="Selector de formatos fraccionados">
                     <svg class="home-trial__spiral" viewBox="0 0 700 520" aria-hidden="true">
-                        <path d="M112 335C148 160 493 112 591 254C674 374 506 457 332 416C194 383 205 260 329 222C422 194 500 248 470 317C446 372 358 370 326 329" />
+                        <path
+                            d="M112 335C148 160 493 112 591 254C674 374 506 457 332 416C194 383 205 260 329 222C422 194 500 248 470 317C446 372 358 370 326 329" />
                     </svg>
 
                     <div class="home-trial__items">
                         <?php foreach ($trialPresentations as $index => $presentation): ?>
-                            <button
-                                class="home-trial__item"
-                                type="button"
-                                data-trial-item="<?= $index ?>"
+                            <button class="home-trial__item" type="button" data-trial-item="<?= $index ?>"
                                 data-trial-id="<?= e($presentation['id']) ?>"
                                 data-animal="<?= e($presentation['animal']) ?>"
                                 data-format="<?= e($presentation['format']) ?>"
                                 data-description="<?= e($presentation['description']) ?>"
                                 aria-label="Seleccionar <?= e($presentation['animal'] . ' ' . $presentation['format']) ?>"
-                                aria-pressed="<?= $index === 0 ? 'true' : 'false' ?>"
-                            >
+                                aria-pressed="<?= $index === 0 ? 'true' : 'false' ?>">
                                 <?php renderHomeAsset(
                                     $presentation['image'],
                                     $presentation['alt'],
@@ -910,12 +961,9 @@ $faqItems = [
                         <button type="button" data-trial-previous aria-label="Presentación anterior">←</button>
                         <div class="home-trial__indicators" role="group" aria-label="Presentaciones disponibles">
                             <?php foreach ($trialPresentations as $index => $presentation): ?>
-                                <button
-                                    type="button"
-                                    data-trial-indicator="<?= $index ?>"
+                                <button type="button" data-trial-indicator="<?= $index ?>"
                                     aria-label="<?= e($presentation['animal'] . ' ' . $presentation['format']) ?>"
-                                    aria-current="<?= $index === 0 ? 'true' : 'false' ?>"
-                                ></button>
+                                    aria-current="<?= $index === 0 ? 'true' : 'false' ?>"></button>
                             <?php endforeach; ?>
                         </div>
                         <button type="button" data-trial-next aria-label="Presentación siguiente">→</button>
@@ -931,18 +979,21 @@ $faqItems = [
                     <div class="home-learning__topline">
                         <span>Aprende con Coratto</span>
                         <a class="home-learning__cta" href="blog.php">
-                            Visitar el blog
-                            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+                            Ir al blog
+                            <svg aria-hidden="true">
+                                <use href="#i-arrow"></use>
+                            </svg>
                         </a>
                     </div>
                     <h2 id="learning-title">Consejos claros para cuidar mejor</h2>
-                    <p>Guías, folletos y recomendaciones creadas por nuestro equipo para acompañarte en las decisiones de cada día.</p>
+                    <p>Guías, folletos y recomendaciones creadas por nuestro equipo para acompañarte en las decisiones
+                        de cada día.</p>
                 </header>
 
                 <div class="home-learning__ticker" aria-label="Temas del boletín Coratto">
                     <div class="home-learning__ticker-track">
                         <?php for ($tickerCopy = 0; $tickerCopy < 2; $tickerCopy++): ?>
-                            <div class="home-learning__ticker-group"<?= $tickerCopy ? ' aria-hidden="true"' : '' ?>>
+                            <div class="home-learning__ticker-group" <?= $tickerCopy ? ' aria-hidden="true"' : '' ?>>
                                 <span>Nutrición</span><i>·</i>
                                 <span>Adaptación</span><i>·</i>
                                 <span>Bienestar</span><i>·</i>
@@ -952,52 +1003,68 @@ $faqItems = [
                     </div>
                 </div>
 
+                <?php if (is_array($featuredLearning)): ?>
                 <div class="home-learning__publications">
-                    <?php $featuredLearning = $learningCards[0]; ?>
-                    <a class="home-learning__featured" href="blog.php">
+                    <?php $featuredCover = urlPortadaBlog($featuredLearning['imagen_portada'] ?? null); ?>
+                    <a class="home-learning__featured" href="blog.php?slug=<?= e(rawurlencode((string) $featuredLearning['slug'])) ?>">
                         <div class="home-learning__featured-visual">
                             <span class="home-learning__fold" aria-hidden="true"></span>
+                            <?php if ($featuredCover !== null): ?>
+                                <img src="<?= e($featuredCover) ?>" alt="Portada de <?= e($featuredLearning['titulo']) ?>" loading="lazy" decoding="async">
+                            <?php else: ?>
                             <svg aria-hidden="true">
-                                <use href="#i-<?= e($featuredLearning['icon']) ?>"></use>
+                                <use href="#i-label"></use>
                             </svg>
-                            <small>Folleto en preparación</small>
+                            <?php endif; ?>
                         </div>
 
                         <div class="home-learning__featured-copy">
                             <span class="home-learning__badge">Guía destacada</span>
-                            <small><?= e($featuredLearning['category']) ?></small>
-                            <h3><?= e($featuredLearning['title']) ?></h3>
-                            <p><?= e($featuredLearning['text']) ?></p>
+                            <small><?= e($featuredLearning['categoria']) ?></small>
+                            <h3><?= e($featuredLearning['titulo']) ?></h3>
+                            <p><?= e($featuredLearning['extracto']) ?></p>
                             <span class="home-learning__read-more">
                                 Leer artículo
-                                <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+                                <svg aria-hidden="true">
+                                    <use href="#i-arrow"></use>
+                                </svg>
                             </span>
                         </div>
                     </a>
 
                     <div class="home-learning__secondary-list">
-                        <?php foreach (array_slice($learningCards, 1) as $card): ?>
-                            <a class="home-learning__note" href="blog.php">
+                        <?php foreach ($recentLearning as $index => $card): ?>
+                            <?php $cardCover = urlPortadaBlog($card['imagen_portada'] ?? null); ?>
+                            <a class="home-learning__note" href="blog.php?slug=<?= e(rawurlencode((string) $card['slug'])) ?>">
                                 <div class="home-learning__note-visual">
-                                    <svg aria-hidden="true"><use href="#i-<?= e($card['icon']) ?>"></use></svg>
-                                    <small>Folleto en preparación</small>
+                                    <?php if ($cardCover !== null): ?>
+                                        <img src="<?= e($cardCover) ?>" alt="Portada de <?= e($card['titulo']) ?>" loading="lazy" decoding="async">
+                                    <?php else: ?>
+                                    <svg aria-hidden="true">
+                                        <use href="#i-label"></use>
+                                    </svg>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="home-learning__note-copy">
-                                    <span><?= e($card['level']) ?></span>
-                                    <small><?= e($card['category']) ?></small>
-                                    <h3><?= e($card['title']) ?></h3>
-                                    <p><?= e($card['text']) ?></p>
+                                    <span>Artículo <?= e((string) ($index + 1)) ?></span>
+                                    <small><?= e($card['categoria']) ?></small>
+                                    <h3><?= e($card['titulo']) ?></h3>
+                                    <p><?= e($card['extracto']) ?></p>
                                     <span class="home-learning__read-more">
-                                        Ver adelanto
-                                        <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+                                        Leer artículo
+                                        <svg aria-hidden="true">
+                                            <use href="#i-arrow"></use>
+                                        </svg>
                                     </span>
                                 </div>
                             </a>
                         <?php endforeach; ?>
                     </div>
                 </div>
+                <?php endif; ?>
 
-                <p class="home-learning__signature">Preparado por el equipo Coratto · Información cercana y fácil de aplicar</p>
+                <p class="home-learning__signature">Preparado por el equipo Coratto · Información cercana y fácil de
+                    aplicar</p>
             </div>
         </section>
 
@@ -1007,7 +1074,8 @@ $faqItems = [
                 <header class="home-faq__intro">
                     <span class="home-faq__eyebrow">Estamos para ayudarte</span>
                     <h2 id="faq-title">Todo lo que necesitas saber</h2>
-                    <p>Queremos que comprar en Coratto sea simple, seguro y cercano. Reunimos aquí las dudas más habituales de nuestra comunidad.</p>
+                    <p>Queremos que comprar en Coratto sea simple, seguro y cercano. Reunimos aquí las dudas más
+                        habituales de nuestra comunidad.</p>
                 </header>
 
                 <div class="home-faq__list" data-faq>
@@ -1019,26 +1087,17 @@ $faqItems = [
                         ?>
                         <article class="home-faq__item">
                             <h3>
-                                <button
-                                    class="home-faq__question"
-                                    id="<?= e($faqQuestionId) ?>"
-                                    type="button"
-                                    aria-expanded="false"
-                                    aria-controls="<?= e($faqAnswerId) ?>"
-                                >
-                                    <span class="home-faq__number"><?= str_pad((string) $faqNumber, 2, '0', STR_PAD_LEFT) ?></span>
+                                <button class="home-faq__question" id="<?= e($faqQuestionId) ?>" type="button"
+                                    aria-expanded="false" aria-controls="<?= e($faqAnswerId) ?>">
+                                    <span
+                                        class="home-faq__number"><?= str_pad((string) $faqNumber, 2, '0', STR_PAD_LEFT) ?></span>
                                     <span class="home-faq__question-text"><?= e($item['question']) ?></span>
                                     <span class="home-faq__toggle" aria-hidden="true"></span>
                                 </button>
                             </h3>
 
-                            <div
-                                class="home-faq__answer"
-                                id="<?= e($faqAnswerId) ?>"
-                                role="region"
-                                aria-labelledby="<?= e($faqQuestionId) ?>"
-                                aria-hidden="true"
-                            >
+                            <div class="home-faq__answer" id="<?= e($faqAnswerId) ?>" role="region"
+                                aria-labelledby="<?= e($faqQuestionId) ?>" aria-hidden="true">
                                 <div class="home-faq__answer-inner">
                                     <small><?= e($item['category']) ?></small>
                                     <p><?= nl2br(e($item['answer'])) ?></p>
@@ -1063,7 +1122,8 @@ $faqItems = [
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
-    <script src="assets/js/public-navigation.js?v=<?= filemtime(__DIR__ . '/assets/js/public-navigation.js') ?>" defer></script>
+    <script src="assets/js/public-navigation.js?v=<?= filemtime(__DIR__ . '/assets/js/public-navigation.js') ?>"
+        defer></script>
     <script src="assets/js/home.js?v=<?= filemtime(__DIR__ . '/assets/js/home.js') ?>" defer></script>
 </body>
 

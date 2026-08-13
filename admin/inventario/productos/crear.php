@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-fraccionado.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-stock-lotes.php';
 require_once dirname(__DIR__, 3) . '/shared/funciones-mantenedores.php';
+require_once __DIR__ . '/imagenes/includes/funciones-imagenes-producto.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 require_once dirname(__DIR__, 2) . '/proveedores/includes/consultas-proveedores.php';
 
@@ -18,7 +19,10 @@ $errors = is_array($state['errores'] ?? null) ? $state['errores'] : [];
 $generalError = is_string($state['error_general'] ?? null) ? $state['error_general'] : null;
 $errorReference = is_string($state['referencia'] ?? null) ? $state['referencia'] : '';
 if ($errors !== [] || $generalError !== null) {
-    $imageError = isset($errors['imagen_principal']) && count($errors) === 1;
+    $imageError = (
+        isset($errors['imagenes_producto'])
+        || isset($errors['imagen_principal'])
+    ) && count($errors) === 1;
     $adminModal = [
         'type' => 'error',
         'title' => $imageError ? 'No fue posible subir la imagen' : 'No fue posible guardar el producto',
@@ -50,6 +54,19 @@ try {
 }
 
 $canSubmit = !$optionsError && $options['categorias'] !== [] && $options['marcas'] !== [];
+
+$selectedCategoryHasSubcategories = array_filter(
+    $options['subcategorias'],
+    static fn (array $subcategory): bool =>
+        (string) ($subcategory['id_categoria'] ?? '') === (string) ($values['id_categoria'] ?? '')
+) !== [];
+$selectedCategoryIsFoods = array_filter(
+    $options['categorias'],
+    static fn (array $category): bool =>
+        (string) ($category['id_categoria'] ?? '') === (string) ($values['id_categoria'] ?? '')
+        && (string) ($category['slug'] ?? '') === CATEGORIA_ALIMENTOS_SLUG
+) !== [];
+
 $csrfToken = csrfToken();
 $pageTitle = 'Agregar producto';
 $activeSection = 'inventario';
@@ -110,19 +127,39 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     </div>
                 </div>
                 <div class="admin-product-create-upload">
-                    <h3>Cargar imagen principal</h3>
-                    <div class="admin-field<?= isset($errors['imagen_principal']) ? ' admin-field--invalid' : '' ?>">
-                        <label for="imagen_principal">Archivo de imagen</label>
-                        <input id="imagen_principal" name="imagen_principal" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-image-preview-input data-preview-target="create-product-image-preview" <?= isset($errors['imagen_principal']) ? 'aria-invalid="true" aria-describedby="imagen-principal-error imagen-principal-help"' : 'aria-describedby="imagen-principal-help"' ?>>
-                        <span class="admin-field__help" id="imagen-principal-help">JPG, PNG o WEBP. Máximo 2 MB. La imagen es opcional.</span>
-                        <?php if (isset($errors['imagen_principal'])): ?><span class="admin-field__error" id="imagen-principal-error"><?= escape((string) $errors['imagen_principal']) ?></span><?php endif; ?>
+                    <h3>Cargar imágenes del producto</h3>
+                    <div class="admin-field<?= isset($errors['imagenes_producto']) || isset($errors['imagen_principal']) ? ' admin-field--invalid' : '' ?>">
+                        <label for="imagenes_producto">Archivos de imagen</label>
+                        <input
+                            id="imagenes_producto"
+                            name="imagenes_producto[]"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                            multiple
+                            data-image-preview-input
+                            data-preview-target="create-product-image-preview"
+                            data-max-files="<?= IMAGEN_PRODUCTO_MAX_CANTIDAD ?>"
+                            <?= isset($errors['imagenes_producto']) || isset($errors['imagen_principal'])
+                                ? 'aria-invalid="true" aria-describedby="imagenes-producto-error imagenes-producto-help"'
+                                : 'aria-describedby="imagenes-producto-help"' ?>
+                        >
+                        <span class="admin-field__help" id="imagenes-producto-help">
+                            Puedes seleccionar hasta 10 imágenes. JPG, PNG o WEBP (máximo 2 MB), o HEIC/HEIF (máximo 20 MB; se convertirá a WEBP al guardar). La primera quedará como principal.
+                        </span>
+                        <?php if (isset($errors['imagenes_producto']) || isset($errors['imagen_principal'])): ?>
+                            <span class="admin-field__error" id="imagenes-producto-error">
+                                <?= escape((string) ($errors['imagenes_producto'] ?? $errors['imagen_principal'])) ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
                     <div class="admin-field">
                         <label for="imagen_alt_text">Texto alternativo</label>
-                        <input id="imagen_alt_text" name="imagen_alt_text" type="text" maxlength="180" value="<?= escape((string) ($values['imagen_alt_text'] ?? '')) ?>" placeholder="Describe brevemente la imagen">
-                        <span class="admin-field__help">Opcional. Describe la imagen para mejorar su accesibilidad.</span>
+                        <input id="imagen_alt_text" name="imagen_alt_text" type="text" maxlength="180"
+                            value="<?= escape((string) ($values['imagen_alt_text'] ?? '')) ?>"
+                            placeholder="Describe brevemente las imágenes">
+                        <span class="admin-field__help">Opcional. Se aplicará a las imágenes seleccionadas.</span>
                     </div>
-                    <p>La imagen se subirá junto con el producto y quedará marcada como principal.</p>
+                    <p>Las imágenes se subirán junto con el producto. La primera se marcará como principal.</p>
                 </div>
             </section>
         </aside>
@@ -179,14 +216,20 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 </div>
 
                 <div id="subcategoria-field"
-                    class="admin-field admin-field--select-compact<?= isset($errors['subcategoria']) ? ' admin-field--invalid' : '' ?>">
+                    class="admin-field admin-field--select-compact<?= isset($errors['subcategoria']) ? ' admin-field--invalid' : '' ?>"
+                    <?= $selectedCategoryHasSubcategories ? '' : 'hidden style="display:none"' ?>>
                     <label for="subcategoria">Subcategoría <span class="admin-required">*</span></label>
                     <select id="subcategoria" name="subcategoria"
+                        <?= $selectedCategoryHasSubcategories ? 'required' : 'disabled' ?>
                         <?= isset($errors['subcategoria']) ? 'aria-invalid="true" aria-describedby="subcategoria-error"' : '' ?>>
                         <option value="">Selecciona una subcategoría</option>
                         <?php foreach ($options['subcategorias'] as $subcategory): ?>
                             <option value="<?= escape((string) $subcategory['slug']) ?>"
-                                <?= codigoSubcategoriaProducto($values['subcategoria']) === (string) $subcategory['slug'] ? 'selected' : '' ?>>
+                                data-category-id="<?= (int) $subcategory['id_categoria'] ?>"
+                                <?= (string) $values['id_categoria'] === (string) $subcategory['id_categoria']
+                                    && codigoSubcategoriaProducto($values['subcategoria']) === codigoSubcategoriaProducto((string) $subcategory['slug'])
+                                        ? 'selected'
+                                        : '' ?>>
                                 <?= escape((string) $subcategory['nombre']) ?>
                             </option>
                         <?php endforeach; ?>
@@ -333,6 +376,30 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             id="unidad-error"><?= escape($errors['unidad']) ?></span><?php endif; ?>
                 </div>
 
+                <div id="energia-metabolizable-field"
+                    class="admin-field<?= isset($errors['energia_metabolizable_kcal_kg']) ? ' admin-field--invalid' : '' ?>"
+                    <?= $selectedCategoryIsFoods ? '' : 'hidden style="display:none"' ?>>
+                    <label for="energia_metabolizable_kcal_kg">Energía metabolizable<span class="admin-required">*</label>
+                    <div class="admin-input-with-unit">
+                        <input
+                            id="energia_metabolizable_kcal_kg"
+                            name="energia_metabolizable_kcal_kg"
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            inputmode="decimal"
+                            placeholder="Ej.: 3800"
+                            value="<?= escape((string) $values['energia_metabolizable_kcal_kg']) ?>"
+                        >
+                        <span class="admin-field__help">
+                            Ingresa las kcal por kilogramo indicadas por el fabricante. Este dato se utiliza en la calculadora de alimentación.
+                        </span>
+                    </div>
+                    <?php if (isset($errors['energia_metabolizable_kcal_kg'])): ?>
+                        <span class="admin-field__error" id="energia-metabolizable-error"><?= escape($errors['energia_metabolizable_kcal_kg']) ?></span>
+                    <?php endif; ?>
+                </div>
+
                 <?php
                 $shortOptionalFields = [
                     'etapa_vida_tamano' => ['label' => 'Etapa de vida o tamaño', 'placeholder' => 'Ej.: Adulto, razas medianas y grandes'],
@@ -404,6 +471,13 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
     </div>
     <script>
         (() => {
+            const productForm = document.querySelector('.admin-product-create-layout');
+            const imageInput = document.getElementById('imagenes_producto');
+            const imageHelp = document.getElementById('imagenes-producto-help');
+            const imagePreview = document.getElementById('create-product-image-preview');
+            const imagePlaceholder = document.querySelector('[data-image-preview-placeholder]');
+            const submitButton = productForm?.querySelector('button[type="submit"]');
+
             const category = document.getElementById('id_categoria');
             const priceField = document.getElementById('precio-venta-field');
             const price = document.getElementById('precio_venta');
@@ -418,6 +492,8 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
             const fractionableInfo = document.getElementById('fractionable-info');
             const subcategory = document.getElementById('subcategoria');
             const subcategoryField = document.getElementById('subcategoria-field');
+            const energyField = document.getElementById('energia-metabolizable-field');
+            const energy = document.getElementById('energia_metabolizable_kcal_kg');
             const lotesSection = document.getElementById('lotes-section');
             const lotesContainer = document.getElementById('lotes-container');
             const cantidadLotes = document.getElementById('cantidad_lotes');
@@ -439,18 +515,52 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 !panelTitle ||
                 !panelHelp ||
                 !optionalTitle ||
-                !fractionableInfo || !subcategory || !subcategoryField
+                !fractionableInfo || !subcategory || !subcategoryField || !energyField || !energy
             ) {
                 return;
             }
 
             const updateFields = () => {
+                const categoryId = category.value;
                 const foods = category.selectedOptions[0]?.dataset.categoriaSlug === 'alimentos';
-                subcategoryField.hidden = !foods;
-                subcategory.disabled = !foods;
-                subcategory.required = foods;
-                if (!foods) {
+                const hasSubcategories = [...subcategory.options].some(
+                    (option) => option.value !== '' && option.dataset.categoryId === categoryId
+                );
+
+                energyField.hidden = !foods;
+                energyField.style.display = foods ? '' : 'none';
+                energy.disabled = !foods;
+                energy.required = foods;
+                if (!foods) energy.value = '';
+
+                subcategoryField.hidden = !hasSubcategories;
+                subcategoryField.style.display = hasSubcategories ? '' : 'none';
+                subcategory.disabled = !hasSubcategories;
+                subcategory.required = hasSubcategories;
+
+                for (const option of subcategory.options) {
+                    if (option.value === '') {
+                        option.hidden = false;
+                        option.disabled = false;
+                        continue;
+                    }
+
+                    const belongsToCategory = option.dataset.categoryId === categoryId;
+                    option.hidden = hasSubcategories ? !belongsToCategory : true;
+                    option.disabled = hasSubcategories ? !belongsToCategory : true;
+                }
+
+                if (!hasSubcategories) {
                     subcategory.value = '';
+                } else {
+                    const selectedOption = subcategory.selectedOptions[0];
+                    if (
+                        selectedOption
+                        && selectedOption.value !== ''
+                        && selectedOption.dataset.categoryId !== categoryId
+                    ) {
+                        subcategory.value = '';
+                    }
                 }
                 const subcategoryCode = subcategory.value.trim().toLocaleLowerCase('es')
                     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -501,6 +611,79 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                 initialStock.inputMode = 'numeric';
                 initialStock.step = '1';
             };
+
+            if (
+                productForm instanceof HTMLFormElement
+                && imageInput instanceof HTMLInputElement
+                && imageHelp instanceof HTMLElement
+            ) {
+                imageInput.addEventListener('change', () => {
+                    const files = Array.from(imageInput.files ?? []);
+                    const maxFiles = Number.parseInt(imageInput.dataset.maxFiles ?? '5', 10);
+
+                    if (files.length > maxFiles) {
+                        imageInput.value = '';
+                        imageInput.setCustomValidity(`Selecciona como máximo ${maxFiles} imágenes.`);
+                        imageInput.reportValidity();
+                        imageHelp.textContent = `Puedes seleccionar hasta ${maxFiles} imágenes.`;
+                        if (imagePreview instanceof HTMLImageElement) {
+                            imagePreview.hidden = true;
+                            imagePreview.removeAttribute('src');
+                        }
+                        if (imagePlaceholder instanceof HTMLElement) {
+                            imagePlaceholder.hidden = false;
+                        }
+                        return;
+                    }
+
+                    imageInput.setCustomValidity('');
+                    const firstExtension = files[0]?.name.split('.').pop()?.toLowerCase() ?? '';
+                    const firstIsHeic = firstExtension === 'heic' || firstExtension === 'heif';
+                    const hasHeic = files.some((file) => ['heic', 'heif'].includes(file.name.split('.').pop()?.toLowerCase() ?? ''));
+                    imageHelp.textContent = files.length > 0
+                        ? (hasHeic
+                            ? `${files.length} imagen(es) seleccionada(s). Las HEIC/HEIF se convertirán a WEBP al guardar; es posible que el navegador no pueda previsualizarlas.`
+                            : `${files.length} imagen(es) seleccionada(s). La primera quedará como principal.`)
+                        : 'Puedes seleccionar hasta 10 imágenes. JPG, PNG o WEBP (máximo 2 MB), o HEIC/HEIF (máximo 20 MB; se convertirá a WEBP al guardar). La primera quedará como principal.';
+
+                    if (
+                        files[0]
+                        && imagePreview instanceof HTMLImageElement
+                        && imagePlaceholder instanceof HTMLElement
+                    ) {
+                        if (firstIsHeic) {
+                            imagePreview.hidden = true;
+                            imagePreview.removeAttribute('src');
+                            imagePlaceholder.hidden = false;
+                            const placeholderMessage = imagePlaceholder.querySelector('strong');
+                            if (placeholderMessage instanceof HTMLElement) {
+                                placeholderMessage.textContent = 'La imagen HEIC/HEIF se convertirá a WEBP al guardar';
+                            }
+                        } else {
+                            const objectUrl = URL.createObjectURL(files[0]);
+                            imagePreview.src = objectUrl;
+                            imagePreview.hidden = false;
+                            imagePlaceholder.hidden = true;
+                            imagePreview.addEventListener('load', () => URL.revokeObjectURL(objectUrl), { once: true });
+                        }
+                    } else {
+                        if (imagePreview instanceof HTMLImageElement) {
+                            imagePreview.hidden = true;
+                            imagePreview.removeAttribute('src');
+                        }
+                        if (imagePlaceholder instanceof HTMLElement) {
+                            imagePlaceholder.hidden = false;
+                        }
+                    }
+                });
+
+                productForm.addEventListener('submit', () => {
+                    if (submitButton instanceof HTMLButtonElement) {
+                        submitButton.disabled = true;
+                        submitButton.textContent = 'Guardando producto…';
+                    }
+                });
+            }
 
             category.addEventListener('change', updateFields);
             subcategory.addEventListener('change', updateFields);

@@ -102,9 +102,6 @@ function initHomeGeneral() {
         });
     }
 
-    const newsletter = document.querySelector('.newsletter form');
-    newsletter?.addEventListener('submit', (event) => event.preventDefault());
-
     document.querySelectorAll('[data-slider="selection"]').forEach((viewport) => {
         const section = viewport.closest('.home-selection');
         const rail = viewport.querySelector('.home-selection__rail');
@@ -729,24 +726,24 @@ function initHomeGuide() {
             stagger: .065,
             onComplete: () => gsap.set(cards, { clearProps: 'transform' })
         }, .18)
-        .fromTo(
-            scoop,
-            {
-                autoAlpha: 0,
-                x: -125,
-                y: -80,
-                rotation: -14
-            },
-            {
-                autoAlpha: 1,
-                x: 0,
-                y: 0,
-                rotation: 0,
-                duration: 1.4,
-                ease: 'power2.out'
-            },
-            .55
-        )
+    .fromTo(
+        scoop,
+        {
+            autoAlpha: 0,
+            x: -190,
+            y: 18,
+            rotation: -7
+        },
+        {
+            autoAlpha: 1,
+            x: 0,
+            y: 0,
+            rotation: 0,
+            duration: 1.35,
+            ease: 'power2.out'
+        },
+        .55
+    )
         .fromTo(
             fallingFood,
             {
@@ -797,16 +794,16 @@ function initHomeGuide() {
             },
             'feedingComplete'
         )
-        .to(
-            scoop,
-            {
-                x: -95,
-                y: -105,
-                rotation: -12,
-                autoAlpha: 0,
-                duration: 0.78,
-                ease: 'power2.in'
-            },
+    .to(
+        scoop,
+        {
+            x: -150,
+            y: 12,
+            rotation: -7,
+            autoAlpha: 0,
+            duration: 0.78,
+            ease: 'power2.in'
+        },
             'feedingComplete+=0.08'
         )
         .to(

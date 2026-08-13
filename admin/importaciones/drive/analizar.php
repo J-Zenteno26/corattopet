@@ -39,13 +39,46 @@ if ($accessToken === null) {
 try {
     $folder = obtenerCarpetaDrive($folderId, $accessToken);
     $rootItems = listarHijosDirectosDrive($folderId, $accessToken);
-    $subfolders = array_values(array_filter($rootItems, static fn (array $item): bool => $item['tipo'] === 'Carpeta'));
-    $ignoredRootItems = array_values(array_filter($rootItems, static fn (array $item): bool => $item['tipo'] !== 'Carpeta'));
+
+    $subfolders = array_values(array_filter(
+        $rootItems,
+        static fn (array $item): bool => ($item['tipo'] ?? '') === 'Carpeta'
+    ));
+
     $folderAnalysis = [];
     $allSkus = [];
-    foreach ($subfolders as $subfolder) {
-        $children = listarHijosDirectosDrive((string) $subfolder['id'], $accessToken);
-        $analysis = analizarSubcarpetaProductoDrive($subfolder, $children);
+    $ignoredRootItems = [];
+    $analysisMode = 'root';
+
+    if ($subfolders !== []) {
+        /*
+         * Modo carpeta raíz:
+         * la carpeta seleccionada contiene subcarpetas nombradas por SKU.
+         */
+        $ignoredRootItems = array_values(array_filter(
+            $rootItems,
+            static fn (array $item): bool => ($item['tipo'] ?? '') !== 'Carpeta'
+        ));
+
+        foreach ($subfolders as $subfolder) {
+            $children = listarHijosDirectosDrive((string) $subfolder['id'], $accessToken);
+            $analysis = analizarSubcarpetaProductoDrive($subfolder, $children);
+            $folderAnalysis[] = $analysis;
+            array_push($allSkus, ...$analysis['sku_detectados']);
+        }
+    } else {
+        /*
+         * Modo carpeta de producto:
+         * la carpeta seleccionada se llama como el SKU y contiene imágenes directas.
+         */
+        $analysisMode = 'product_folder';
+        $analysis = analizarSubcarpetaProductoDrive(
+            [
+                'id' => (string) $folder['id'],
+                'nombre' => (string) $folder['nombre'],
+            ],
+            $rootItems
+        );
         $folderAnalysis[] = $analysis;
         array_push($allSkus, ...$analysis['sku_detectados']);
     }
@@ -58,9 +91,12 @@ try {
         && $heicDiagnosis['webp_escritura_disponible'];
     responderAnalisisDrive(200, [
         'ok' => true,
-        'message' => $subfolders === [] ? 'La carpeta raíz no contiene subcarpetas de productos.' : 'Estructura de carpetas analizada correctamente.',
+        'message' => $analysisMode === 'product_folder'
+            ? 'Carpeta de producto analizada correctamente.'
+            : 'Estructura de carpetas analizada correctamente.',
+        'modo_analisis' => $analysisMode,
         'carpeta' => $folder,
-        'cantidad_subcarpetas' => count($subfolders),
+        'cantidad_subcarpetas' => count($folderAnalysis),
         'cantidad_skus' => count(array_unique($allSkus)),
         'cantidad_productos_encontrados' => count($products),
         'carpetas' => $folderAnalysis,

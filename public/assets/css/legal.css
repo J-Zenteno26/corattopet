@@ -1,0 +1,231 @@
+.legal-page {
+    position: relative;
+    overflow: hidden;
+
+    color: #49372d;
+
+    background:
+        radial-gradient(circle at 8% 18%, rgb(189 125 49 / 8%), transparent 14rem),
+        radial-gradient(circle at 92% 36%, rgb(189 125 49 / 7%), transparent 16rem),
+        radial-gradient(circle at 18% 78%, rgb(189 125 49 / 6%), transparent 13rem),
+        #fffaf4;
+}
+
+.legal-shell {
+    width: min(calc(100% - 3rem), 1460px);
+
+    margin-inline: auto;
+
+    padding:
+        clamp(2.2rem, 4vw, 3.5rem) 0 clamp(4rem, 7vw, 6rem);
+}
+
+.legal-header {
+    position: relative;
+
+    width: 100%;
+    max-width: none;
+
+    overflow: hidden;
+
+    margin-bottom: clamp(2.6rem, 5vw, 4rem);
+    padding: clamp(2rem, 4vw, 3.4rem);
+
+    border: 1px solid rgb(189 125 49 / 24%);
+    border-radius: 1.6rem;
+
+    color: #fffaf4;
+
+    background:
+        radial-gradient(circle at 88% 22%,
+            rgb(214 161 92 / 18%),
+            transparent 15rem),
+        linear-gradient(135deg,
+            #5c4030 0%,
+            #402b20 58%,
+            #342118 100%);
+
+    box-shadow:
+        0 1.2rem 3rem rgb(61 38 26 / 14%);
+}
+
+.legal-header::after {
+    content: "";
+
+    position: absolute;
+
+    right: clamp(1rem, 4vw, 3rem);
+    bottom: clamp(-1rem, -1vw, -.4rem);
+
+    width: clamp(8rem, 14vw, 13rem);
+    height: clamp(8rem, 14vw, 13rem);
+
+    opacity: .12;
+
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23e3ad60'%3E%3Cellipse cx='50' cy='63' rx='20' ry='17'/%3E%3Cellipse cx='23' cy='39' rx='9' ry='13'/%3E%3Cellipse cx='42' cy='25' rx='9' ry='13'/%3E%3Cellipse cx='60' cy='25' rx='9' ry='13'/%3E%3Cellipse cx='79' cy='39' rx='9' ry='13'/%3E%3C/g%3E%3C/svg%3E");
+
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+
+    pointer-events: none;
+
+    transform: rotate(-12deg);
+}
+
+.legal-header span {
+    color: #e3ad60;
+
+    font-size: .78rem;
+    font-weight: 850;
+    letter-spacing: .14em;
+
+    text-transform: uppercase;
+}
+
+.legal-header h1 {
+    max-width: 1050px;
+
+    margin: .5rem 0 .9rem;
+
+    color: #fffaf4;
+
+    font-family: var(--serif);
+    font-size: clamp(2.6rem, 5vw, 4.8rem);
+    font-weight: 500;
+    line-height: .98;
+
+    text-wrap: balance;
+}
+
+.legal-header p {
+    margin: 0;
+
+    color: #ead8c7;
+
+    font-size: .92rem;
+}
+
+.legal-document {
+    width: 100%;
+    max-width: 1180px;
+}
+
+.legal-document section+section {
+    margin-top: 2.6rem;
+    padding-top: 2.3rem;
+
+    border-top: 1px solid rgb(103 72 53 / 10%);
+}
+
+.legal-document h2 {
+    position: relative;
+
+    margin: 0 0 1rem;
+    padding-left: 1rem;
+
+    color: #493126;
+
+    font-family: var(--serif);
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-weight: 600;
+    line-height: 1.15;
+}
+
+.legal-document h2::before {
+    content: "";
+
+    position: absolute;
+
+    top: .12em;
+    bottom: .12em;
+    left: 0;
+
+    width: .22rem;
+
+    border-radius: 999px;
+
+    background: #bd7d31;
+}
+
+.legal-document p,
+.legal-document li {
+    color: #665348;
+
+    font-size: 1rem;
+    line-height: 1.82;
+}
+
+.legal-document p {
+    margin: 0 0 1rem;
+}
+
+.legal-document ul,
+.legal-document ol {
+    margin: .75rem 0 1rem;
+    padding-left: 1.4rem;
+}
+
+.legal-document li+li {
+    margin-top: .35rem;
+}
+
+.legal-document li::marker {
+    color: #b77a2c;
+    font-weight: 800;
+}
+
+.legal-document a {
+    color: #8d581d;
+    font-weight: 700;
+    text-decoration-thickness: .08em;
+    text-underline-offset: .18em;
+}
+
+.legal-document a:focus-visible {
+    outline: 3px solid rgb(183 122 44 / 42%);
+    outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+    .legal-shell {
+        width: calc(100% - 1.25rem);
+
+        padding-top: 1.25rem;
+    }
+
+    .legal-header {
+        margin-bottom: 2rem;
+        padding: 1.4rem 1.25rem 1.6rem;
+
+        border-radius: 1.15rem;
+    }
+
+    .legal-header h1 {
+        max-width: 100%;
+
+        font-size: clamp(2rem, 10vw, 2.8rem);
+    }
+
+    .legal-header::after {
+        right: -.8rem;
+        bottom: -.8rem;
+
+        width: 7rem;
+        height: 7rem;
+
+        opacity: .09;
+    }
+
+    .legal-document section+section {
+        margin-top: 1.8rem;
+        padding-top: 1.7rem;
+    }
+
+    .legal-document p,
+    .legal-document li {
+        font-size: .94rem;
+        line-height: 1.68;
+    }
+}

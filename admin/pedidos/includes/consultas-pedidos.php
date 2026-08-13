@@ -26,7 +26,8 @@ function listarPedidos(PDO $connection, array $filters): array
     $page = min($filters['pagina'], $pages);
     $offset = ($page - 1) * $filters['por_pagina'];
     $statement = $connection->prepare('SELECT p.id_pedido, p.codigo_pedido, p.estado, p.estado_pago, p.total,
-        p.metodo_entrega, p.creado_en, c.nombre AS cliente_nombre, c.email AS cliente_email
+        p.metodo_entrega, p.creado_en, p.comuna_entrega, p.observaciones_internas,
+        c.nombre AS cliente_nombre, c.email AS cliente_email, c.telefono AS cliente_telefono
         FROM pedidos p LEFT JOIN clientes c ON c.id_cliente = p.id_cliente' . $where . '
         ORDER BY p.creado_en DESC, p.id_pedido DESC LIMIT :limit OFFSET :offset');
     enlazarPedidos($statement, $bindings);
@@ -85,5 +86,36 @@ function obtenerHistorialPedido(PDO $connection, int $orderId): array
         WHERE h.id_pedido = :id_pedido ORDER BY h.creado_en DESC, h.id_historial DESC');
     $statement->bindValue(':id_pedido', $orderId, PDO::PARAM_INT);
     $statement->execute();
+    return $statement->fetchAll();
+}
+
+function obtenerPagosWebpayPedido(PDO $connection, int $orderId): array
+{
+    $statement = $connection->prepare(
+        "SELECT
+            id_pago_webpay,
+            buy_order,
+            monto,
+            estado,
+            status_transbank,
+            response_code,
+            authorization_code,
+            payment_type_code,
+            installments_number,
+            installments_amount,
+            card_last_four,
+            accounting_date,
+            transaction_date,
+            mensaje_error,
+            creado_en,
+            actualizado_en,
+            confirmado_en
+         FROM pagos_webpay
+         WHERE id_pedido = :id_pedido
+         ORDER BY id_pago_webpay DESC"
+    );
+    $statement->bindValue(':id_pedido', $orderId, PDO::PARAM_INT);
+    $statement->execute();
+
     return $statement->fetchAll();
 }

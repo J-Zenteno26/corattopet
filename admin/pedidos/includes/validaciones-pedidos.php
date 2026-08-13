@@ -35,13 +35,11 @@ function validarActualizacionPedido(array $input): array
     $values = [
         'id_pedido' => idPedidoValido($input['id_pedido'] ?? null),
         'estado' => is_scalar($input['estado'] ?? null) ? trim((string) $input['estado']) : '',
-        'estado_pago' => is_scalar($input['estado_pago'] ?? null) ? trim((string) $input['estado_pago']) : '',
         'observaciones_internas' => is_scalar($input['observaciones_internas'] ?? null) ? trim((string) $input['observaciones_internas']) : '',
     ];
     $errors = [];
     if ($values['id_pedido'] === null) { $errors['id_pedido'] = 'El pedido indicado no es válido.'; }
     if (!array_key_exists($values['estado'], estadosPedido())) { $errors['estado'] = 'Selecciona un estado de pedido válido.'; }
-    if (!array_key_exists($values['estado_pago'], estadosPagoPedido())) { $errors['estado_pago'] = 'Selecciona un estado de pago válido.'; }
     if (mb_strlen($values['observaciones_internas']) > 1000) { $errors['observaciones_internas'] = 'Las observaciones admiten un máximo de 1000 caracteres.'; }
     return [$values, $errors];
 }

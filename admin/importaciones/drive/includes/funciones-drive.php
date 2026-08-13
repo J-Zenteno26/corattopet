@@ -311,40 +311,77 @@ function normalizarImagenDrive(string $inputPath, array $validated, array &$temp
 function convertirHeicAWebpDrive(string $inputPath, array &$temporaries): array
 {
     $diagnosis = diagnosticarSoporteHeic();
-    if (!$diagnosis['imagick_instalado']) throw new DriveImageException('Imagick no está instalado en el servidor.');
-    if (!$diagnosis['heic_lectura_disponible']) throw new DriveImageException('Imagick no dispone de lectura HEIC/HEIF.');
-    if (!$diagnosis['webp_escritura_disponible']) throw new DriveImageException('Imagick no dispone de escritura WEBP.');
+    if (!$diagnosis['imagick_instalado']) {
+        throw new DriveImageException('Imagick no está instalado en el servidor.');
+    }
+    if (!$diagnosis['heic_lectura_disponible']) {
+        throw new DriveImageException('Imagick no dispone de lectura HEIC/HEIF.');
+    }
+    if (!$diagnosis['webp_escritura_disponible']) {
+        throw new DriveImageException('Imagick no dispone de escritura WEBP.');
+    }
+
     $outputPath = crearTemporalSeguroDrive();
     $temporaries[] = $outputPath;
+
     try {
         Imagick::setResourceLimit(Imagick::RESOURCETYPE_MEMORY, 256 * 1024 * 1024);
         Imagick::setResourceLimit(Imagick::RESOURCETYPE_MAP, 512 * 1024 * 1024);
         Imagick::setResourceLimit(Imagick::RESOURCETYPE_DISK, 512 * 1024 * 1024);
-        $probe = new Imagick();
-        $probe->pingImage($inputPath . '[0]');
-        $width = $probe->getImageWidth();
-        $height = $probe->getImageHeight();
-        $probe->clear();
-        $probe->destroy();
-        if ($width < 1 || $height < 1 || $width > DRIVE_IMAGE_MAX_DIMENSION || $height > DRIVE_IMAGE_MAX_DIMENSION || $width * $height > DRIVE_IMAGE_MAX_PIXELS) {
+
+        $blob = @file_get_contents($inputPath);
+        if (!is_string($blob) || $blob === '') {
+            throw new RuntimeException('No fue posible leer el temporal HEIC descargado.');
+        }
+
+        /*
+         * readImageBlob evita fallos de detección en algunos servidores cuando
+         * el archivo temporal no conserva la extensión .heic/.heif.
+         */
+        $source = new Imagick();
+        $source->readImageBlob($blob);
+        $source->setIteratorIndex(0);
+
+        $image = $source->getImage();
+        $width = $image->getImageWidth();
+        $height = $image->getImageHeight();
+
+        if ($width < 1 || $height < 1
+            || $width > DRIVE_IMAGE_MAX_DIMENSION
+            || $height > DRIVE_IMAGE_MAX_DIMENSION
+            || $width * $height > DRIVE_IMAGE_MAX_PIXELS) {
             throw new DriveImageException('Las dimensiones de la imagen superan el límite permitido.');
         }
-        $source = new Imagick();
-        $source->readImage($inputPath . '[0]');
-        $source->setIteratorIndex(0);
-        $image = $source->getImage();
-        $image->autoOrientImage();
+
+        if (method_exists($image, 'autoOrientImage')) {
+            $image->autoOrientImage();
+        }
+        $image->setImagePage(0, 0, 0, 0);
         $image->stripImage();
+        $image->setImageColorspace(Imagick::COLORSPACE_SRGB);
         $image->setImageFormat('webp');
-        $image->setImageCompressionQuality(84);
-        if (!$image->writeImage($outputPath)) throw new RuntimeException();
+        $image->setOption('webp:method', '6');
+        $image->setImageCompressionQuality(82);
+
+        if (!$image->writeImage($outputPath)) {
+            throw new RuntimeException('Imagick no pudo escribir el archivo WEBP final.');
+        }
+
         $image->clear();
         $image->destroy();
         $source->clear();
         $source->destroy();
-    } catch (Throwable) {
-        throw new DriveImageException('El archivo HEIC/HEIF no pudo convertirse a WEBP.');
+    } catch (DriveImageException $exception) {
+        throw $exception;
+    } catch (Throwable $exception) {
+        /*
+         * No se expone la ruta temporal ni el token, pero sí se deja la causa
+         * técnica en el log del servidor para diagnosticar delegates/policies.
+         */
+        error_log('Drive HEIC conversion error: ' . $exception->getMessage());
+        throw new DriveImageException('El archivo HEIC/HEIF no pudo convertirse a WEBP. Revisa el registro del servidor.');
     }
+
     return validarResultadoImagenDrive($outputPath, 'webp', true);
 }
 

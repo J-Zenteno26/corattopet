@@ -11,6 +11,7 @@ require_once dirname(__DIR__, 3) . '/shared/admin-flash.php';
 require_once __DIR__ . '/includes/validaciones-producto.php';
 require_once __DIR__ . '/includes/funciones-producto.php';
 require_once __DIR__ . '/imagenes/includes/funciones-imagenes-producto.php';
+require_once dirname(__DIR__, 2) . '/importaciones/drive/includes/funciones-drive.php';
 
 requireAuthentication();
 
@@ -18,6 +19,37 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     header('Allow: POST');
     exit;
+}
+
+/**
+ * Convierte la estructura múltiple de $_FILES en archivos individuales.
+ *
+ * @return array<int, array{name:mixed,type:mixed,tmp_name:mixed,error:mixed,size:mixed}>
+ */
+function normalizarImagenesProductoCreacion(mixed $files): array
+{
+    if (!is_array($files) || !is_array($files['name'] ?? null)) {
+        return [];
+    }
+
+    $normalized = [];
+
+    foreach (array_keys($files['name']) as $index) {
+        $error = $files['error'][$index] ?? UPLOAD_ERR_NO_FILE;
+        if ((int) $error === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+
+        $normalized[] = [
+            'name' => $files['name'][$index] ?? '',
+            'type' => $files['type'][$index] ?? '',
+            'tmp_name' => $files['tmp_name'][$index] ?? '',
+            'error' => $error,
+            'size' => $files['size'][$index] ?? 0,
+        ];
+    }
+
+    return $normalized;
 }
 
 $formUrl = appUrl('admin/inventario/productos/crear.php');
@@ -39,15 +71,53 @@ if ($errors !== []) {
 }
 
 $connection = null;
-$validatedImage = null;
+$validatedImages = [];
+$imageTemporaries = [];
 
 try {
-    $imageFile = is_array($_FILES['imagen_principal'] ?? null) ? $_FILES['imagen_principal'] : [];
-    if ((int) ($imageFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-        $validatedImage = validarArchivoImagenProducto($imageFile);
+    $imageFiles = normalizarImagenesProductoCreacion(
+        $_FILES['imagenes_producto'] ?? null
+    );
+
+    if (count($imageFiles) > IMAGEN_PRODUCTO_MAX_CANTIDAD) {
+        throw new ImagenProductoException(
+            'Puedes seleccionar un máximo de 5 imágenes por producto.'
+        );
     }
-} catch (ImagenProductoException $exception) {
-    guardarEstadoFormularioProducto($values, ['imagen_principal' => $exception->getMessage()]);
+
+    foreach ($imageFiles as $imageFile) {
+        $originalName = basename(trim((string) ($imageFile['name'] ?? '')));
+        $extension = strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
+
+        if (in_array($extension, ['heic', 'heif'], true)) {
+            $uploadedPath = is_string($imageFile['tmp_name'] ?? null) ? $imageFile['tmp_name'] : '';
+            $validatedHeic = validarDescargaImagenDrive($uploadedPath, [
+                'nombre' => $originalName,
+                'extension' => $extension,
+                'tamano_declarado' => isset($imageFile['size']) ? (int) $imageFile['size'] : null,
+            ]);
+            $converted = convertirHeicAWebpDrive($uploadedPath, $imageTemporaries);
+            $validatedImages[] = [
+                'tipo' => 'archivo_local',
+                'temporal' => $converted['temporal_final'],
+                'extension' => $converted['extension_final'],
+                'mime' => $converted['mime_final'],
+                'nombre_original' => $validatedHeic['nombre_original'],
+            ];
+            continue;
+        }
+
+        $validatedImages[] = [
+            'tipo' => 'subida',
+            ...validarArchivoImagenProducto($imageFile),
+        ];
+    }
+} catch (ImagenProductoException|DriveImageException $exception) {
+    limpiarTemporalesDrive($imageTemporaries);
+    guardarEstadoFormularioProducto(
+        $values,
+        ['imagenes_producto' => $exception->getMessage()]
+    );
     header('Location: ' . $formUrl, true, 303);
     exit;
 }
@@ -62,15 +132,8 @@ try {
     if (!valorBooleanoPostgres($references['marca_valida'] ?? false)) {
         $errors['id_marca'] = 'Selecciona una marca activa.';
     }
-    if ($category !== null && esCategoriaAlimentos($category) && $values['subcategoria'] !== '') {
-        $subcategory = obtenerSubcategoriaActivaProducto($connection, (int) $values['id_categoria'], $values['subcategoria']);
-        if ($subcategory === null) {
-            $errors['subcategoria'] = 'Selecciona una subcategoría activa de Alimentos.';
-        } else {
-            $values['subcategoria'] = (string) $subcategory['nombre'];
-        }
-    }
-    $fractionable = aplicarReglaSubcategoriaProducto($values, $errors, $category);
+    $fractionable = aplicarReglaSubcategoriaProducto($connection, $values, $errors, $category);
+    aplicarReglaEnergiaMetabolizableProducto($values, $errors, $category);
     $lotes = normalizarLotesFormulario($_POST['lotes'] ?? []);
     if ($fractionable) {
         $lotErrors = validarLotesStock($lotes);
@@ -121,6 +184,7 @@ try {
     }
 
     if ($errors !== []) {
+        limpiarTemporalesDrive($imageTemporaries);
         guardarEstadoFormularioProducto($values, $errors);
         header('Location: ' . $formUrl, true, 303);
         exit;
@@ -199,23 +263,50 @@ try {
     }
 
     $connection->commit();
-    $imageSaved = false;
-    $imageWarningReference = null;
-    if (is_array($validatedImage)) {
+    $imagesSaved = 0;
+    $imageWarnings = [];
+
+    foreach ($validatedImages as $validatedImage) {
         try {
-            guardarImagenProductoValidada($connection, $productId, $validatedImage, $imageAltText);
-            $imageSaved = true;
+            if (($validatedImage['tipo'] ?? '') === 'archivo_local') {
+                guardarImagenProductoDesdeArchivoLocal(
+                    $connection,
+                    $productId,
+                    $validatedImage['temporal'],
+                    $validatedImage['nombre_original'],
+                    $imageAltText,
+                    false,
+                    $validatedImage['mime'],
+                    $validatedImage['extension']
+                );
+            } else {
+                guardarImagenProductoValidada(
+                    $connection,
+                    $productId,
+                    $validatedImage,
+                    $imageAltText
+                );
+            }
+            $imagesSaved++;
         } catch (Throwable $imageException) {
-            $imageWarningReference = registrarExcepcionAdmin('Product created image upload error', $imageException);
+            $imageWarnings[] = registrarExcepcionAdmin(
+                'Product created image upload error',
+                $imageException
+            );
         }
     }
+
+    limpiarTemporalesDrive($imageTemporaries);
+
+    $imageSaved = $imagesSaved > 0;
+    $imageWarningReference = $imageWarnings[0] ?? null;
     if ($imageWarningReference !== null) {
         guardarModalAdmin(
             'warning',
             $fractionable ? 'Alimento creado sin imagen' : 'Producto creado sin imagen',
             $fractionable
-                ? 'El alimento fue creado, pero no fue posible subir la imagen.'
-                : 'El producto fue creado, pero no fue posible subir la imagen.',
+                ? 'El alimento fue creado, pero una o más imágenes no pudieron subirse.'
+                : 'El producto fue creado, pero una o más imágenes no pudieron subirse.',
             ['reference' => $imageWarningReference]
         );
     } else {
@@ -224,10 +315,16 @@ try {
             $fractionable ? 'Alimento creado' : 'Producto creado',
             $fractionable
                 ? ($imageSaved
-                    ? 'El alimento fue registrado correctamente con su imagen principal. Ahora puedes configurar sus presentaciones.'
+                    ? sprintf(
+                        'El alimento fue registrado correctamente con %d imagen(es). La primera quedó como principal. Ahora puedes configurar sus presentaciones.',
+                        $imagesSaved
+                    )
                     : 'El alimento fue registrado correctamente. Ahora puedes configurar sus presentaciones.')
                 : ($imageSaved
-                    ? 'El producto fue registrado correctamente con su imagen principal.'
+                    ? sprintf(
+                        'El producto fue registrado correctamente con %d imagen(es). La primera quedó como principal.',
+                        $imagesSaved
+                    )
                     : 'El producto fue registrado correctamente.')
         );
     }
@@ -237,6 +334,7 @@ try {
     header('Location: ' . $destination, true, 303);
     exit;
 } catch (Throwable $exception) {
+    limpiarTemporalesDrive($imageTemporaries);
     if ($connection instanceof PDO && $connection->inTransaction()) {
         $connection->rollBack();
     }

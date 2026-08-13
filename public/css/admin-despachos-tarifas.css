@@ -1,0 +1,723 @@
+/* =========================================================
+   DESPACHOS — TARIFAS POR COMUNA
+   ========================================================= */
+
+.shipping-tariffs-page {
+    min-width: 0;
+    --shipping-green: #3f766f;
+    --shipping-green-dark: #285b55;
+    --shipping-green-deep: #173f3b;
+    --shipping-green-strong: #2f6b64;
+    --shipping-green-soft: #e8f1ef;
+    --shipping-green-soft-2: #f5f9f8;
+    --shipping-border: #c7d9d5;
+    --shipping-text: #34544f;
+    --shipping-muted: #667c77;
+}
+
+.shipping-tariffs-eyebrow {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: var(--shipping-green-dark);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.shipping-tariffs-header {
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--shipping-border);
+}
+
+.shipping-tariffs-header p {
+    max-width: 52rem;
+}
+
+.shipping-tariffs-header .admin-button {
+    border-color: var(--shipping-green);
+    background: var(--shipping-green-strong);
+    color: #ffffff;
+}
+
+.shipping-tariffs-header .admin-button:hover {
+    border-color: var(--shipping-green-dark);
+    background: var(--shipping-green-dark);
+    color: #ffffff;
+}
+
+/* =========================================================
+   RESUMEN
+   ========================================================= */
+
+.shipping-tariffs-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+    margin: 1rem 0 1.15rem;
+}
+
+.shipping-tariffs-summary .admin-stat-card {
+    position: relative;
+    min-height: 6.35rem;
+    padding: 0.95rem 1.05rem 0.9rem 1.2rem;
+    overflow: hidden;
+    border: 1px solid rgba(28, 77, 70, 0.22);
+    border-radius: 0.85rem;
+    background:
+        linear-gradient(
+            135deg,
+            #dcebe8 0%,
+            #c8ded9 100%
+        );
+    box-shadow: 0 0.35rem 1rem rgba(28, 77, 70, 0.10);
+}
+
+.shipping-tariffs-summary .admin-stat-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.28rem;
+    background: var(--shipping-green-strong);
+}
+
+.shipping-tariffs-summary .admin-stat-card span {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #244b46;
+    font-size: 0.89rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.shipping-tariffs-summary .admin-stat-card strong {
+    display: block;
+    color: #153e39;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.shipping-tariffs-summary small {
+    display: block;
+    margin-top: 0.5rem;
+    color: #45645f;
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+/* =========================================================
+   PANEL Y FILTROS
+   ========================================================= */
+
+.shipping-tariffs-panel {
+    min-width: 0;
+    border-color: var(--shipping-border);
+    background: #ffffff;
+}
+
+.shipping-tariffs-panel__header {
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+}
+
+.shipping-tariffs-panel__header h2 {
+    color: var(--shipping-green-deep);
+}
+
+.shipping-tariffs-panel__header p {
+    margin: 0.35rem 0 0;
+    color: var(--shipping-muted);
+}
+
+.shipping-tariffs-filters {
+    display: grid;
+    grid-template-columns:
+        minmax(12rem, 1fr)
+        minmax(12rem, 1fr)
+        minmax(15rem, 1.35fr)
+        minmax(6.5rem, 0.45fr)
+        auto;
+    align-items: end;
+    gap: 0.7rem;
+    margin-bottom: 0.8rem;
+    padding: 0.85rem;
+    border: 1px solid var(--shipping-border);
+    border-radius: 0.8rem;
+    background: var(--shipping-green-soft-2);
+}
+
+.shipping-tariffs-filters .admin-field label {
+    text-transform: uppercase;
+    margin-bottom: 0.32rem;
+    color: var(--shipping-text);
+    font-size: 0.85rem;
+    font-weight: 750;
+}
+
+.shipping-tariffs-filters select,
+.shipping-tariffs-filters input {
+    min-height: 2.6rem;
+    border-color: #c8d7d2;
+    background: #ffffff;
+}
+
+.shipping-tariffs-filters select:focus,
+.shipping-tariffs-filters input:focus {
+    border-color: var(--shipping-green);
+    box-shadow: 0 0 0 3px rgba(79, 127, 115, 0.13);
+}
+
+.shipping-tariffs-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.shipping-tariffs-filter-actions .admin-button--primary {
+    border-color: var(--shipping-green);
+    background: var(--shipping-green-strong);
+    color: #ffffff;
+}
+
+.shipping-tariffs-filter-actions .admin-button--primary:hover {
+    border-color: var(--shipping-green-dark);
+    background: var(--shipping-green-dark);
+}
+
+.shipping-tariffs-filter-actions .admin-button:not(.admin-button--primary) {
+    border-color: #b9cbc5;
+    background: #ffffff;
+    color: var(--shipping-green-dark);
+}
+
+/* =========================================================
+   BARRA DE CAMBIOS
+   ========================================================= */
+
+.shipping-tariffs-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--shipping-border);
+    border-radius: 0.8rem;
+    background: linear-gradient(135deg, #f8fbfa 0%, #eaf3f0 100%);
+}
+
+.shipping-tariffs-toolbar > div {
+    display: block;
+}
+
+.shipping-tariffs-toolbar__copy {
+    min-width: 0;
+}
+
+.shipping-tariffs-toolbar__copy strong {
+    display: block;
+    color: var(--shipping-green-deep);
+    font-size: 0.9rem;
+}
+
+.shipping-tariffs-toolbar__copy span {
+    display: block;
+    margin-top: 0.15rem;
+    color: #45645f;
+    font-size: 0.74rem;
+}
+
+.shipping-tariffs-change-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.shipping-tariffs-change-counter {
+    min-width: 9.4rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #c6d6d1;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #61736f;
+    font-size: 0.89rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.shipping-tariffs-change-counter.has-changes {
+    border-color: #c99231;
+    background: #fff2cd;
+    color: #724713;
+}
+
+.shipping-tariffs-change-actions .admin-button {
+    min-height: 2.3rem;
+    padding: 0.52rem 0.82rem;
+    white-space: nowrap;
+}
+
+.shipping-tariffs-change-actions .admin-button--primary {
+    border-color: var(--shipping-green);
+    background: var(--shipping-green-strong);
+    color: #ffffff;
+}
+
+.shipping-tariffs-change-actions .admin-button--primary:hover:not(:disabled) {
+    border-color: var(--shipping-green-dark);
+    background: var(--shipping-green-dark);
+}
+
+.shipping-tariffs-toolbar--sticky {
+    position: sticky;
+    top: 0.65rem;
+    z-index: 8;
+    box-shadow: 0 0.35rem 1rem rgba(35, 65, 58, 0.08);
+}
+
+.shipping-tariffs-toolbar--bottom {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    background: #f8fbfa;
+}
+
+.shipping-tariffs-toolbar span {
+    color: var(--shipping-muted);
+    font-size: 0.78rem;
+}
+
+/* =========================================================
+   TABLA
+   ========================================================= */
+
+.shipping-tariffs-table {
+    min-width: 80rem;
+}
+
+.shipping-tariffs-table thead {
+    background:
+        linear-gradient(
+            90deg,
+            #4f8a81 0%,
+            #356f67 52%,
+            #214f4a 100%
+        );
+}
+
+.shipping-tariffs-table thead th {
+    vertical-align: bottom;
+    border-color: rgba(255, 255, 255, 0.10);
+    background: transparent;
+    color: #ffffff;
+}
+
+.shipping-tariffs-table thead th:first-child {
+    border-top-left-radius: 0.65rem;
+}
+
+.shipping-tariffs-table thead th:last-child {
+    border-top-right-radius: 0.65rem;
+}
+
+.shipping-tariffs-table th small {
+    display: inline-block;
+    margin-top: 0.16rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.67rem;
+    font-weight: 700;
+    text-transform: none;
+}
+
+.shipping-tariffs-table th:nth-child(1) {
+    width: 8.5rem;
+}
+
+.shipping-tariffs-table th:nth-child(2) {
+    width: 11rem;
+}
+
+.shipping-tariffs-table th:nth-child(3),
+.shipping-tariffs-table th:nth-child(4),
+.shipping-tariffs-table th:nth-child(5),
+.shipping-tariffs-table th:nth-child(6) {
+    width: 8rem;
+}
+
+.shipping-tariffs-table th:nth-child(7) {
+    width: 10rem;
+}
+
+.shipping-tariffs-table th:last-child {
+    width: 6rem;
+}
+
+.shipping-tariffs-table td {
+    padding-block: 0.62rem;
+}
+
+.shipping-tariffs-table td:nth-child(3),
+.shipping-tariffs-table td:nth-child(4),
+.shipping-tariffs-table td:nth-child(5),
+.shipping-tariffs-table td:nth-child(6),
+.shipping-tariffs-table td:last-child {
+    text-align: center;
+}
+
+.shipping-tariffs-table tbody tr {
+    transition:
+        background-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.shipping-tariffs-table tbody tr:nth-child(even) {
+    background: rgba(79, 127, 115, 0.045);
+}
+
+.shipping-tariffs-table tbody tr:hover {
+    background: rgba(79, 127, 115, 0.085);
+}
+
+.shipping-tariffs-table tbody tr.is-edited {
+    background: #fff8e6;
+    box-shadow: inset 0.28rem 0 0 #c88d27;
+}
+
+.shipping-tariffs-region {
+    display: inline-block;
+    max-width: 11rem;
+    color: var(--shipping-text);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.shipping-tariffs-warning {
+    display: block;
+    margin-top: 0.2rem;
+    color: #a25f1e;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.shipping-tariffs-row-status {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.42rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid #d7a84b;
+    border-radius: 999px;
+    background: #fff0c3;
+    color: #704712;
+    font-size: 0.64rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+/* =========================================================
+   INPUTS Y TOGGLES
+   ========================================================= */
+
+.shipping-tariffs-money {
+    display: inline-flex;
+    align-items: center;
+    width: 7rem;
+    max-width: 100%;
+    overflow: hidden;
+    border: 1px solid #cbd7d3;
+    border-radius: 0.58rem;
+    background: #ffffff;
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.shipping-tariffs-money:focus-within {
+    border-color: var(--shipping-green);
+    box-shadow: 0 0 0 3px rgba(79, 127, 115, 0.13);
+}
+
+.shipping-tariffs-money span {
+    flex: 0 0 auto;
+    padding-left: 0.5rem;
+    color: #65736f;
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.shipping-tariffs-money input {
+    width: 100%;
+    min-width: 0;
+    padding: 0.56rem 0.42rem 0.56rem 0.18rem;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--admin-black);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.shipping-tariffs-money.is-edited {
+    border-color: #c88d27;
+    background: #fff6db;
+    box-shadow: 0 0 0 3px rgba(200, 141, 39, 0.13);
+}
+
+.shipping-tariffs-money input.is-edited {
+    color: #71480f;
+}
+
+.shipping-tariffs-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--shipping-text);
+    font-size: 0.74rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.shipping-tariffs-toggle input {
+    position: relative;
+    width: 2.05rem;
+    height: 1.12rem;
+    margin: 0;
+    appearance: none;
+    border: 1px solid #aebfba;
+    border-radius: 999px;
+    background: #dce4e2;
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease;
+}
+
+.shipping-tariffs-toggle input::before {
+    content: "";
+    position: absolute;
+    top: 0.13rem;
+    left: 0.14rem;
+    width: 0.76rem;
+    height: 0.76rem;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(24, 42, 38, 0.25);
+    transition: transform 160ms ease;
+}
+
+.shipping-tariffs-toggle input:checked {
+    border-color: var(--shipping-green);
+    background: var(--shipping-green-strong);
+}
+
+.shipping-tariffs-toggle input:checked::before {
+    transform: translateX(0.88rem);
+}
+
+.shipping-tariffs-toggle.is-edited {
+    padding: 0.32rem 0.46rem;
+    border: 1px solid #c88d27;
+    border-radius: 0.58rem;
+    background: #fff4d5;
+    color: #71480f;
+}
+
+/* Despacho gratis por comuna */
+.shipping-tariffs-money--free {
+    width: 8.6rem;
+    min-width: 0;
+}
+
+.shipping-tariffs-money--free input {
+    min-width: 0;
+}
+
+.shipping-tariffs-money--free input::placeholder {
+    color: #85948f;
+    font-size: 0.72rem;
+    font-weight: 650;
+}
+
+.shipping-tariffs-free-help {
+    display: block;
+    margin-top: 0.28rem;
+    color: var(--shipping-muted);
+    font-size: 0.66rem;
+    line-height: 1.2;
+}
+
+/* =========================================================
+   ESTADOS
+   ========================================================= */
+
+.shipping-tariffs-feedback {
+    margin-bottom: 0.8rem;
+    padding: 0.78rem 0.95rem;
+    border: 1px solid transparent;
+    border-radius: 0.7rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.shipping-tariffs-feedback.is-success {
+    border-color: #9ec9ad;
+    background: #edf8f0;
+    color: #28633b;
+}
+
+.shipping-tariffs-feedback.is-error {
+    border-color: #deb0a9;
+    background: #fff0ed;
+    color: #8a3025;
+}
+
+.shipping-tariffs-feedback.is-info {
+    border-color: #c8b27c;
+    background: #fff8e6;
+    color: #6f511d;
+}
+
+.shipping-tariffs-state {
+    display: grid;
+    justify-items: center;
+    gap: 0.45rem;
+    padding: clamp(3rem, 8vw, 6rem) 1rem;
+    color: var(--shipping-muted);
+    text-align: center;
+}
+
+.shipping-tariffs-state i {
+    color: var(--shipping-green);
+    font-size: 2rem;
+}
+
+.shipping-tariffs-state strong {
+    color: var(--shipping-green-deep);
+    font-size: 1.05rem;
+}
+
+.shipping-tariffs-form button:disabled {
+    cursor: not-allowed;
+    opacity: 0.56;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1180px) {
+    .shipping-tariffs-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .shipping-tariffs-filter-actions {
+        grid-column: 1 / -1;
+    }
+
+    .shipping-tariffs-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .shipping-tariffs-change-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 760px) {
+    .shipping-tariffs-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .shipping-tariffs-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .shipping-tariffs-filter-actions {
+        grid-column: auto;
+        flex-wrap: wrap;
+    }
+
+    .shipping-tariffs-toolbar,
+    .shipping-tariffs-toolbar--bottom {
+        display: flex;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .shipping-tariffs-toolbar--sticky {
+        position: static;
+    }
+
+    .shipping-tariffs-change-actions {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .shipping-tariffs-change-counter {
+        width: 100%;
+    }
+
+    .shipping-tariffs-change-actions .admin-button,
+    .shipping-tariffs-toolbar .admin-button {
+        flex: 1 1 10rem;
+        width: 100%;
+        justify-content: center;
+    }
+    .shipping-tariffs-money,
+    .shipping-tariffs-money--free {
+        width: 7rem;
+        min-width: 0;
+    }
+
+    .shipping-tariffs-money--free input {
+        min-width: 0;
+    }
+
+    .shipping-tariffs-free-help {
+        margin-top: 0.2rem;
+        font-size: 0.61rem;
+    }
+}
+
+/* Ajuste final de identidad logística */
+.shipping-tariffs-summary .admin-stat-card:nth-child(1)::before {
+    background: #2f6b64;
+}
+
+.shipping-tariffs-summary .admin-stat-card:nth-child(2)::before {
+    background: #3f8378;
+}
+
+.shipping-tariffs-summary .admin-stat-card:nth-child(3)::before {
+    background: #245a54;
+}
+
+.shipping-tariffs-toolbar__copy {
+    flex: 1 1 auto;
+}
+
+.shipping-tariffs-change-actions {
+    flex: 0 0 auto;
+}
+
+.shipping-tariffs-change-actions .admin-button {
+    width: auto;
+    min-width: 0;
+}
+
+.shipping-tariffs-table-wrap {
+    border-radius: 0.7rem;
+    overflow: auto;
+}

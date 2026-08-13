@@ -53,6 +53,7 @@ function normalizarValoresProducto(array $input): array
     $fields = [
         'nombre', 'id_categoria', 'id_marca', 'tipo_mascota', 'precio_venta', 'stock_inicial', 'unidad_stock_inicial',
         'sku', 'codigo_barras', 'subcategoria', 'formato', 'peso_contenido', 'unidad',
+        'energia_metabolizable_kcal_kg',
         'stock_minimo', 'unidad_stock_minimo', 'descripcion', 'ingredientes_materiales', 'analisis_caracteristicas',
         'etapa_vida_tamano', 'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios',
     ];
@@ -104,22 +105,51 @@ function validarProductoPorCategoria(array &$values, array &$errors, bool $fract
     }
 }
 
-function aplicarReglaSubcategoriaProducto(array &$values, array &$errors, ?array $category): bool
+function aplicarReglaSubcategoriaProducto(PDO $connection, array &$values, array &$errors, ?array $category): bool
 {
-    if ($category === null || !esCategoriaAlimentos($category)) {
+    if ($category === null || !categoriaTieneSubcategoriasActivasProducto($connection, (int) $category['id_categoria'])) {
         $values['subcategoria'] = '';
         return false;
     }
 
     if ($values['subcategoria'] === '') {
-        $errors['subcategoria'] = 'Selecciona una subcategoría para los productos de Alimentos.';
+        $errors['subcategoria'] = 'Selecciona una subcategoría activa para la categoría elegida.';
         return false;
     }
+
+    $subcategory = obtenerSubcategoriaActivaProducto(
+        $connection,
+        (int) $category['id_categoria'],
+        $values['subcategoria']
+    );
+    if ($subcategory === null) {
+        $errors['subcategoria'] = 'Selecciona una subcategoría activa de la categoría elegida.';
+        return false;
+    }
+
+    $values['subcategoria'] = (string) $subcategory['nombre'];
 
     return esProductoFraccionable([
         'categoria_slug' => $category['slug'] ?? '',
         'subcategoria' => $values['subcategoria'],
     ]);
+}
+
+function aplicarReglaEnergiaMetabolizableProducto(array &$values, array &$errors, ?array $category): void
+{
+    if ($category === null || !esCategoriaAlimentos($category)) {
+        $values['energia_metabolizable_kcal_kg'] = '';
+        unset($errors['energia_metabolizable_kcal_kg']);
+        return;
+    }
+
+    $normalizedEnergy = str_replace(',', '.', $values['energia_metabolizable_kcal_kg']);
+    if ($normalizedEnergy === '' || !is_numeric($normalizedEnergy) || (float) $normalizedEnergy <= 0) {
+        $errors['energia_metabolizable_kcal_kg'] = 'Ingresa una energía metabolizable mayor que 0.';
+        return;
+    }
+
+    $values['energia_metabolizable_kcal_kg'] = $normalizedEnergy;
 }
 
 function validarTextoRequerido(

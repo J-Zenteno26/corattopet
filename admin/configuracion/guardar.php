@@ -29,21 +29,23 @@ try {
     $connection = database();
     $statement = $connection->prepare('UPDATE configuracion_tienda SET
         nombre_tienda=:nombre_tienda, razon_social=:razon_social, rut_empresa=:rut_empresa,
-        descripcion_breve=:descripcion_breve, mensaje_principal=:mensaje_principal, mensaje_secundario=:mensaje_secundario,
+        descripcion_breve=:descripcion_breve,
         email_contacto=:email_contacto, whatsapp_principal=:whatsapp_principal, telefono_secundario=:telefono_secundario,
         direccion=:direccion, comuna=:comuna, region=:region, horario_atencion=:horario_atencion,
-        permite_retiro=:permite_retiro, texto_retiro=:texto_retiro, permite_despacho=:permite_despacho,
-        texto_despacho=:texto_despacho, monto_minimo_compra=:monto_minimo_compra,
-        costo_despacho_base=:costo_despacho_base, despacho_gratis_desde=:despacho_gratis_desde,
-        tiempo_preparacion=:tiempo_preparacion, instagram=:instagram, facebook=:facebook, tiktok=:tiktok,
-        sitio_externo=:sitio_externo, mensaje_banner=:mensaje_banner, mensaje_home=:mensaje_home,
-        mensaje_checkout=:mensaje_checkout, mensaje_post_compra=:mensaje_post_compra,
-        mensaje_fraccionados=:mensaje_fraccionados, moneda=:moneda, iva_incluido=:iva_incluido,
+        permite_retiro=:permite_retiro, permite_despacho=:permite_despacho,
+        monto_minimo_despacho=:monto_minimo_despacho,
+        monto_minimo_retiro=:monto_minimo_retiro,
+        instagram=:instagram, facebook=:facebook, tiktok=:tiktok,
+        sitio_externo=:sitio_externo,
+        moneda=:moneda, iva_incluido=:iva_incluido,
         mostrar_stock=:mostrar_stock, mostrar_sin_stock=:mostrar_sin_stock,
         permitir_venta_sin_stock=:permitir_venta_sin_stock, modo_tienda=:modo_tienda,
         actualizado_en=CURRENT_TIMESTAMP WHERE id_configuracion=1');
-    $booleanFields = ['permite_retiro', 'permite_despacho', 'iva_incluido', 'mostrar_stock', 'mostrar_sin_stock', 'permitir_venta_sin_stock'];
-    $integerFields = ['monto_minimo_compra', 'costo_despacho_base', 'despacho_gratis_desde'];
+            $booleanFields = ['permite_retiro', 'permite_despacho', 'iva_incluido', 'mostrar_stock', 'mostrar_sin_stock', 'permitir_venta_sin_stock'];
+            $integerFields = [
+            'monto_minimo_despacho',
+            'monto_minimo_retiro',
+        ];
     foreach ($values as $field => $value) {
         $type = in_array($field, $booleanFields, true) ? PDO::PARAM_BOOL : (in_array($field, $integerFields, true) ? PDO::PARAM_INT : PDO::PARAM_STR);
         $statement->bindValue(':' . $field, $value, $type);

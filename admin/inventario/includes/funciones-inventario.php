@@ -21,8 +21,11 @@ function normalizarParametrosInventario(array $source): array
     $petTypes = ['perro', 'gato', 'ambos', 'otro'];
     $stockStatuses = ['en_stock', 'stock_bajo', 'sin_stock'];
     $stockTypes = ['fraccionable', 'unidad'];
-    $subcategories = ['alimento_seco', 'alimento_humedo', 'snacks', 'higiene_bienestar'];
     $search = trim((string) ($source['buscar'] ?? ''));
+    $subcategory = trim((string) ($source['subcategoria'] ?? ''));
+    if (mb_strlen($subcategory) > 120 || !preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $subcategory)) {
+        $subcategory = '';
+    }
 
     return [
         'buscar' => substr($search, 0, 100),
@@ -37,9 +40,7 @@ function normalizarParametrosInventario(array $source): array
         'tipo_stock' => in_array($source['tipo_stock'] ?? '', $stockTypes, true)
             ? (string) $source['tipo_stock']
             : '',
-        'subcategoria' => in_array($source['subcategoria'] ?? '', $subcategories, true)
-            ? (string) $source['subcategoria']
-            : '',
+        'subcategoria' => $subcategory,
         'pagina' => validarPagina($source['pagina'] ?? 1),
         'por_pagina' => validarCantidadPorPagina($source['por_pagina'] ?? 8),
     ];
@@ -170,16 +171,24 @@ function urlImagenInventario(mixed $path): ?string
     }
 
     $path = trim($path);
+
     if (filter_var($path, FILTER_VALIDATE_URL)) {
         $scheme = strtolower((string) parse_url($path, PHP_URL_SCHEME));
 
-        return in_array($scheme, ['http', 'https'], true) ? $path : null;
+        return in_array($scheme, ['http', 'https'], true)
+            ? $path
+            : null;
     }
 
     $relativePath = ltrim($path, '/');
-    if (str_starts_with($relativePath, 'uploads/')) {
-        $relativePath = 'public/' . $relativePath;
+
+    if (str_starts_with($relativePath, 'public/')) {
+        $relativePath = substr($relativePath, 7);
     }
 
-    return appUrl($relativePath);
+    if (!str_starts_with($relativePath, 'uploads/productos/')) {
+        return null;
+    }
+
+    return 'https://corattopet.cl/public/' . $relativePath;
 }

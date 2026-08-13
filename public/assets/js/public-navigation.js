@@ -50,7 +50,12 @@
         if (matchMedia('(hover: hover)').matches) closeDropdown();
     });
     dropdown?.addEventListener('focusout', (event) => {
-        if (!dropdown.contains(event.relatedTarget)) closeDropdown();
+        if (
+            matchMedia('(min-width: 851px)').matches
+            && !dropdown.contains(event.relatedTarget)
+        ) {
+            closeDropdown();
+        }
     });
     nav.addEventListener('click', (event) => {
         if (event.target.closest('a')) closeNav();

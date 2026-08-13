@@ -58,15 +58,8 @@ try {
         exit;
     }
     $category = obtenerCategoriaProducto($connection, (int) $values['id_categoria']);
-    if ($category !== null && esCategoriaAlimentos($category) && $values['subcategoria'] !== '') {
-        $subcategory = obtenerSubcategoriaActivaProducto($connection, (int) $values['id_categoria'], $values['subcategoria']);
-        if ($subcategory === null) {
-            $errors['subcategoria'] = 'Selecciona una subcategoría activa de Alimentos.';
-        } else {
-            $values['subcategoria'] = (string) $subcategory['nombre'];
-        }
-    }
-    $fractionable = aplicarReglaSubcategoriaProducto($values, $errors, $category);
+    $fractionable = aplicarReglaSubcategoriaProducto($connection, $values, $errors, $category);
+    aplicarReglaEnergiaMetabolizableProducto($values, $errors, $category);
     validarProductoPorCategoria($values, $errors, $fractionable, true);
     if ($fractionable) {
         $values['formato'] = '';

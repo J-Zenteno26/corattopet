@@ -36,38 +36,252 @@ function actualizarStockVendibleLotes(PDO $pdo, int $productoId): int
     return $vendible;
 }
 
-/** Descuenta unidades físicas usando FEFO. Debe ejecutarse dentro de una transacción. */
-function descontarPresentacionFefo(PDO $pdo, int $productoId, int $presentacionId, int $unidades, int $usuarioId, string $motivo, ?string $referencia = null): int
-{
-    if ($unidades <= 0) throw new InvalidArgumentException('Las unidades a descontar deben ser mayores que cero.');
-    $presentationStatement=$pdo->prepare('SELECT cantidad_gramos FROM producto_presentaciones WHERE id_presentacion=:presentacion AND id_producto=:producto AND activo=TRUE');
-    $presentationStatement->execute(['presentacion'=>$presentacionId,'producto'=>$productoId]);
-    $gramosPorUnidad=$presentationStatement->fetchColumn();
-    if($gramosPorUnidad===false || (int)$gramosPorUnidad<=0) throw new InvalidArgumentException('La presentación no está disponible para este producto.');
-    $gramosPorUnidad=(int)$gramosPorUnidad;
-    $stockAnterior = stockVendibleLotes($pdo, $productoId);
-    $st = $pdo->prepare('SELECT id_lote,cantidad_disponible_g
-        FROM stock_lotes
-        WHERE id_producto=:producto AND activo=TRUE AND fecha_vencimiento>=CURRENT_DATE
-          AND cantidad_disponible_g>=:gramos
-        ORDER BY fecha_vencimiento ASC,id_lote ASC FOR UPDATE');
-    $st->execute(['producto'=>$productoId,'gramos'=>$gramosPorUnidad]);
-    $filas=$st->fetchAll();
-    $disponibles=array_sum(array_map(static fn(array $f): int => (int)floor((float)$f['cantidad_disponible_g']/$gramosPorUnidad),$filas));
-    if ($disponibles < $unidades) throw new RuntimeException('No existen unidades suficientes de esta presentación.');
-    $restantes=$unidades;
-    $updateL=$pdo->prepare('UPDATE stock_lotes SET cantidad_disponible_g=cantidad_disponible_g-:gramos_disponibles,saldo_no_asignado_g=LEAST(saldo_no_asignado_g,cantidad_disponible_g-:gramos_saldo),actualizado_en=CURRENT_TIMESTAMP WHERE id_lote=:id');
-    $mov=$pdo->prepare("INSERT INTO movimientos_stock (id_producto,id_usuario,tipo_movimiento,cantidad,stock_anterior,stock_final,origen,motivo,referencia,id_lote,id_lote_presentacion) VALUES (:producto,:usuario,'salida',:cantidad,:anterior,:final,'manual',:motivo,:referencia,:lote,NULL)");
-    $acumulado=$stockAnterior;
-    foreach($filas as $fila){
-        if($restantes===0) break;
-        $tomar=min($restantes,(int)floor((float)$fila['cantidad_disponible_g']/$gramosPorUnidad));
-        $gramos=$tomar*$gramosPorUnidad;
-        $updateL->execute(['gramos_disponibles'=>$gramos,'gramos_saldo'=>$gramos,'id'=>$fila['id_lote']]);
-        $mov->execute(['producto'=>$productoId,'usuario'=>$usuarioId,'cantidad'=>-$gramos,'anterior'=>$acumulado,'final'=>$acumulado-$gramos,'motivo'=>$motivo,'referencia'=>$referencia,'lote'=>$fila['id_lote']]);
-        $acumulado-=$gramos; $restantes-=$tomar;
+/**
+ * Descuenta una cantidad exacta de gramos desde lotes vigentes usando FEFO.
+ *
+ * Debe ejecutarse dentro de una transacción. Esta función es de bajo nivel:
+ * no modifica cantidad_reservada; quien la invoque debe gestionar la reserva.
+ */
+function descontarGramosFefo(
+    PDO $pdo,
+    int $productoId,
+    int $gramosTotal,
+    ?int $usuarioId,
+    string $tipoMovimiento,
+    string $origen,
+    string $motivo,
+    ?string $referencia = null
+): int {
+    if ($gramosTotal <= 0) {
+        throw new InvalidArgumentException(
+            'Los gramos a descontar deben ser mayores que cero.'
+        );
     }
-    return actualizarStockVendibleLotes($pdo,$productoId);
+
+    if (!$pdo->inTransaction()) {
+        throw new RuntimeException(
+            'El descuento FEFO debe ejecutarse dentro de una transacción.'
+        );
+    }
+
+    $tiposPermitidos = [
+        'carga_inicial',
+        'entrada',
+        'ajuste_positivo',
+        'ajuste_negativo',
+        'venta',
+        'devolucion',
+        'reserva',
+        'liberacion_reserva',
+        'confirmacion_reserva',
+    ];
+    $origenesPermitidos = ['manual', 'excel', 'pedido', 'webpay', 'sistema'];
+
+    if (!in_array($tipoMovimiento, $tiposPermitidos, true)) {
+        throw new InvalidArgumentException('El tipo de movimiento de stock no es válido.');
+    }
+
+    if (!in_array($origen, $origenesPermitidos, true)) {
+        throw new InvalidArgumentException('El origen del movimiento de stock no es válido.');
+    }
+
+    $lotesStatement = $pdo->prepare(
+        "SELECT id_lote, cantidad_disponible_g
+         FROM stock_lotes
+         WHERE id_producto = :producto
+           AND activo = TRUE
+           AND fecha_vencimiento >= CURRENT_DATE
+           AND cantidad_disponible_g > 0
+         ORDER BY fecha_vencimiento ASC, id_lote ASC
+         FOR UPDATE"
+    );
+    $lotesStatement->execute(['producto' => $productoId]);
+    $lotes = $lotesStatement->fetchAll();
+
+    $stockAnterior = 0;
+    foreach ($lotes as $lote) {
+        $stockAnterior += (int) floor((float) $lote['cantidad_disponible_g']);
+    }
+
+    if ($stockAnterior < $gramosTotal) {
+        throw new RuntimeException(
+            'No existen gramos suficientes en lotes vigentes para completar la salida.'
+        );
+    }
+
+    $updateLote = $pdo->prepare(
+        "UPDATE stock_lotes
+         SET
+            cantidad_disponible_g = cantidad_disponible_g - :gramos,
+            saldo_no_asignado_g = LEAST(
+                saldo_no_asignado_g,
+                cantidad_disponible_g - :gramos_saldo
+            ),
+            actualizado_en = CURRENT_TIMESTAMP
+         WHERE id_lote = :id_lote"
+    );
+
+    $movimiento = $pdo->prepare(
+        "INSERT INTO movimientos_stock (
+            id_producto,
+            id_usuario,
+            tipo_movimiento,
+            cantidad,
+            stock_anterior,
+            stock_final,
+            origen,
+            motivo,
+            referencia,
+            id_lote,
+            id_lote_presentacion
+         ) VALUES (
+            :producto,
+            :usuario,
+            :tipo_movimiento,
+            :cantidad,
+            :stock_anterior,
+            :stock_final,
+            :origen,
+            :motivo,
+            :referencia,
+            :id_lote,
+            NULL
+         )"
+    );
+
+    $restantes = $gramosTotal;
+    $acumulado = $stockAnterior;
+
+    foreach ($lotes as $lote) {
+        if ($restantes <= 0) {
+            break;
+        }
+
+        $disponibleLote = (int) floor((float) $lote['cantidad_disponible_g']);
+        $tomar = min($restantes, $disponibleLote);
+
+        if ($tomar <= 0) {
+            continue;
+        }
+
+        $stockFinalMovimiento = $acumulado - $tomar;
+
+        $updateLote->execute([
+            'gramos' => $tomar,
+            'gramos_saldo' => $tomar,
+            'id_lote' => (int) $lote['id_lote'],
+        ]);
+
+        $movimiento->execute([
+            'producto' => $productoId,
+            'usuario' => $usuarioId,
+            'tipo_movimiento' => $tipoMovimiento,
+            'cantidad' => -$tomar,
+            'stock_anterior' => $acumulado,
+            'stock_final' => $stockFinalMovimiento,
+            'origen' => $origen,
+            'motivo' => $motivo,
+            'referencia' => $referencia,
+            'id_lote' => (int) $lote['id_lote'],
+        ]);
+
+        $acumulado = $stockFinalMovimiento;
+        $restantes -= $tomar;
+    }
+
+    if ($restantes !== 0) {
+        throw new RuntimeException(
+            'No fue posible completar el descuento FEFO solicitado.'
+        );
+    }
+
+    return actualizarStockVendibleLotes($pdo, $productoId);
+}
+
+/**
+ * Descuenta presentaciones físicas usando FEFO.
+ *
+ * Las presentaciones solo definen cuántos gramos salen. Los gramos pueden
+ * provenir de varios lotes, siempre comenzando por el que vence primero.
+ */
+function descontarPresentacionFefo(
+    PDO $pdo,
+    int $productoId,
+    int $presentacionId,
+    int $unidades,
+    int $usuarioId,
+    string $motivo,
+    ?string $referencia = null
+): int {
+    if ($unidades <= 0) {
+        throw new InvalidArgumentException(
+            'Las unidades a descontar deben ser mayores que cero.'
+        );
+    }
+
+    if (!$pdo->inTransaction()) {
+        throw new RuntimeException(
+            'La salida por presentación debe ejecutarse dentro de una transacción.'
+        );
+    }
+
+    $presentationStatement = $pdo->prepare(
+        "SELECT cantidad_gramos
+         FROM producto_presentaciones
+         WHERE id_presentacion = :presentacion
+           AND id_producto = :producto
+           AND activo = TRUE"
+    );
+    $presentationStatement->execute([
+        'presentacion' => $presentacionId,
+        'producto' => $productoId,
+    ]);
+
+    $gramosPorUnidad = $presentationStatement->fetchColumn();
+
+    if ($gramosPorUnidad === false || (int) $gramosPorUnidad <= 0) {
+        throw new InvalidArgumentException(
+            'La presentación no está disponible para este producto.'
+        );
+    }
+
+    $gramosTotal = (int) $gramosPorUnidad * $unidades;
+
+    $stockStatement = $pdo->prepare(
+        "SELECT cantidad_actual, cantidad_reservada
+         FROM stock
+         WHERE id_producto = :producto
+         FOR UPDATE"
+    );
+    $stockStatement->execute(['producto' => $productoId]);
+    $stock = $stockStatement->fetch();
+
+    if (!is_array($stock)) {
+        throw new RuntimeException(
+            'El producto no tiene un registro de stock disponible.'
+        );
+    }
+
+    $cantidadActual = stockVendibleLotes($pdo, $productoId);
+    $cantidadReservada = (int) floor((float) $stock['cantidad_reservada']);
+    $cantidadLibre = max(0, $cantidadActual - $cantidadReservada);
+
+    if ($gramosTotal > $cantidadLibre) {
+        throw new RuntimeException(
+            'No existe stock libre suficiente para esta salida. Hay stock reservado por pedidos.'
+        );
+    }
+
+    return descontarGramosFefo(
+        $pdo,
+        $productoId,
+        $gramosTotal,
+        $usuarioId,
+        'ajuste_negativo',
+        'manual',
+        $motivo,
+        $referencia
+    );
 }
 
 function normalizarLotesFormulario(mixed $input): array

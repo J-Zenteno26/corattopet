@@ -35,12 +35,20 @@ if (!validateCsrfToken($_POST['csrf_token'] ?? null)) {
 }
 
 $validatedCover = null;
+$validatedComplementary = null;
 try {
     $validatedCover = validarPortadaBlog(
         is_array($_FILES['imagen_portada'] ?? null) ? $_FILES['imagen_portada'] : []
     );
 } catch (PortadaBlogException $exception) {
     $errors['imagen_portada'] = $exception->getMessage();
+}
+try {
+    $validatedComplementary = validarImagenComplementariaBlog(
+        is_array($_FILES['imagen_complementaria'] ?? null) ? $_FILES['imagen_complementaria'] : []
+    );
+} catch (PortadaBlogException $exception) {
+    $errors['imagen_complementaria'] = $exception->getMessage();
 }
 
 if ($errors !== []) {
@@ -51,7 +59,9 @@ if ($errors !== []) {
 
 $connection = null;
 $newCover = null;
+$newComplementary = null;
 $previousCover = null;
+$previousComplementary = null;
 try {
     $connection = database();
     $article = obtenerArticuloEdicionBlog($connection, $articleId);
@@ -87,17 +97,30 @@ try {
     }
 
     $previousCover = is_string($article['imagen_portada'] ?? null) ? $article['imagen_portada'] : null;
+    $previousComplementary = is_string($article['imagen_complementaria'] ?? null) ? $article['imagen_complementaria'] : null;
+    $removeComplementary = ($_POST['eliminar_imagen_complementaria'] ?? '') === '1';
     $connection->beginTransaction();
     if (is_array($validatedCover)) {
         $newCover = guardarPortadaBlogValidada($articleId, $validatedCover);
+    }
+    if (is_array($validatedComplementary)) {
+        $newComplementary = guardarImagenComplementariaBlogValidada($articleId, $validatedComplementary);
     }
     actualizarArticuloBlog($connection, $articleId, $values, $slug);
     if (is_array($newCover)) {
         actualizarPortadaArticuloBlog($connection, $articleId, $newCover['relativa']);
     }
+    if (is_array($newComplementary)) {
+        actualizarImagenComplementariaArticuloBlog($connection, $articleId, $newComplementary['relativa']);
+    } elseif ($removeComplementary) {
+        actualizarImagenComplementariaArticuloBlog($connection, $articleId, null);
+    }
     $connection->commit();
     if (is_array($newCover)) {
         eliminarPortadaBlog($previousCover);
+    }
+    if (is_array($newComplementary) || $removeComplementary) {
+        eliminarPortadaBlog($previousComplementary);
     }
     guardarModalAdmin('success', 'Artículo actualizado', 'Los cambios del artículo fueron guardados correctamente.');
     header('Location: ' . appUrl('admin/blog/index.php'), true, 303);
@@ -108,6 +131,9 @@ try {
     }
     if (is_array($newCover) && is_string($newCover['absoluta'] ?? null) && is_file($newCover['absoluta'])) {
         @unlink($newCover['absoluta']);
+    }
+    if (is_array($newComplementary) && is_string($newComplementary['absoluta'] ?? null) && is_file($newComplementary['absoluta'])) {
+        @unlink($newComplementary['absoluta']);
     }
     $reference = registrarExcepcionAdmin('Blog article update error', $exception);
     guardarEstadoMantenedor(

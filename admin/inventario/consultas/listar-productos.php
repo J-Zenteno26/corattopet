@@ -101,15 +101,21 @@ function construirFiltrosSqlInventario(array $filters): array
         $where[] = $filters['tipo_stock'] === 'fraccionable' ? $fractionableFilter : 'NOT ' . $fractionableFilter;
     }
 
-    $subcategoryNames = [
-        'alimento_seco' => 'ALIMENTO SECO',
-        'alimento_humedo' => 'ALIMENTO HÚMEDO',
-        'snacks' => 'SNACKS',
-        'higiene_bienestar' => 'HIGIENE / BIENESTAR',
-    ];
-    if (isset($subcategoryNames[$filters['subcategoria']])) {
-        $where[] = "EXISTS (SELECT 1 FROM productos sf WHERE sf.id_producto=vi.id_producto AND UPPER(sf.detalles_opcionales->>'subcategoria') = :subcategoria)";
-        $bindings['subcategoria'] = $subcategoryNames[$filters['subcategoria']];
+    if ($filters['id_categoria'] !== null && $filters['subcategoria'] !== '') {
+        $where[] = "EXISTS (
+            SELECT 1 FROM productos sf
+            INNER JOIN subcategorias sc ON sc.id_categoria = sf.id_categoria
+            WHERE sf.id_producto = vi.id_producto
+              AND sc.id_categoria = :subcategoria_categoria
+              AND sc.slug = :subcategoria_codigo
+              AND sc.activo = TRUE
+              AND (
+                sf.detalles_opcionales->>'subcategoria_codigo' = sc.slug
+                OR LOWER(TRIM(sf.detalles_opcionales->>'subcategoria')) = LOWER(TRIM(sc.nombre))
+              )
+        )";
+        $bindings['subcategoria_codigo'] = $filters['subcategoria'];
+        $bindings['subcategoria_categoria'] = $filters['id_categoria'];
     }
 
     $fractionableCondition = "EXISTS (SELECT 1 FROM productos sp WHERE sp.id_producto = vi.id_producto AND UPPER(sp.detalles_opcionales->>'subcategoria') = 'ALIMENTO SECO')";

@@ -124,6 +124,13 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         <?php if (isset($errors['imagen_portada'])): ?><span class="admin-field__error" id="imagen-portada-error"><?= escape((string) $errors['imagen_portada']) ?></span><?php endif; ?>
                     </div>
 
+                    <div class="admin-field admin-field--full<?= isset($errors['imagen_complementaria']) ? ' admin-field--invalid' : '' ?>">
+                        <label for="imagen_complementaria">Imagen complementaria (opcional)</label>
+                        <input id="imagen_complementaria" name="imagen_complementaria" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" <?= isset($errors['imagen_complementaria']) ? 'aria-invalid="true" aria-describedby="imagen-complementaria-help imagen-complementaria-error"' : 'aria-describedby="imagen-complementaria-help"' ?>>
+                        <p class="admin-field__help" id="imagen-complementaria-help">JPG, PNG o WEBP. Máximo 2 MB. Solo se mostrará dentro del artículo.</p>
+                        <?php if (isset($errors['imagen_complementaria'])): ?><span class="admin-field__error" id="imagen-complementaria-error"><?= escape((string) $errors['imagen_complementaria']) ?></span><?php endif; ?>
+                    </div>
+
                     <div class="admin-field admin-field--full<?= isset($errors['video_url']) ? ' admin-field--invalid' : '' ?>">
                         <label for="video_url">Enlace de video (opcional)</label>
                         <input id="video_url" name="video_url" type="url" maxlength="500" placeholder="https://..." value="<?= escape((string) ($values['video_url'] ?? '')) ?>" <?= isset($errors['video_url']) ? 'aria-invalid="true" aria-describedby="video-url-help video-url-error"' : 'aria-describedby="video-url-help"' ?>>

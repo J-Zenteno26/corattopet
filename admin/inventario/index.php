@@ -14,7 +14,8 @@ requireAuthentication();
 
 $parameters = normalizarParametrosInventario($_GET);
 $summary = ['productos_totales' => 0, 'alimentos_fraccionables' => 0, 'sin_presentaciones' => 0, 'sin_stock' => 0, 'lotes_vencidos' => 0, 'lotes_criticos' => 0, 'lotes_proximos' => 0];
-$filterOptions = ['categorias' => [], 'marcas' => []];
+$filterOptions = ['categorias' => [], 'marcas' => [], 'subcategorias' => []];
+$lotAlerts = ['vencidos' => [], 'criticos' => [], 'proximos' => []];
 $listing = [
     'registros' => [],
     'total_registros' => 0,
@@ -27,7 +28,9 @@ $databaseError = false;
 try {
     $connection = database();
     $summary = obtenerResumenInventario($connection);
+    $lotAlerts = obtenerAlertasLotesInventario($connection);
     $filterOptions = obtenerFiltrosInventario($connection);
+    validarSubcategoriaInventario($connection, $parameters);
     $listing = listarProductosInventario($connection, $parameters);
 } catch (Throwable $exception) {
     $databaseError = true;
@@ -35,6 +38,11 @@ try {
 }
 
 $parameters['pagina'] = $listing['pagina_actual'];
+$selectedCategoryHasSubcategories = array_filter(
+    $filterOptions['subcategorias'],
+    static fn (array $subcategory): bool =>
+        (int) ($subcategory['id_categoria'] ?? 0) === (int) ($parameters['id_categoria'] ?? 0)
+) !== [];
 $hasActiveFilters = hayFiltrosInventarioActivos($parameters);
 $firstRecord = $listing['total_registros'] === 0
     ? 0
@@ -65,7 +73,9 @@ $activeSection = 'inventario';
 
 require dirname(__DIR__, 2) . '/shared/admin-header.php';
 require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
+
 ?>
+<link rel="stylesheet" href="<?= escape(appUrl('public/css/admin-inventory-lot-alerts.css') . '?v=' . filemtime(dirname(__DIR__, 2) . '/public/css/admin-inventory-lot-alerts.css')) ?>">
 <main class="admin-main" id="contenido-principal">
     <header class="admin-page-header">
         <div>
@@ -99,8 +109,11 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
             class="admin-summary-card admin-inventory-summary__card admin-lot-alert-card <?= escape($lotAlertClass) ?>">
             <span>ALERTAS DE LOTES</span>
             <strong><?= (int) $summary['lotes_vencidos'] + (int) $summary['lotes_criticos'] + (int) $summary['lotes_proximos'] ?></strong>
-            <p><b><?= (int) $summary['lotes_vencidos'] ?></b> vencidos · <b><?= (int) $summary['lotes_criticos'] ?></b>
-                críticos · <b><?= (int) $summary['lotes_proximos'] ?></b> próximos</p>
+            <div class="admin-lot-alert-card__actions" aria-label="Abrir alertas por estado">
+                <button type="button" data-lot-alert-open="vencidos"><b><?= (int) $summary['lotes_vencidos'] ?></b> vencidos</button>
+                <button type="button" data-lot-alert-open="criticos"><b><?= (int) $summary['lotes_criticos'] ?></b> críticos</button>
+                <button type="button" data-lot-alert-open="proximos"><b><?= (int) $summary['lotes_proximos'] ?></b> próximos</button>
+            </div>
         </article>
         <article class="admin-summary-card admin-summary-card--warning admin-inventory-summary__card">
             <span>SIN STOCK</span>
@@ -134,15 +147,18 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="admin-field">
+                <div class="admin-field" id="subcategory-filter-field"
+                    <?= $selectedCategoryHasSubcategories ? '' : 'hidden style="display:none"' ?>>
                     <label for="subcategory-filter">Subcategoría</label>
-                    <select id="subcategory-filter" name="subcategoria">
-                        <option value="">Todas</option>
-                        <option value="alimento_seco" <?= $parameters['subcategoria'] === 'alimento_seco' ? 'selected' : '' ?>>Alimento seco</option>
-                        <option value="alimento_humedo" <?= $parameters['subcategoria'] === 'alimento_humedo' ? 'selected' : '' ?>>Alimento húmedo</option>
-                        <option value="snacks" <?= $parameters['subcategoria'] === 'snacks' ? 'selected' : '' ?>>Snacks
-                        </option>
-                        <option value="higiene_bienestar" <?= $parameters['subcategoria'] === 'higiene_bienestar' ? 'selected' : '' ?>>Higiene / Bienestar</option>
+                    <select id="subcategory-filter" name="subcategoria" <?= $selectedCategoryHasSubcategories ? '' : 'disabled' ?>>
+                        <option value="">Todas las subcategorías</option>
+                        <?php foreach ($filterOptions['subcategorias'] as $subcategory): ?>
+                            <option value="<?= escape((string) $subcategory['slug']) ?>"
+                                data-category-id="<?= (int) $subcategory['id_categoria'] ?>"
+                                <?= $parameters['subcategoria'] === (string) $subcategory['slug'] ? 'selected' : '' ?>>
+                                <?= escape((string) $subcategory['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
 
@@ -397,4 +413,77 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php';
             </form>
         </div>
     </section>
+    <?php foreach ([
+        'vencidos' => ['title' => 'Lotes vencidos', 'empty' => 'No hay lotes vencidos.'],
+        'criticos' => ['title' => 'Lotes críticos', 'empty' => 'No hay lotes con vencimiento crítico.'],
+        'proximos' => ['title' => 'Lotes próximos', 'empty' => 'No hay lotes con vencimiento próximo.'],
+    ] as $category => $modalCopy): ?>
+        <dialog class="admin-lot-alert-modal" data-lot-alert-modal="<?= escape($category) ?>" aria-labelledby="lot-alert-title-<?= escape($category) ?>">
+            <div class="admin-lot-alert-modal__header">
+                <div><span>ALERTA DE INVENTARIO</span><h2 id="lot-alert-title-<?= escape($category) ?>"><?= escape($modalCopy['title']) ?></h2></div>
+                <button type="button" class="admin-lot-alert-modal__close" data-lot-alert-close aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="admin-lot-alert-modal__body">
+                <?php if ($lotAlerts[$category] === []): ?>
+                    <div class="admin-lot-alert-empty"><i class="bi bi-box-seam" aria-hidden="true"></i><strong><?= escape($modalCopy['empty']) ?></strong><span>La lista se actualizará cuando existan lotes en esta categoría.</span></div>
+                <?php else: ?>
+                    <div class="admin-lot-alert-list">
+                        <?php foreach ($lotAlerts[$category] as $lot): $lotState = estadoFechaLoteInventario((string) $lot['fecha_vencimiento']); ?>
+                            <article class="admin-lot-alert-row">
+                                <div class="admin-lot-alert-row__product"><span>Producto</span><strong><?= escape((string) $lot['producto']) ?></strong></div>
+                                <div><span>Código lote</span><strong><?= escape((string) $lot['codigo_lote']) ?></strong></div>
+                                <div><span>Disponible</span><strong><?= escape(formatearPesoLoteInventario($lot['cantidad_disponible_g'])) ?></strong></div>
+                                <div><span>Vencimiento</span><strong><?= escape((new DateTimeImmutable((string) $lot['fecha_vencimiento']))->format('d-m-Y')) ?></strong></div>
+                                <div><span>Estado</span><span class="admin-lot-status is-<?= escape($lotState['key']) ?>"><?= escape($lotState['label']) ?></span></div>
+                                <div class="admin-lot-alert-row__actions"><a class="admin-button admin-button--primary" href="<?= escape(appUrl('admin/inventario/productos/editar-lote.php?id_lote=' . (int) $lot['id_lote'])) ?>">Editar lote</a><a class="admin-button" href="<?= escape(appUrl('admin/inventario/stock/index.php?id=' . (int) $lot['id_producto'])) ?>">Gestionar stock</a></div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </dialog>
+    <?php endforeach; ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const categoryFilter = document.getElementById('category-filter');
+            const subcategoryFilter = document.getElementById('subcategory-filter');
+            const subcategoryField = document.getElementById('subcategory-filter-field');
+            const updateSubcategoryFilter = () => {
+                if (!categoryFilter || !subcategoryFilter || !subcategoryField) return;
+                const categoryId = categoryFilter.value;
+                const matchingOptions = [...subcategoryFilter.options].filter(
+                    (option) => option.value !== '' && option.dataset.categoryId === categoryId
+                );
+                const hasSubcategories = categoryId !== '' && matchingOptions.length > 0;
+
+                for (const option of subcategoryFilter.options) {
+                    if (option.value === '') {
+                        option.hidden = false;
+                        option.disabled = false;
+                        continue;
+                    }
+                    const matches = hasSubcategories && option.dataset.categoryId === categoryId;
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+                }
+
+                if (!hasSubcategories || subcategoryFilter.selectedOptions[0]?.dataset.categoryId !== categoryId) {
+                    subcategoryFilter.value = '';
+                }
+                subcategoryFilter.disabled = !hasSubcategories;
+                subcategoryField.hidden = !hasSubcategories;
+                subcategoryField.style.display = hasSubcategories ? '' : 'none';
+            };
+            categoryFilter?.addEventListener('change', updateSubcategoryFilter);
+            updateSubcategoryFilter();
+
+            document.querySelectorAll('[data-lot-alert-open]').forEach((button) => {
+                button.addEventListener('click', () => document.querySelector(`[data-lot-alert-modal="${button.dataset.lotAlertOpen}"]`)?.showModal());
+            });
+            document.querySelectorAll('[data-lot-alert-modal]').forEach((modal) => {
+                modal.querySelector('[data-lot-alert-close]')?.addEventListener('click', () => modal.close());
+                modal.addEventListener('click', (event) => { if (event.target === modal) modal.close(); });
+            });
+        });
+    </script>
     <?php require dirname(__DIR__, 2) . '/shared/admin-footer.php'; ?>

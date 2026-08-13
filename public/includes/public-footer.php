@@ -9,13 +9,9 @@ $footerEmail = trim((string) ($config['email_contacto'] ?? ''));
     <div class="container site-footer__main">
 
         <div class="site-footer__identity">
-            <img
-                src="<?= e(appUrl('public/assets/img/frase-mascota-footer.png')) ?>"
-                alt="Nutrición, bienestar y confianza para tu mascota"
-                class="site-footer__phrase"
-                loading="lazy"
-                decoding="async"
-            >
+            <img src="<?= e(appUrl('public/assets/img/frase-mascota-footer.png')) ?>"
+                alt="Nutrición, bienestar y confianza para tu mascota" class="site-footer__phrase" loading="lazy"
+                decoding="async">
         </div>
 
         <nav class="site-footer__column" aria-label="Enlaces del sitio">
@@ -36,7 +32,7 @@ $footerEmail = trim((string) ($config['email_contacto'] ?? ''));
             </a>
 
             <a href="<?= e(appUrl('public/politicas-envio.php')) ?>">
-                Políticas de envío
+                Despachos y retiro
             </a>
 
             <a href="<?= e(appUrl('public/cambios-devoluciones.php')) ?>">
@@ -45,6 +41,10 @@ $footerEmail = trim((string) ($config['email_contacto'] ?? ''));
 
             <a href="<?= e(appUrl('public/terminos-condiciones.php')) ?>">
                 Términos y condiciones
+            </a>
+
+            <a href="<?= e(appUrl('public/politica-privacidad.php')) ?>">
+                Privacidad y datos personales
             </a>
         </nav>
 
@@ -78,24 +78,24 @@ $footerEmail = trim((string) ($config['email_contacto'] ?? ''));
                 Recibe novedades, consejos y promociones exclusivas para tu mascota.
             </p>
 
-            <form class="site-footer__newsletter-form">
+            <form class="site-footer__newsletter-form"
+                action="<?= e(appUrl('public/acciones-newsletter/suscribir.php')) ?>" method="post"
+                data-newsletter-form>
+                <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
+
                 <label class="sr-only" for="footer-newsletter-email">
                     Tu correo electrónico
-                </label> 
+                </label>
 
-                <input
-                    id="footer-newsletter-email"
-                    name="email"
-                    type="email"
-                    placeholder="Tu correo electrónico"
-                    autocomplete="email"
-                    required
-                >
+                <input id="footer-newsletter-email" name="email" type="email" placeholder="Tu correo electrónico"
+                    autocomplete="email" required>
 
-              <button type="submit" aria-label="Suscribirme al newsletter">
-                  <span class="site-footer__newsletter-paw" aria-hidden="true"></span>
-              </button>
+                <button type="submit" aria-label="Suscribirme al newsletter">
+                    <span class="site-footer__newsletter-paw" aria-hidden="true"></span>
+                </button>
             </form>
+
+            <p class="site-footer__newsletter-feedback" data-newsletter-feedback role="status" hidden></p>
         </div>
 
     </div>
@@ -110,3 +110,27 @@ $footerEmail = trim((string) ($config['email_contacto'] ?? ''));
         </div>
     </div>
 </footer>
+<script
+    src="<?= e(appUrl('public/assets/js/newsletter.js')) ?>?v=<?= filemtime(__DIR__ . '/../assets/js/newsletter.js') ?>"
+    defer
+></script>
+<script>
+    (() => {
+        const root = document.documentElement;
+
+        const pressPaw = () => {
+            root.classList.add('cursor-paw-pressed');
+        };
+
+        const releasePaw = () => {
+            root.classList.remove('cursor-paw-pressed');
+        };
+
+        document.addEventListener('pointerdown', pressPaw);
+
+        document.addEventListener('pointerup', releasePaw);
+        document.addEventListener('pointercancel', releasePaw);
+
+        window.addEventListener('blur', releasePaw);
+    })();
+</script>

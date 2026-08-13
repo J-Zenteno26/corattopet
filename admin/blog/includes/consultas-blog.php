@@ -102,6 +102,7 @@ function obtenerArticuloEdicionBlog(PDO $connection, int $articleId): ?array
             slug,
             extracto,
             imagen_portada,
+            imagen_complementaria,
             video_url,
             contenido_html,
             autor_publico,
@@ -170,6 +171,23 @@ function actualizarPortadaArticuloBlog(PDO $connection, int $articleId, string $
          WHERE id_articulo = :id_articulo'
     );
     $statement->bindValue(':imagen_portada', $relativePath);
+    $statement->bindValue(':id_articulo', $articleId, PDO::PARAM_INT);
+    $statement->execute();
+}
+
+function actualizarImagenComplementariaArticuloBlog(PDO $connection, int $articleId, ?string $relativePath): void
+{
+    $statement = $connection->prepare(
+        'UPDATE blog_articulos
+         SET imagen_complementaria = :imagen_complementaria,
+             actualizado_en = NOW()
+         WHERE id_articulo = :id_articulo'
+    );
+    $statement->bindValue(
+        ':imagen_complementaria',
+        $relativePath,
+        $relativePath === null ? PDO::PARAM_NULL : PDO::PARAM_STR
+    );
     $statement->bindValue(':id_articulo', $articleId, PDO::PARAM_INT);
     $statement->execute();
 }

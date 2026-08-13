@@ -1,0 +1,851 @@
+.nutrition-calculator-page {
+    --calc-brown: #513526;
+    --calc-brown-soft: #6a4734;
+    --calc-gold: #c58a37;
+    --calc-gold-soft: #e7c58d;
+    --calc-cream: #fbf3e7;
+    --calc-paper: #fffaf2;
+    --calc-border: rgba(111, 72, 45, .18);
+
+    color: #3d3029;
+
+    background:
+        radial-gradient(circle at 8% 18%,
+            rgba(197, 138, 55, .08),
+            transparent 22rem),
+        linear-gradient(180deg,
+            #fffdf9,
+            #f7ebdb);
+}
+
+.nutrition-calculator-hero {
+    position: relative;
+    overflow: hidden;
+
+    padding: clamp(2rem, 4vw, 3.1rem) 0;
+
+    color: #fffaf2;
+
+    background:
+        radial-gradient(circle at 82% 24%,
+            rgba(224, 173, 93, .14),
+            transparent 15rem),
+        linear-gradient(118deg,
+            #3f291f,
+            #674633);
+}
+
+.nutrition-calculator-hero::before {
+    content: "";
+
+    position: absolute;
+    right: clamp(2.4rem, 5.4vw, 6.4rem);
+    top: 50%;
+
+    width: 12rem;
+    height: 12rem;
+
+    border: 1px solid rgba(239, 201, 129, .08);
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(225, 174, 98, .055),
+            transparent 68%
+        );
+
+    transform: translateY(-50%);
+
+    pointer-events: none;
+}
+
+.nutrition-calculator-hero::after {
+    content: "";
+
+    position: absolute;
+    right: clamp(4rem, 7vw, 8rem);
+    top: 50%;
+
+    width: 8.8rem;
+    height: 8.8rem;
+
+    border: 1px solid rgba(239, 201, 129, .34);
+    border-radius: 50%;
+
+    background-color: rgba(239, 201, 129, .045);
+
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23d9ad68' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M32 12v38M22 16h20M32 12l-3-4h6zM18 22l-8 16h16L18 22zM46 22l-8 16h16L46 22z'/%3E%3Cpath d='M10 38c0 5 3.6 9 8 9s8-4 8-9M38 38c0 5 3.6 9 8 9s8-4 8-9M24 52h16'/%3E%3C/g%3E%3C/svg%3E"),
+        radial-gradient(
+            circle at 35% 30%,
+            rgba(239, 201, 129, .15),
+            rgba(80, 49, 34, .18) 65%
+        );
+
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size:
+        4.5rem 4.5rem,
+        100% 100%;
+
+    box-shadow:
+        inset 0 0 0 .7rem rgba(239, 201, 129, .035),
+        0 1rem 2.5rem rgba(25, 12, 7, .16);
+
+    transform: translateY(-50%);
+
+    pointer-events: none;
+}
+
+.nutrition-calculator-hero .container {
+    position: relative;
+    z-index: 1;
+
+    width: min(calc(100% - 72px), 1380px);
+    max-width: none;
+
+    margin-inline: auto;
+
+    padding-right: 12rem;
+}
+
+.nutrition-calculator-hero span,
+.nutrition-calculator-form header>span,
+.nutrition-recommendations-heading>span {
+    color: #efc981;
+
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+}
+
+.nutrition-calculator-hero h1 {
+    width: 100%;
+    max-width: 1120px;
+
+    margin: .4rem 0;
+
+    font-family: var(--serif);
+    font-size: clamp(2.45rem, 3.8vw, 3.9rem);
+    font-weight: 700;
+    line-height: .98;
+    letter-spacing: -.025em;
+}
+.nutrition-calculator-hero p {
+    max-width: 820px;
+
+    margin: .7rem 0 0;
+
+    color: #f4e9df;
+
+    font-size: .94rem;
+    line-height: 1.55;
+}
+
+.nutrition-calculator-hero-points {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+
+    margin-top: 1rem;
+}
+
+.nutrition-calculator-hero-points span {
+    display: inline-flex;
+    align-items: center;
+    gap: .42rem;
+
+    min-height: 2rem;
+
+    padding: .42rem .72rem;
+
+    border: 1px solid rgba(239, 201, 129, .2);
+    border-radius: 999px;
+
+    color: #f4e9df;
+    background: rgba(255, 255, 255, .055);
+
+    font-family: var(--sans);
+    font-size: .77rem;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.nutrition-calculator-hero-points span::before {
+    color: #efc981;
+
+    font-size: .9rem;
+    line-height: 1;
+}
+
+.nutrition-calculator-hero-points span:nth-child(1)::before {
+    content: "◔";
+}
+
+.nutrition-calculator-hero-points span:nth-child(2)::before {
+    content: "±";
+}
+
+.nutrition-calculator-hero-points span:nth-child(3)::before {
+    content: "✦";
+}
+
+.nutrition-calculator-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(260px, .72fr);
+    gap: 1rem;
+    align-items: start;
+    padding-block: 2rem
+}
+
+.nutrition-calculator-form,
+.nutrition-guidance,
+.nutrition-results-summary,
+.nutrition-product-card,
+.nutrition-disclaimer {
+    border: 1px solid var(--calc-border);
+    border-radius: 1.1rem;
+    background: #fffaf3;
+    box-shadow: 0 .6rem 1.4rem rgba(64, 43, 29, .06)
+}
+
+.nutrition-calculator-form {
+    position: relative;
+
+    padding: clamp(1.4rem, 3vw, 2rem);
+
+    background:
+        linear-gradient(145deg,
+            #fffaf3,
+            #fbefdf);
+}
+
+.nutrition-calculator-form h2,
+.nutrition-recommendations-heading h2,
+.nutrition-guidance h2 {
+    margin-top: 0;
+    margin: .25rem 0;
+    color: var(--calc-brown);
+    font-family: var(--serif);
+    font-size: 1.65rem;
+    font-weight: 700
+}
+
+.nutrition-calculator-form header p,
+.nutrition-recommendations-heading p {
+    margin: .35rem 0 1.2rem;
+    color: #75675e;
+    font-size: .92rem;
+    line-height: 1.5
+}
+
+.nutrition-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .85rem
+}
+
+.nutrition-field {
+    display: grid;
+    gap: .4rem
+}
+
+.nutrition-field[hidden] {
+    display: none !important;
+}
+
+.nutrition-field--full {
+    grid-column: 1/-1
+}
+
+.nutrition-field>span:first-child {
+    font-size: .9rem;
+    font-weight: 650;
+    color: #4b3a31
+}
+
+.nutrition-field small {
+    font-size: .84rem;
+    font-weight: 500;
+    color: #7b6c63
+}
+
+.nutrition-field input,
+.nutrition-field select {
+    width: 100%;
+    min-height: 3.2rem;
+
+    padding: .72rem .85rem;
+
+    border: 1px solid rgba(111, 72, 45, .22);
+    border-radius: .8rem;
+
+    color: #392b24;
+    background: rgba(255, 253, 248, .92);
+
+    font: inherit;
+    font-size: .94rem;
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .75);
+
+    transition:
+        border-color .18s ease,
+        box-shadow .18s ease,
+        background .18s ease;
+}
+
+.nutrition-field input:focus,
+.nutrition-field select:focus {
+    border-color: var(--calc-gold);
+
+    outline: 0;
+
+    background: #fff;
+
+    box-shadow:
+        0 0 0 3px rgba(197, 138, 55, .13);
+}
+
+.nutrition-inline {
+    display: grid;
+    grid-template-columns: 1fr 110px;
+    gap: .45rem
+}
+
+.nutrition-calculate-button {
+    width: 100%;
+    min-height: 3.35rem;
+
+    margin-top: 1.2rem;
+
+    border: 1px solid #a96f2e;
+    border-radius: 999px;
+
+    color: #fffaf2;
+
+    background:
+        linear-gradient(135deg,
+            #c99039,
+            #a96f2e);
+
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+
+    box-shadow:
+        0 .55rem 1.1rem rgba(121, 76, 36, .16);
+
+    transition:
+        transform .18s ease,
+        box-shadow .18s ease;
+}
+
+.nutrition-calculate-button:hover {
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 .7rem 1.4rem rgba(121, 76, 36, .22);
+}
+
+.nutrition-guidance {
+    position: sticky;
+    top: 6.5rem;
+
+    padding: 1.35rem;
+
+    border-color: rgba(197, 138, 55, .25);
+
+    background:
+        radial-gradient(circle at 90% 5%,
+            rgba(197, 138, 55, .12),
+            transparent 7rem),
+        #f8ead8;
+}
+
+.nutrition-guidance::before {
+    content: "✦";
+
+    display: block;
+
+    margin-bottom: .65rem;
+
+    color: var(--calc-gold);
+
+    font-size: 1.05rem;
+}
+
+.nutrition-guidance p,
+.nutrition-guidance li {
+    font-size: .9rem;
+    line-height: 1.5
+}
+
+.nutrition-guidance ul {
+    display: grid;
+    gap: .6rem;
+    padding-left: 1.15rem
+}
+
+.nutrition-feedback {
+    margin-block: 1rem;
+    padding: 1rem;
+    border-radius: .8rem;
+    font-size: .9rem;
+    line-height: 1.45
+}
+
+.nutrition-feedback--error {
+    border: 1px solid #d59a92;
+    background: #fff0ed;
+    color: #78362f
+}
+
+.nutrition-results {
+    padding-block: 1rem 3rem;
+    scroll-margin-top: 6rem
+}
+
+.nutrition-results-summary {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: .8rem;
+
+    padding: .9rem;
+
+    overflow: visible;
+
+    border: 1px solid rgba(111, 72, 45, .18);
+    border-radius: 1.2rem;
+
+    background: #fff8ee;
+}
+
+.nutrition-results-summary>div {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+
+    min-height: 7rem;
+
+    padding: 1.1rem;
+
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: .95rem;
+
+    color: #fffaf2;
+
+    background:
+        linear-gradient(145deg,
+            #684734,
+            #503426);
+
+    text-align: center;
+
+    box-shadow:
+        0 .45rem 1rem rgba(73, 45, 28, .12);
+}
+
+.nutrition-results-summary>div+div {
+    border-left: 1px solid rgba(255, 255, 255, .1);
+}
+
+.nutrition-results-summary span {
+    color: #f2d8b3;
+
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+}
+
+.nutrition-results-summary strong {
+    margin: .3rem 0;
+
+    color: #fffaf2;
+
+    font-family: var(--sans);
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.04em;
+}
+
+.nutrition-results-summary small {
+    color: #f3dfca;
+
+    font-size: .84rem;
+    font-weight: 600;
+}
+
+.nutrition-special-warning {
+    margin-top: 1rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid #d4aa5c;
+    border-radius: .9rem;
+    background: #fff5d9;
+    color: #543d20
+}
+
+.nutrition-special-warning strong {
+    font-weight: 700
+}
+
+.nutrition-special-warning li {
+    margin-top: .35rem;
+    font-size: .9rem;
+    line-height: 1.45
+}
+
+.nutrition-recommendations-heading {
+    margin: 2rem 0 1rem
+}
+
+.nutrition-recommendations-heading>span {
+    color: var(--calc-gold)
+}
+
+.nutrition-product-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem
+}
+
+.nutrition-product-card {
+    overflow: hidden
+}
+
+.nutrition-product-card>img,
+.nutrition-product-placeholder {
+    width: 100%;
+    height: 210px;
+    object-fit: contain;
+    background: #f5e9d8
+}
+
+.nutrition-product-placeholder {
+    display: grid;
+    place-items: center;
+    font-size: 2.5rem
+}
+
+.nutrition-product-card__body {
+    display: grid;
+    gap: .65rem;
+    padding: 1rem
+}
+
+.nutrition-product-brand {
+    font-size: .84rem;
+    font-weight: 700;
+    color: var(--calc-gold)
+}
+
+.nutrition-product-card h3 {
+    margin: 0;
+    color: var(--calc-brown);
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3
+}
+
+.nutrition-product-card ul {
+    min-height: 4.5rem;
+    margin: 0;
+    padding-left: 1.15rem
+}
+
+.nutrition-product-card li {
+    font-size: .86rem;
+    line-height: 1.4
+}
+
+.nutrition-product-energy {
+    display: grid;
+    gap: .3rem;
+
+    padding: .8rem;
+
+    border: 1px solid rgba(197, 138, 55, .16);
+    border-radius: .75rem;
+
+    background:
+        linear-gradient(145deg,
+            #fff7e9,
+            #f5e3cb);
+}
+
+.nutrition-product-energy span {
+    font-size: .84rem;
+    color: #6d5d53
+}
+
+.nutrition-product-energy strong {
+    color: #5a3927;
+
+    font-family: var(--sans);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.nutrition-product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem
+}
+
+.nutrition-product-footer>span {
+    font-size: .86rem;
+    font-weight: 700
+}
+
+.nutrition-product-footer .is-available {
+    color: #3d694d
+}
+
+.nutrition-product-footer .is-unavailable {
+    color: #8a4038
+}
+
+.nutrition-product-footer .button {
+    padding: .6rem .8rem;
+    font-size: .86rem
+}
+
+.nutrition-empty {
+    grid-column: 1/-1;
+    padding: 2rem;
+    border: 1px dashed var(--calc-border);
+    border-radius: 1rem;
+    text-align: center;
+    background: #fffaf3
+}
+
+.nutrition-empty h3 {
+    font-size: 1.1rem
+}
+
+.nutrition-empty p {
+    font-size: .9rem
+}
+
+.nutrition-disclaimer {
+    margin-block: 0 3rem;
+    padding: 1rem 1.2rem
+}
+
+.nutrition-disclaimer strong {
+    font-weight: 700;
+    color: var(--calc-brown)
+}
+
+.nutrition-disclaimer p {
+    margin: .25rem 0 0;
+    font-size: .9rem;
+    line-height: 1.5
+}
+
+@media (max-width: 900px) {
+    .nutrition-calculator-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .nutrition-calculator-form,
+    .nutrition-guidance {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .nutrition-guidance {
+        position: static;
+    }
+
+    .nutrition-results-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .nutrition-product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 620px) {
+    .nutrition-calculator-hero {
+        padding: 1.65rem 0 1.85rem;
+    }
+
+    .nutrition-calculator-hero::before,
+    .nutrition-calculator-hero::after {
+        display: none;
+    }
+
+    .nutrition-calculator-hero h1 {
+        max-width: 19rem;
+
+        font-size: 1.95rem;
+        line-height: 1.02;
+    }
+
+    .nutrition-calculator-hero p {
+        max-width: 21rem;
+
+        font-size: .86rem;
+        line-height: 1.48;
+    }
+
+    .nutrition-calculator-hero-points {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+
+        gap: .35rem;
+
+        margin-top: .85rem;
+    }
+
+    .nutrition-calculator-hero-points span {
+        min-height: 2.6rem;
+
+        justify-content: center;
+
+        padding: .4rem .3rem;
+
+        border-radius: .65rem;
+
+        font-size: .66rem;
+        line-height: 1.15;
+        text-align: center;
+    }
+
+    .nutrition-calculator-layout {
+        padding-block: 1rem;
+    }
+
+    .nutrition-calculator-form {
+        padding: 1rem;
+        border-radius: 1rem;
+    }
+
+    .nutrition-calculator-form h2 {
+        font-size: 1.45rem;
+    }
+
+    .nutrition-form-grid {
+        grid-template-columns: 1fr;
+        gap: .75rem;
+    }
+
+    .nutrition-field--full {
+        grid-column: auto;
+    }
+
+    .nutrition-field input,
+    .nutrition-field select {
+        min-height: 3rem;
+        font-size: .9rem;
+    }
+
+    .nutrition-inline {
+        grid-template-columns: minmax(0, 1fr) 95px;
+    }
+
+    .nutrition-calculate-button {
+        min-height: 3.15rem;
+        margin-top: 1rem;
+        font-size: .9rem;
+    }
+
+    .nutrition-guidance {
+        padding: 1rem 1.05rem;
+
+        border-radius: .95rem;
+    }
+
+    .nutrition-guidance::before {
+        margin-bottom: .35rem;
+    }
+
+    .nutrition-guidance p,
+    .nutrition-guidance li {
+        font-size: .84rem;
+        line-height: 1.45;
+    }
+
+    .nutrition-guidance ul {
+        gap: .4rem;
+        margin-bottom: 0;
+    }
+
+    .nutrition-guidance h2 {
+        font-size: 1.4rem;
+    }
+
+    .nutrition-results {
+        padding-block: .6rem 2rem;
+    }
+
+    .nutrition-results-summary {
+        grid-template-columns: 1fr;
+        gap: .55rem;
+        padding: .65rem;
+    }
+
+    .nutrition-results-summary>div {
+        min-height: 5.7rem;
+        padding: .85rem;
+    }
+
+    .nutrition-results-summary>div+div {
+        border-left: 1px solid rgba(255, 255, 255, .1);
+        border-top: 0;
+    }
+
+    .nutrition-results-summary strong {
+        font-size: 1.85rem;
+    }
+
+    .nutrition-recommendations-heading {
+        margin-top: 1.5rem;
+    }
+
+    .nutrition-recommendations-heading h2 {
+        font-size: 1.5rem;
+    }
+
+    .nutrition-product-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nutrition-product-card>img,
+    .nutrition-product-placeholder {
+        height: 190px;
+    }
+
+    .nutrition-product-card__body {
+        padding: .9rem;
+    }
+
+    .nutrition-product-card ul {
+        min-height: 0;
+    }
+
+    .nutrition-product-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .nutrition-product-footer .button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .nutrition-disclaimer {
+        margin-bottom: 2rem;
+    }
+    .nutrition-calculator-hero .container {
+        width: min(calc(100% - 32px), 100%);
+        padding-right: 0;
+    }
+}

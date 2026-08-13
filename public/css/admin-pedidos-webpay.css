@@ -1,0 +1,223 @@
+/* Detalle Webpay dentro de la ficha administrativa del pedido */
+.admin-order-webpay__summary {
+    display: grid;
+    gap: 1rem;
+    padding: 1.2rem 1.25rem;
+}
+
+.admin-order-webpay__summary > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+}
+
+.admin-order-webpay__summary > div:first-child > strong {
+    color: #9a742b;
+    font-size: 1.25rem;
+    font-weight: 850;
+}
+
+.admin-order-webpay__status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.9rem;
+    padding: .35rem .6rem;
+    border-radius: 999px;
+    color: #5e6870;
+    background: #edf0f2;
+    font-size: .8rem;
+    font-weight: 850;
+}
+
+.admin-order-webpay__status--autorizado {
+    color: #315f40;
+    background: #e6f2e9;
+}
+
+.admin-order-webpay__status--rechazado,
+.admin-order-webpay__status--error {
+    color: #8b3e36;
+    background: #fae9e6;
+}
+
+.admin-order-webpay__status--abandonado {
+    color: #775c23;
+    background: #f7edcf;
+}
+
+.admin-order-webpay__status--creado,
+.admin-order-webpay__status--redirigido {
+    color: #31566d;
+    background: #e6eff5;
+}
+
+.admin-order-webpay__summary dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid #eee7dc;
+}
+
+.admin-order-webpay__summary dl div {
+    min-width: 0;
+    padding: .75rem .55rem;
+    border-bottom: 1px solid #eee7dc;
+}
+
+.admin-order-webpay__summary dt {
+    margin-bottom: .25rem;
+    color: #7a858a;
+    font-size: .72rem;
+    font-weight: 850;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+}
+
+.admin-order-webpay__summary dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: #293c47;
+    font-size: .86rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.admin-order-webpay__error {
+    margin: 0;
+    padding: .75rem .85rem;
+    border: 1px solid #eed0ca;
+    border-radius: 10px;
+    color: #87453d;
+    background: #fff3f0;
+    font-size: .8rem;
+    line-height: 1.45;
+}
+
+.admin-order-webpay__attempts {
+    padding: 0 1.25rem 1.25rem;
+}
+
+.admin-order-webpay__attempts h3 {
+    margin: 0 0 .65rem;
+    color: #334954;
+    font-size: .82rem;
+    font-weight: 850;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.admin-order-webpay__attempts ol {
+    display: grid;
+    gap: .45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-order-webpay__attempts li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: .25rem .55rem;
+    align-items: center;
+    padding: .65rem .7rem;
+    border: 1px solid #e8dfd2;
+    border-radius: 10px;
+    background: #fcfaf6;
+}
+
+.admin-order-webpay__attempts li > span {
+    color: #a1762f;
+    font-size: .7rem;
+    font-weight: 900;
+}
+
+.admin-order-webpay__attempts li > strong,
+.admin-order-webpay__attempts li > b {
+    color: #344954;
+    font-size: .8rem;
+}
+
+.admin-order-webpay__attempts li > b {
+    text-align: right;
+}
+
+.admin-order-webpay__attempts time {
+    grid-column: 2 / -1;
+    color: #7b858a;
+    font-size: .74rem;
+}
+
+@media (max-width: 699px) {
+    .admin-order-webpay__summary {
+        gap: .8rem;
+        padding: 1rem;
+    }
+
+    .admin-order-webpay__summary > div:first-child > strong {
+        font-size: 1.1rem;
+    }
+
+    .admin-order-webpay__summary dl {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-order-webpay__summary dl div {
+        padding-inline: .2rem;
+    }
+
+    .admin-order-webpay__attempts {
+        padding: 0 1rem 1rem;
+    }
+}
+
+/* Estado de pago de solo lectura en Gestión interna */
+.admin-order-payment-readonly {
+    display: grid;
+    gap: .45rem;
+}
+
+.admin-order-payment-readonly__label {
+    color: #50606a;
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.admin-order-payment-readonly__value {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    padding: .7rem .85rem;
+    border: 1px solid rgb(52 72 83 / 16%);
+    border-radius: .7rem;
+    background: #f7f6f2;
+}
+
+.admin-order-payment-readonly__value small {
+    color: #6d777d;
+    font-size: .8rem;
+    line-height: 1.35;
+    text-align: right;
+}
+
+@media (max-width: 700px) {
+    .admin-order-payment-readonly__value {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-order-payment-readonly__value small {
+        text-align: left;
+    }
+}
+
+.admin-order-management__hint {
+    display: block;
+    margin-top: .42rem;
+    color: #6d777d;
+    font-size: .8rem;
+    line-height: 1.4;
+}

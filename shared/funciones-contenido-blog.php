@@ -142,17 +142,30 @@ function urlPortadaBlog(mixed $path): ?string
         return null;
     }
 
-    $path = trim($path);
-    if (filter_var($path, FILTER_VALIDATE_URL)) {
+    $relativePath = ltrim(
+        str_replace('\\', '/', trim($path)),
+        '/'
+    );
+
+    if ($relativePath === '' || str_contains($relativePath, '..')) {
         return null;
     }
 
-    $relativePath = ltrim(str_replace('\\', '/', $path), '/');
-    if (str_starts_with($relativePath, 'uploads/')) {
-        $relativePath = 'public/' . $relativePath;
+    if (filter_var($relativePath, FILTER_VALIDATE_URL)) {
+        return null;
     }
 
-    return appUrl($relativePath);
+    if (str_starts_with($relativePath, 'public/')) {
+        $relativePath = substr($relativePath, 7);
+    }
+
+    if (!str_starts_with($relativePath, 'uploads/')) {
+        $relativePath = 'uploads/' . $relativePath;
+    }
+
+    $mediaBaseUrl = rtrim((string) env('PUBLIC_MEDIA_URL', 'https://corattopet.cl'), '/');
+
+    return $mediaBaseUrl . '/public/' . ltrim($relativePath, '/');
 }
 
 function urlVideoBlog(mixed $value): ?string

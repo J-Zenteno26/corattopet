@@ -1,0 +1,211 @@
+/* =========================================================
+   DESPACHOS — CATEGORÍAS
+   ========================================================= */
+
+.admin-shipping-categories {
+    min-width: 0;
+    --shipping-green: #3f766f;
+    --shipping-green-dark: #285b55;
+    --shipping-green-deep: #173f3b;
+    --shipping-green-soft: #e8f1ef;
+    --shipping-green-soft-2: #f5f9f8;
+    --shipping-border: #c7d9d5;
+    --shipping-text: #34544f;
+    --shipping-muted: #667c77;
+    --paw-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='20' cy='18' rx='7' ry='10' fill='black'/%3E%3Cellipse cx='34' cy='14' rx='7' ry='10' fill='black'/%3E%3Cellipse cx='48' cy='20' rx='7' ry='10' fill='black'/%3E%3Cellipse cx='13' cy='32' rx='7' ry='9' fill='black'/%3E%3Cpath d='M18 47c0-12 8-20 18-20s18 8 18 20c0 8-7 13-18 13S18 55 18 47Z' fill='black'/%3E%3C/svg%3E");
+}
+
+.admin-shipping-eyebrow {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--shipping-green-dark);
+    font-size: 0.84rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-shipping-categories .admin-page-header {
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--shipping-border);
+}
+
+.admin-shipping-categories .admin-page-header .admin-button {
+    border-color: var(--shipping-green);
+    background: var(--shipping-green);
+    color: #ffffff;
+}
+
+.admin-shipping-categories .admin-page-header .admin-button:hover {
+    border-color: var(--shipping-green-dark);
+    background: var(--shipping-green-dark);
+    color: #ffffff;
+}
+
+.admin-shipping-categories .admin-panel {
+    border-color: var(--shipping-border);
+    background: #ffffff;
+}
+
+.admin-shipping-categories .admin-panel__header h2 {
+    color: var(--shipping-green-deep);
+}
+
+.admin-shipping-categories .admin-panel__header p {
+    color: var(--shipping-muted);
+}
+
+.admin-shipping-table {
+    min-width: 58rem;
+}
+
+.admin-shipping-table thead {
+    background: linear-gradient(90deg, #4f8a81 0%, #356f67 52%, #214f4a 100%);
+}
+
+.admin-shipping-table thead th {
+    border-color: rgba(255, 255, 255, 0.10);
+    background: transparent;
+    color: #ffffff;
+}
+
+.admin-shipping-table th,
+.admin-shipping-table td {
+    vertical-align: middle;
+}
+
+.admin-shipping-table tbody tr:nth-child(even) {
+    background: rgba(79, 127, 115, 0.045);
+}
+
+.admin-shipping-table tbody tr:hover {
+    background: rgba(79, 127, 115, 0.085);
+}
+
+.admin-shipping-category-name {
+    color: var(--shipping-green-deep);
+    font-size: 1rem;
+}
+
+.admin-shipping-size,
+.admin-shipping-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.admin-shipping-size {
+    color: #285b55;
+    background: #dcebe8;
+}
+
+.admin-shipping-size--mediano {
+    color: #315f68;
+    background: #e2eef0;
+}
+
+.admin-shipping-size--grande {
+    color: #244b46;
+    background: #cfe1dd;
+}
+
+.admin-shipping-count {
+    color: #355b55;
+    background: #edf5f3;
+}
+
+.admin-shipping-categories .admin-actions-inline .admin-button,
+.admin-shipping-categories .admin-actions-inline a {
+    border-color: var(--shipping-green);
+    color: var(--shipping-green-dark);
+}
+
+.admin-shipping-categories .admin-actions-inline .admin-button:hover,
+.admin-shipping-categories .admin-actions-inline a:hover {
+    background: var(--shipping-green-soft);
+    color: var(--shipping-green-deep);
+}
+
+.admin-shipping-categories .admin-button--primary {
+    border-color: var(--shipping-green);
+    background: var(--shipping-green);
+    color: #ffffff;
+}
+
+.admin-shipping-categories .admin-button--primary:hover {
+    border-color: var(--shipping-green-dark);
+    background: var(--shipping-green-dark);
+}
+
+.admin-shipping-categories .admin-status-badge.is-active {
+    color: #285b55;
+    background: #dcebe8;
+}
+
+.admin-shipping-categories .admin-status-badge.is-inactive {
+    color: #6e7774;
+    background: #edf1f0;
+}
+
+.admin-shipping-categories .admin-empty-state {
+    color: var(--shipping-muted);
+}
+
+.admin-shipping-categories .admin-empty-state i {
+    color: var(--shipping-green);
+}
+
+.admin-shipping-form-layout {
+    width: min(100%, 980px);
+}
+
+.admin-shipping-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-shipping-categories .admin-form-card {
+    border-color: var(--shipping-border);
+    background: #ffffff;
+}
+
+.admin-shipping-categories .admin-field label {
+    color: var(--shipping-text);
+    font-weight: 800;
+}
+
+.admin-shipping-categories .admin-field input,
+.admin-shipping-categories .admin-field select {
+    border-color: #c8d7d2;
+    background: #ffffff;
+}
+
+.admin-shipping-categories .admin-field input:focus,
+.admin-shipping-categories .admin-field select:focus {
+    border-color: var(--shipping-green);
+    box-shadow: 0 0 0 3px rgba(79, 127, 115, 0.13);
+}
+
+.admin-shipping-categories .admin-form-actions .admin-button--primary {
+    border-color: var(--shipping-green);
+    background: var(--shipping-green);
+    color: #ffffff;
+}
+
+@media (max-width: 780px) {
+    .admin-shipping-form-layout {
+        width: 100%;
+    }
+
+    .admin-shipping-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-shipping-table .admin-actions-inline {
+        align-items: stretch;
+    }
+}

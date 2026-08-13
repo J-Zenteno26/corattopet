@@ -161,14 +161,26 @@ function formatearFechaBlog(mixed $date): string
 /** @return array{temporal:string,extension:string}|null */
 function validarPortadaBlog(array $file): ?array
 {
+    return validarImagenBlog($file, 'La portada');
+}
+
+/** @return array{temporal:string,extension:string}|null */
+function validarImagenComplementariaBlog(array $file): ?array
+{
+    return validarImagenBlog($file, 'La imagen complementaria');
+}
+
+/** @return array{temporal:string,extension:string}|null */
+function validarImagenBlog(array $file, string $label): ?array
+{
     $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
     if ($error === UPLOAD_ERR_NO_FILE) {
         return null;
     }
     if ($error !== UPLOAD_ERR_OK) {
         $message = match ($error) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'La portada supera el tamaño máximo permitido de 2 MB.',
-            default => 'La portada no pudo recibirse correctamente. Intenta nuevamente.',
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => $label . ' supera el tamaño máximo permitido de 2 MB.',
+            default => $label . ' no pudo recibirse correctamente. Intenta nuevamente.',
         };
         throw new PortadaBlogException($message);
     }
@@ -180,7 +192,7 @@ function validarPortadaBlog(array $file): ?array
         throw new PortadaBlogException('El archivo seleccionado no es válido.');
     }
     if ($size > PORTADA_BLOG_MAX_BYTES) {
-        throw new PortadaBlogException('La portada supera el tamaño máximo permitido de 2 MB.');
+        throw new PortadaBlogException($label . ' supera el tamaño máximo permitido de 2 MB.');
     }
     if (preg_match('/\.(php\d*|phtml|phar|cgi|pl|py|sh|exe|com|bat|cmd)(\.|$)/i', $original) === 1) {
         throw new PortadaBlogException('El nombre del archivo contiene una extensión no permitida.');
@@ -202,7 +214,7 @@ function validarPortadaBlog(array $file): ?array
     }
     $imageInfo = @getimagesize($temporary);
     if (!is_array($imageInfo) || ($imageInfo[0] ?? 0) < 1 || ($imageInfo[1] ?? 0) < 1 || ($imageInfo['mime'] ?? '') !== $mime) {
-        throw new PortadaBlogException('No fue posible validar la estructura de la portada.');
+        throw new PortadaBlogException('No fue posible validar la estructura de ' . mb_strtolower($label) . '.');
     }
 
     return ['temporal' => $temporary, 'extension' => PORTADA_BLOG_MIMES[$mime]];
@@ -216,13 +228,26 @@ function directorioPortadaBlog(int $articleId): string
 /** @param array{temporal:string,extension:string} $validated */
 function guardarPortadaBlogValidada(int $articleId, array $validated): array
 {
+    return guardarImagenBlogValidada($articleId, $validated, 'portada');
+}
+
+/** @param array{temporal:string,extension:string} $validated */
+function guardarImagenComplementariaBlogValidada(int $articleId, array $validated): array
+{
+    return guardarImagenBlogValidada($articleId, $validated, 'complementaria');
+}
+
+/** @param array{temporal:string,extension:string} $validated */
+function guardarImagenBlogValidada(int $articleId, array $validated, string $prefix): array
+{
     $directory = directorioPortadaBlog($articleId);
     if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
         throw new PortadaBlogException('No fue posible preparar el almacenamiento de la portada.');
     }
 
     $filename = sprintf(
-        'portada_%d_%s_%s.%s',
+        '%s_%d_%s_%s.%s',
+        $prefix,
         $articleId,
         gmdate('Ymd_His'),
         bin2hex(random_bytes(6)),

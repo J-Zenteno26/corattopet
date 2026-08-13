@@ -28,12 +28,20 @@ if (!validateCsrfToken($_POST['csrf_token'] ?? null)) {
 }
 
 $validatedCover = null;
+$validatedComplementary = null;
 try {
     $validatedCover = validarPortadaBlog(
         is_array($_FILES['imagen_portada'] ?? null) ? $_FILES['imagen_portada'] : []
     );
 } catch (PortadaBlogException $exception) {
     $errors['imagen_portada'] = $exception->getMessage();
+}
+try {
+    $validatedComplementary = validarImagenComplementariaBlog(
+        is_array($_FILES['imagen_complementaria'] ?? null) ? $_FILES['imagen_complementaria'] : []
+    );
+} catch (PortadaBlogException $exception) {
+    $errors['imagen_complementaria'] = $exception->getMessage();
 }
 
 if ($errors !== []) {
@@ -44,6 +52,7 @@ if ($errors !== []) {
 
 $connection = null;
 $newCover = null;
+$newComplementary = null;
 try {
     $connection = database();
     if (!categoriaActivaBlogExiste($connection, (int) $values['id_categoria_blog'])) {
@@ -62,6 +71,10 @@ try {
         $newCover = guardarPortadaBlogValidada($articleId, $validatedCover);
         actualizarPortadaArticuloBlog($connection, $articleId, $newCover['relativa']);
     }
+    if (is_array($validatedComplementary)) {
+        $newComplementary = guardarImagenComplementariaBlogValidada($articleId, $validatedComplementary);
+        actualizarImagenComplementariaArticuloBlog($connection, $articleId, $newComplementary['relativa']);
+    }
     $connection->commit();
 
     guardarModalAdmin('success', 'Borrador guardado', 'El artículo fue guardado correctamente como borrador.');
@@ -73,6 +86,9 @@ try {
     }
     if (is_array($newCover) && is_string($newCover['absoluta'] ?? null) && is_file($newCover['absoluta'])) {
         @unlink($newCover['absoluta']);
+    }
+    if (is_array($newComplementary) && is_string($newComplementary['absoluta'] ?? null) && is_file($newComplementary['absoluta'])) {
+        @unlink($newComplementary['absoluta']);
     }
     $reference = registrarExcepcionAdmin('Blog draft creation error', $exception);
     guardarEstadoMantenedor(

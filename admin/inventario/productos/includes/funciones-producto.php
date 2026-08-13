@@ -5,14 +5,33 @@ declare(strict_types=1);
 function valoresInicialesProducto(): array
 {
     return [
-        'nombre' => '', 'id_categoria' => '', 'id_marca' => '', 'tipo_mascota' => '',
-        'precio_venta' => '', 'stock_inicial' => '', 'unidad_stock_inicial' => 'unidad', 'sku' => '', 'codigo_barras' => '',
-        'subcategoria' => '', 'formato' => '', 'peso_contenido' => '', 'unidad' => '',
-        'stock_minimo' => '5', 'unidad_stock_minimo' => 'unidad', 'descripcion' => '', 'ingredientes_materiales' => '',
-        'analisis_caracteristicas' => '', 'etapa_vida_tamano' => '', 'pais_origen' => '',
-        'fraccionadora_importador' => '', 'datos_reglamentarios' => '', 'activo' => true,
+        'nombre' => '',
+        'id_categoria' => '',
+        'id_marca' => '',
+        'tipo_mascota' => '',
+        'precio_venta' => '',
+        'stock_inicial' => '',
+        'unidad_stock_inicial' => 'unidad',
+        'sku' => '',
+        'codigo_barras' => '',
+        'subcategoria' => '',
+        'formato' => '',
+        'peso_contenido' => '',
+        'unidad' => '',
+        'energia_metabolizable_kcal_kg' => '',
+        'stock_minimo' => '5',
+        'unidad_stock_minimo' => 'unidad',
+        'descripcion' => '',
+        'ingredientes_materiales' => '',
+        'analisis_caracteristicas' => '',
+        'etapa_vida_tamano' => '',
+        'pais_origen' => '',
+        'fraccionadora_importador' => '',
+        'datos_reglamentarios' => '',
+        'activo' => true,
         'cantidad_actual' => '0',
-        'lotes' => [], 'id_proveedor' => '',
+        'lotes' => [],
+        'id_proveedor' => '',
     ];
 }
 
@@ -53,11 +72,17 @@ function obtenerOpcionesProducto(PDO $connection, ?int $currentCategoryId = null
     $brands->execute($brandParameters);
 
     $subcategories = $connection->query(
-        "SELECT s.id_subcategoria, s.id_categoria, s.nombre, s.slug
-         FROM subcategorias s
-         INNER JOIN categorias c ON c.id_categoria = s.id_categoria
-         WHERE s.activo = TRUE AND c.activo = TRUE AND c.slug = 'alimentos'
-         ORDER BY s.orden, s.nombre"
+        'SELECT
+            s.id_subcategoria,
+            s.id_categoria,
+            s.nombre,
+            s.slug
+        FROM subcategorias s
+        INNER JOIN categorias c
+            ON c.id_categoria = s.id_categoria
+        WHERE s.activo = TRUE
+        AND c.activo = TRUE
+        ORDER BY s.id_categoria, s.orden, s.nombre'
     );
 
     return [
@@ -75,20 +100,27 @@ function obtenerSubcategoriaActivaProducto(PDO $connection, int $categoryId, str
          INNER JOIN categorias c ON c.id_categoria = s.id_categoria
          WHERE s.id_categoria = :id_categoria
            AND s.activo = TRUE
-           AND c.activo = TRUE
-           AND c.slug = :categoria_slug
            AND (s.slug = :valor_slug OR LOWER(TRIM(s.nombre)) = LOWER(TRIM(:valor_nombre)))
          LIMIT 1'
     );
     $statement->execute([
         'id_categoria' => $categoryId,
-        'categoria_slug' => CATEGORIA_ALIMENTOS_SLUG,
         'valor_slug' => codigoSubcategoriaProducto($value),
         'valor_nombre' => $value,
     ]);
     $subcategory = $statement->fetch();
 
     return is_array($subcategory) ? $subcategory : null;
+}
+
+function categoriaTieneSubcategoriasActivasProducto(PDO $connection, int $categoryId): bool
+{
+    $statement = $connection->prepare(
+        'SELECT EXISTS(SELECT 1 FROM subcategorias WHERE id_categoria = :id_categoria AND activo = TRUE)'
+    );
+    $statement->execute(['id_categoria' => $categoryId]);
+
+    return valorBooleanoPostgres($statement->fetchColumn());
 }
 
 function obtenerCategoriaProducto(PDO $connection, int $categoryId): ?array
@@ -180,8 +212,20 @@ function validarDuplicadosProducto(PDO $connection, ?string $sku, ?string $barco
 function generarSlugBase(string $name): string
 {
     $name = strtr($name, [
-        'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
-        'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N',
+        'á' => 'a',
+        'é' => 'e',
+        'í' => 'i',
+        'ó' => 'o',
+        'ú' => 'u',
+        'ü' => 'u',
+        'ñ' => 'n',
+        'Á' => 'A',
+        'É' => 'E',
+        'Í' => 'I',
+        'Ó' => 'O',
+        'Ú' => 'U',
+        'Ü' => 'U',
+        'Ñ' => 'N',
     ]);
     $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
     $slug = strtolower($transliterated === false ? $name : $transliterated);
@@ -219,9 +263,15 @@ function generarSlugUnico(PDO $connection, string $name, ?int $excludedId = null
 function construirDetallesOpcionales(array $values): array
 {
     $textFields = [
-        'subcategoria', 'formato', 'descripcion', 'ingredientes_materiales',
-        'analisis_caracteristicas', 'etapa_vida_tamano', 'pais_origen',
-        'fraccionadora_importador', 'datos_reglamentarios',
+        'subcategoria',
+        'formato',
+        'descripcion',
+        'ingredientes_materiales',
+        'analisis_caracteristicas',
+        'etapa_vida_tamano',
+        'pais_origen',
+        'fraccionadora_importador',
+        'datos_reglamentarios',
     ];
     $details = [];
 
@@ -241,6 +291,9 @@ function construirDetallesOpcionales(array $values): array
     if ($values['unidad'] !== '') {
         $details['unidad'] = $values['unidad'];
     }
+    if ($values['energia_metabolizable_kcal_kg'] !== '') {
+        $details['energia_metabolizable_kcal_kg'] = (float) $values['energia_metabolizable_kcal_kg'];
+    }
 
     return $details;
 }
@@ -248,16 +301,41 @@ function construirDetallesOpcionales(array $values): array
 function valoresEdicionProducto(array $product): array
 {
     $details = json_decode((string) $product['detalles_opcionales'], true, 512, JSON_THROW_ON_ERROR);
+    $energyKcalKg = '';
+    if (
+        isset($details['energia_metabolizable_kcal_kg'])
+        && is_numeric($details['energia_metabolizable_kcal_kg'])
+    ) {
+        $energyKcalKg = (string) $details['energia_metabolizable_kcal_kg'];
+    } elseif (
+        isset($details['calculadora'])
+        && is_array($details['calculadora'])
+        && isset($details['calculadora']['kcal_kg'])
+        && is_numeric($details['calculadora']['kcal_kg'])
+    ) {
+        $energyKcalKg = (string) $details['calculadora']['kcal_kg'];
+    }
     $recognizedDetails = array_intersect_key(
         is_array($details) ? $details : [],
         array_flip([
-            'subcategoria', 'subcategoria_codigo', 'formato', 'peso_contenido', 'unidad', 'descripcion',
-            'ingredientes_materiales', 'analisis_caracteristicas', 'etapa_vida_tamano',
-            'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios',
+            'subcategoria',
+            'subcategoria_codigo',
+            'formato',
+            'peso_contenido',
+            'unidad',
+            'energia_metabolizable_kcal_kg',
+            'descripcion',
+            'ingredientes_materiales',
+            'analisis_caracteristicas',
+            'etapa_vida_tamano',
+            'pais_origen',
+            'fraccionadora_importador',
+            'datos_reglamentarios',
         ])
     );
 
     return array_merge(valoresInicialesProducto(), $recognizedDetails, [
+        'energia_metabolizable_kcal_kg' => $energyKcalKg,
         'nombre' => (string) $product['nombre'],
         'id_categoria' => (string) $product['id_categoria'],
         'id_marca' => (string) $product['id_marca'],
@@ -285,8 +363,7 @@ function guardarEstadoFormularioProducto(
     ?string $generalError = null,
     string $key = 'producto_formulario',
     ?string $reference = null
-): void
-{
+): void {
     $_SESSION[$key] = [
         'valores' => $values,
         'errores' => $errors,

@@ -24,7 +24,7 @@ try {
     $presentations = listarPresentacionesExportacion($connection, array_column($products, 'id_producto'));
     $exportedAt = new DateTimeImmutable();
     $filtered = hayFiltrosInventarioActivos($parameters);
-    $headers = ['ID producto', 'Producto', 'SKU', 'Código de barras', 'Categoría', 'Marca', 'Tipo mascota', 'Tipo de stock', 'Precio', 'Stock actual', 'Stock mínimo', 'Estado stock', 'Presentaciones activas', 'Estado producto', 'Última actualización'];
+    $headers = ['ID producto', 'Producto', 'SKU', 'Código de barras', 'Categoría', 'Subcategoría', 'Marca', 'Tipo mascota', 'Tipo de stock', 'Precio', 'Stock actual', 'Stock mínimo', 'Estado stock', 'Presentaciones activas', 'Estado producto', 'Última actualización'];
     $rows = [
         ['INVENTARIO CORATTO PET'],
         ['Exportado el ' . $exportedAt->format('d-m-Y H:i') . ($filtered ? ' · Exportación filtrada' : ' · Inventario completo')],
@@ -33,12 +33,18 @@ try {
     ];
     foreach ($products as $product) {
         $fractionable = esProductoFraccionable($product);
+        $details = json_decode((string) ($product['detalles_opcionales'] ?? '{}'), true);
+        $subcategory = is_array($details) ? trim((string) ($details['subcategoria'] ?? '')) : '';
+        if ($subcategory === '' && is_array($details)) {
+            $subcategory = trim((string) ($details['subcategoria_codigo'] ?? ''));
+        }
         $rows[] = [
             ['value' => (int) $product['id_producto'], 'type' => 'number', 'style' => 8],
             (string) $product['nombre'],
             $product['sku'] === null ? '' : (string) $product['sku'],
             $product['codigo_barras'] === null ? '' : (string) $product['codigo_barras'],
             (string) $product['categoria'],
+            $subcategory,
             $product['marca'] === null ? 'Sin marca' : (string) $product['marca'],
             textoTipoMascota($product['tipo_mascota']),
             $fractionable ? 'Fraccionable' : 'Unidad',
@@ -56,9 +62,9 @@ try {
         'name' => 'Inventario', 'rows' => $rows,
         'row_styles' => [1 => 1, 2 => 2, 3 => $filtered ? 6 : 4, 4 => 3],
         'row_heights' => [1 => 28, 2 => 28, 3 => 26, 4 => 34],
-        'widths' => [12, 32, 20, 20, 20, 20, 18, 18, 20, 18, 18, 18, 20, 18, 22],
-        'freeze_row' => 4, 'auto_filter' => 'A4:O' . $lastInventoryRow,
-        'merges' => ['A1:O1', 'A2:O2', 'A3:O3'],
+        'widths' => [12, 32, 20, 20, 20, 24, 20, 18, 18, 20, 18, 18, 18, 20, 18, 22],
+        'freeze_row' => 4, 'auto_filter' => 'A4:P' . $lastInventoryRow,
+        'merges' => ['A1:P1', 'A2:P2', 'A3:P3'],
     ]];
     if ($presentations !== []) {
         $presentationRows = [

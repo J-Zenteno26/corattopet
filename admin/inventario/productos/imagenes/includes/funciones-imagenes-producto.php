@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 const IMAGEN_PRODUCTO_MAX_BYTES = 2097152;
-const IMAGEN_PRODUCTO_MAX_CANTIDAD = 5;
+const IMAGEN_PRODUCTO_MAX_CANTIDAD = 10;
 const IMAGEN_PRODUCTO_MIMES = [
     'image/jpeg' => 'jpg',
     'image/png' => 'png',
@@ -160,7 +160,7 @@ function guardarImagenProductoValidada(PDO $connection, int $productId, array $v
         $countStatement->execute(['id_producto' => $productId]);
         $count = (int) $countStatement->fetchColumn();
         if ($count >= IMAGEN_PRODUCTO_MAX_CANTIDAD) {
-            throw new ImagenProductoException('Cada producto puede tener un máximo de 5 imágenes activas.');
+            throw new ImagenProductoException(sprintf('Cada producto puede tener un máximo de %d imágenes activas.', IMAGEN_PRODUCTO_MAX_CANTIDAD));
         }
         $isPrimary = $count === 0;
         $insert = $connection->prepare(
@@ -188,6 +188,197 @@ function guardarImagenProductoValidada(PDO $connection, int $productId, array $v
         throw $exception;
     }
 }
+
+
+/**
+ * Guarda una imagen ya procesada desde un archivo local.
+ *
+ * Esta función se usa, por ejemplo, en la importación desde Google Drive.
+ *
+ * @return array{id_imagen:int,archivo:string,es_principal:bool}
+ */
+function guardarImagenProductoDesdeArchivoLocal(
+    PDO $connection,
+    int $productId,
+    string $localPath,
+    string $originalName,
+    mixed $altText = null,
+    bool $requestPrimary = false,
+    ?string $expectedMime = null,
+    ?string $expectedExtension = null
+): array {
+    if (
+        $productId < 1
+        || $localPath === ''
+        || !is_file($localPath)
+        || !is_readable($localPath)
+    ) {
+        throw new ImagenProductoException('El archivo procesado no es válido.');
+    }
+
+    $size = filesize($localPath);
+    if (!is_int($size) || $size < 1) {
+        throw new ImagenProductoException('El archivo procesado está vacío.');
+    }
+    if ($size > IMAGEN_PRODUCTO_MAX_BYTES) {
+        throw new ImagenProductoException('La imagen procesada supera el tamaño máximo permitido de 2 MB.');
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($localPath);
+    if (!is_string($mime) || !isset(IMAGEN_PRODUCTO_MIMES[$mime])) {
+        throw new ImagenProductoException('El archivo procesado no corresponde a una imagen JPG, PNG o WEBP.');
+    }
+    if ($expectedMime !== null && strtolower(trim($expectedMime)) !== $mime) {
+        throw new ImagenProductoException('El MIME de la imagen procesada no coincide con el formato esperado.');
+    }
+
+    $extension = IMAGEN_PRODUCTO_MIMES[$mime];
+    if ($expectedExtension !== null) {
+        $normalizedExpectedExtension = strtolower(ltrim(trim($expectedExtension), '.'));
+        if ($normalizedExpectedExtension === 'jpeg') {
+            $normalizedExpectedExtension = 'jpg';
+        }
+        if ($normalizedExpectedExtension !== $extension) {
+            throw new ImagenProductoException('La extensión final de la imagen no coincide con su contenido.');
+        }
+    }
+
+    $imageInfo = @getimagesize($localPath);
+    if (
+        !is_array($imageInfo)
+        || (int) ($imageInfo[0] ?? 0) < 1
+        || (int) ($imageInfo[1] ?? 0) < 1
+        || strtolower((string) ($imageInfo['mime'] ?? '')) !== $mime
+    ) {
+        throw new ImagenProductoException('No fue posible validar la estructura de la imagen procesada.');
+    }
+
+    $safeOriginalName = mb_substr(
+        basename(trim($originalName)) !== ''
+            ? basename(trim($originalName))
+            : 'imagen.' . $extension,
+        0,
+        255
+    );
+    $alt = normalizarTextoAlternativoImagen($altText);
+
+    $directory = directorioImagenProducto($productId);
+    if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+        throw new RuntimeException('No fue posible preparar el almacenamiento de imágenes.');
+    }
+
+    $filename = sprintf(
+        'producto_%d_%s_%s.%s',
+        $productId,
+        gmdate('Ymd_His'),
+        bin2hex(random_bytes(6)),
+        $extension
+    );
+    $destination = $directory . '/' . $filename;
+
+    if (!copy($localPath, $destination)) {
+        throw new ImagenProductoException('No fue posible copiar la imagen procesada al producto.');
+    }
+
+    @chmod($destination, 0644);
+    $relativePath = rutaPublicaImagenProducto($productId, $filename);
+
+    try {
+        $connection->beginTransaction();
+
+        if (!productoExisteParaImagen($connection, $productId, true)) {
+            throw new ImagenProductoException('El producto indicado no existe.');
+        }
+
+        $countStatement = $connection->prepare(
+            'SELECT COUNT(*)
+             FROM imagenes_producto
+             WHERE id_producto = :id_producto
+               AND activo = TRUE'
+        );
+        $countStatement->execute(['id_producto' => $productId]);
+        $count = (int) $countStatement->fetchColumn();
+
+        if ($count >= IMAGEN_PRODUCTO_MAX_CANTIDAD) {
+            throw new ImagenProductoException(
+                sprintf(
+                    'Cada producto puede tener un máximo de %d imágenes activas.',
+                    IMAGEN_PRODUCTO_MAX_CANTIDAD
+                )
+            );
+        }
+
+        $isPrimary = $count === 0 || $requestPrimary;
+
+        if ($isPrimary && $count > 0) {
+            $connection->prepare(
+                'UPDATE imagenes_producto
+                 SET es_principal = FALSE,
+                     actualizado_en = CURRENT_TIMESTAMP
+                 WHERE id_producto = :id_producto
+                   AND activo = TRUE'
+            )->execute(['id_producto' => $productId]);
+        }
+
+        $insert = $connection->prepare(
+            'INSERT INTO imagenes_producto
+                (
+                    id_producto,
+                    archivo,
+                    nombre_original,
+                    texto_alternativo,
+                    orden,
+                    es_principal,
+                    activo,
+                    actualizado_en
+                )
+             VALUES
+                (
+                    :id_producto,
+                    :archivo,
+                    :nombre_original,
+                    :texto_alternativo,
+                    :orden,
+                    :es_principal,
+                    TRUE,
+                    CURRENT_TIMESTAMP
+                )
+             RETURNING id_imagen'
+        );
+        $insert->bindValue(':id_producto', $productId, PDO::PARAM_INT);
+        $insert->bindValue(':archivo', $relativePath, PDO::PARAM_STR);
+        $insert->bindValue(':nombre_original', $safeOriginalName, PDO::PARAM_STR);
+        $insert->bindValue(':texto_alternativo', $alt, $alt === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $insert->bindValue(':orden', $count, PDO::PARAM_INT);
+        $insert->bindValue(':es_principal', $isPrimary, PDO::PARAM_BOOL);
+        $insert->execute();
+
+        $imageId = (int) $insert->fetchColumn();
+        if ($imageId < 1) {
+            throw new RuntimeException('No fue posible obtener el identificador de la imagen registrada.');
+        }
+
+        if ($isPrimary) {
+            sincronizarImagenPrincipalProducto($connection, $productId, $relativePath);
+        }
+
+        $connection->commit();
+
+        return [
+            'id_imagen' => $imageId,
+            'archivo' => $relativePath,
+            'es_principal' => $isPrimary,
+        ];
+    } catch (Throwable $exception) {
+        if ($connection->inTransaction()) {
+            $connection->rollBack();
+        }
+        @unlink($destination);
+        throw $exception;
+    }
+}
+
 
 function marcarImagenPrincipalProducto(PDO $connection, int $productId, int $imageId): bool
 {
@@ -304,5 +495,5 @@ function urlPublicaImagenProducto(mixed $path): ?string
         return null;
     }
 
-    return appUrl('public/' . $relative);
+    return 'https://corattopet.cl/public/' . $relative;
 }

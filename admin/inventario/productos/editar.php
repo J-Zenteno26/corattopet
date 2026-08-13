@@ -99,6 +99,26 @@ if ($errors !== [] || $generalError !== null) {
     ];
 }
 
+$selectedCategoryHasSubcategories = array_filter(
+    $options['subcategorias'],
+    static fn (array $subcategory): bool =>
+        (string) ($subcategory['id_categoria'] ?? '') === (string) ($values['id_categoria'] ?? '')
+) !== [];
+$selectedCategoryIsDryFood =
+    array_filter(
+        $options['categorias'],
+        static fn (array $category): bool =>
+            (string) ($category['id_categoria'] ?? '') === (string) ($values['id_categoria'] ?? '')
+            && (string) ($category['slug'] ?? '') === CATEGORIA_ALIMENTOS_SLUG
+    ) !== []
+    && codigoSubcategoriaProducto(
+        (string) (
+            ($values['subcategoria_codigo'] ?? '') !== ''
+                ? $values['subcategoria_codigo']
+                : ($values['subcategoria'] ?? '')
+        )
+    ) === 'alimento-seco';
+
 $csrfToken = csrfToken();
 $pageTitle = 'Editar producto';
 $activeSection = 'inventario';
@@ -135,7 +155,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                     aria-labelledby="product-images-title">
                     <div class="admin-panel__header">
                         <h2 id="product-images-title">GESTIÓN IMÁGENES</h2>
-                        <p class="admin-panel__intro">Administra la imagen principal y galería. Puedes mantener hasta 5
+                        <p class="admin-panel__intro">Administra la imagen principal y galería. Puedes mantener hasta 10
                             imágenes activas.</p>
                     </div>
 
@@ -184,13 +204,26 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                         </div>
                     </div>
 
-                    <form class="admin-product-images__upload admin-product-edit-upload" method="post" enctype="multipart/form-data" action="<?= escape(appUrl('admin/inventario/productos/imagenes/subir.php')) ?>">
+                    <form class="admin-product-images__upload admin-product-edit-upload" method="post"
+                        enctype="multipart/form-data"
+                        action="<?= escape(appUrl('admin/inventario/productos/imagenes/subir.php')) ?>">
                         <input type="hidden" name="csrf_token" value="<?= escape($csrfToken) ?>">
                         <input type="hidden" name="id_producto" value="<?= (int) $productId ?>">
                         <div class="admin-field admin-product-image-upload__file">
-                            <label for="imagen-producto">Archivo de imagen <span class="admin-required">*</span></label>
-                            <input id="imagen-producto" name="imagen" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required>
-                            <span class="admin-field__help">JPG, PNG o WEBP. Máximo 2 MB.</span>
+                            <label for="imagen-producto">Archivos de imagen <span class="admin-required">*</span></label>
+                            <input
+                                id="imagen-producto"
+                                name="imagenes[]"
+                                type="file"
+                                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                                multiple
+                                required
+                                data-max-files="<?= max(0, IMAGEN_PRODUCTO_MAX_CANTIDAD - count($productImages)) ?>"
+                            >
+                            <span class="admin-field__help" id="imagenes-producto-ayuda">
+                                Puedes seleccionar hasta <?= max(0, IMAGEN_PRODUCTO_MAX_CANTIDAD - count($productImages)) ?>
+                                imagen(es). JPG, PNG o WEBP; máximo 2 MB por archivo.
+                            </span>
                         </div>
                         <div class="admin-field admin-product-image-upload__alt">
                             <label for="alt-text-imagen">Texto alternativo</label>
@@ -198,7 +231,7 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                 placeholder="Describe brevemente la imagen">
                             <span class="admin-field__help">Opcional para accesibilidad.</span>
                         </div>
-                        <button class="admin-button admin-button--primary" type="submit" <?= count($productImages) >= IMAGEN_PRODUCTO_MAX_CANTIDAD ? 'disabled' : '' ?>>Subir imagen</button>
+                        <button class="admin-button admin-button--primary" type="submit" <?= count($productImages) >= IMAGEN_PRODUCTO_MAX_CANTIDAD ? 'disabled' : '' ?>>Subir imágenes</button>
                     </form>
 
                     <?php if ($productImages !== []): ?>
@@ -322,7 +355,8 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                     );
                                     ?>
 
-                                    <option value="<?= (int) $category['id_categoria'] ?>" data-categoria-slug="<?= escape((string) $category['slug']) ?>" <?php if ((string) $values['id_categoria'] === (string) $category['id_categoria']): ?> selected <?php endif; ?>>
+                                    <option value="<?= (int) $category['id_categoria'] ?>"
+                                        data-categoria-slug="<?= escape((string) $category['slug']) ?>" <?php if ((string) $values['id_categoria'] === (string) $category['id_categoria']): ?> selected <?php endif; ?>>
                                         <?= escape(
                                             (string) $category['nombre']
                                             . ($categoryActive
@@ -341,24 +375,69 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                 </span>
                             <?php endif; ?>
                         </div>
+                        <?php
+                            $storedSubcategoryCode = trim(
+                                (string) ($values['subcategoria_codigo'] ?? '')
+                            );
 
-                        <div id="subcategoria-field" class="admin-field<?= isset($errors['subcategoria'])
-                            ? ' admin-field--invalid'
-                            : '' ?>">
-                            <label for="subcategoria">Subcategoría <span class="admin-required">*</span></label>
-                            <select id="subcategoria" name="subcategoria" <?= isset($errors['subcategoria'])
-                                ? 'aria-invalid="true" aria-describedby="subcategoria-error"'
-                                : '' ?>>
+                            $storedSubcategoryName = trim(
+                                (string) ($values['subcategoria'] ?? '')
+                            );
+
+                            $currentSubcategoryCode = $storedSubcategoryCode !== ''
+                                ? $storedSubcategoryCode
+                                : codigoSubcategoriaProducto($storedSubcategoryName);
+                        ?>
+                        <div
+                            id="subcategoria-field"
+                            class="admin-field<?= isset($errors['subcategoria']) ? ' admin-field--invalid' : '' ?>"
+                            <?= $selectedCategoryHasSubcategories ? '' : 'hidden inert aria-hidden="true" style="display:none !important"' ?>
+                        >
+                            <label for="subcategoria">
+                                Subcategoría
+                                <span class="admin-required">*</span>
+                            </label>
+
+                            <select
+                                id="subcategoria"
+                                name="subcategoria"
+                                <?= $selectedCategoryHasSubcategories ? 'required' : 'disabled' ?>
+                                <?= isset($errors['subcategoria']) ? 'aria-invalid="true" aria-describedby="subcategoria-error"' : '' ?>
+                            >
                                 <option value="">Selecciona una subcategoría</option>
+
                                 <?php foreach ($options['subcategorias'] as $subcategory): ?>
-                                    <option value="<?= escape((string) $subcategory['slug']) ?>"
-                                        <?= codigoSubcategoriaProducto($values['subcategoria']) === (string) $subcategory['slug'] ? 'selected' : '' ?>>
+                                    <?php
+                                    $belongsToSelectedCategory =
+                                        (string) $values['id_categoria'] === (string) $subcategory['id_categoria'];
+
+                                    $matchesStoredCode =
+                                        $currentSubcategoryCode === (string) $subcategory['slug'];
+
+                                    $matchesStoredName =
+                                        $storedSubcategoryName !== ''
+                                        && codigoSubcategoriaProducto($storedSubcategoryName)
+                                            === codigoSubcategoriaProducto((string) $subcategory['nombre']);
+
+                                    $subcategorySelected =
+                                        $belongsToSelectedCategory
+                                        && ($matchesStoredCode || $matchesStoredName);
+                                    ?>
+
+                                    <option
+                                        value="<?= escape((string) $subcategory['slug']) ?>"
+                                        data-category-id="<?= (int) $subcategory['id_categoria'] ?>"
+                                        <?= $subcategorySelected ? 'selected' : '' ?>
+                                    >
                                         <?= escape((string) $subcategory['nombre']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+
                             <?php if (isset($errors['subcategoria'])): ?>
-                                <span class="admin-field__error" id="subcategoria-error"><?= escape((string) $errors['subcategoria']) ?></span>
+                                <span class="admin-field__error" id="subcategoria-error">
+                                    <?= escape((string) $errors['subcategoria']) ?>
+                                </span>
                             <?php endif; ?>
                         </div>
 
@@ -436,31 +515,32 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                             <?php endif; ?>
                         </div>
 
-                            <div id="precio-venta-field" class="admin-field<?= isset($errors['precio_venta'])
-                                ? ' admin-field--invalid'
-                                : '' ?>" <?= $fractionable ? 'hidden' : '' ?>>
-                                <label for="precio_venta">
-                                    Precio de venta
-                                    <span class="admin-required">*</span>
-                                </label>
+                        <div id="precio-venta-field" class="admin-field<?= isset($errors['precio_venta'])
+                            ? ' admin-field--invalid'
+                            : '' ?>" <?= $fractionable ? 'hidden' : '' ?>>
+                            <label for="precio_venta">
+                                Precio de venta
+                                <span class="admin-required">*</span>
+                            </label>
 
-                                <input id="precio_venta" name="precio_venta" type="text" inputmode="numeric" <?= $fractionable ? 'disabled' : 'required' ?> value="<?= escape(
-                                    (string) $values['precio_venta']
-                                ) ?>">
+                            <input id="precio_venta" name="precio_venta" type="text" inputmode="numeric"
+                                <?= $fractionable ? 'disabled' : 'required' ?> value="<?= escape(
+                                           (string) $values['precio_venta']
+                                       ) ?>">
 
-                                <?php if (isset($errors['precio_venta'])): ?>
-                                    <span class="admin-field__error">
-                                        <?= escape(
-                                            (string) $errors['precio_venta']
-                                        ) ?>
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-                            <div id="fractionable-info" class="admin-field admin-field--full" <?= $fractionable ? '' : 'hidden' ?>>
-                                <strong>Producto fraccionable</strong>
-                                <span class="admin-field__help">Stock administrado en gramos. El precio de venta se gestiona
-                                    en las presentaciones.</span>
-                            </div>
+                            <?php if (isset($errors['precio_venta'])): ?>
+                                <span class="admin-field__error">
+                                    <?= escape(
+                                        (string) $errors['precio_venta']
+                                    ) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <div id="fractionable-info" class="admin-field admin-field--full" <?= $fractionable ? '' : 'hidden' ?>>
+                            <strong>Producto fraccionable</strong>
+                            <span class="admin-field__help">Stock administrado en gramos. El precio de venta se gestiona
+                                en las presentaciones.</span>
+                        </div>
 
                         <?php
                         $identifierFields = [
@@ -539,15 +619,16 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
 
                         <?php foreach ($additionalFields as $field => $label): ?>
                             <div <?= $field === 'formato' ? 'data-presentation-field="1"' : '' ?> class="admin-field<?= isset($errors[$field])
-                                ? ' admin-field--invalid'
-                                : '' ?>">
+                                         ? ' admin-field--invalid'
+                                         : '' ?>">
                                 <label for="<?= escape($field) ?>">
                                     <?= escape($label) ?>
                                 </label>
 
-                                <input id="<?= escape($field) ?>" name="<?= escape($field) ?>" type="text" maxlength="<?= $field === 'subcategoria' ? '120' : '255' ?>" value="<?= escape(
-                                        (string) $values[$field]
-                                    ) ?>">
+                                <input id="<?= escape($field) ?>" name="<?= escape($field) ?>" type="text"
+                                    maxlength="<?= $field === 'subcategoria' ? '120' : '255' ?>" value="<?= escape(
+                                                (string) $values[$field]
+                                            ) ?>">
 
                                 <?php if (isset($errors[$field])): ?>
                                     <span class="admin-field__error">
@@ -558,6 +639,43 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
+
+                        <div
+                            id="energia-metabolizable-field"
+                            class="admin-field<?= isset($errors['energia_metabolizable_kcal_kg']) ? ' admin-field--invalid' : '' ?>"
+                            <?= $selectedCategoryIsDryFood ? '' : 'hidden style="display:none"' ?>
+                        >
+                            <label for="energia_metabolizable_kcal_kg">
+                                Energía metabolizable
+                                <span class="admin-required">*</span>
+                            </label>
+
+                            <div class="admin-input-with-unit">
+                                <input
+                                    id="energia_metabolizable_kcal_kg"
+                                    name="energia_metabolizable_kcal_kg"
+                                    type="number"
+                                    min="0.01"
+                                    step="any"
+                                    inputmode="decimal"
+                                    placeholder="Ej.: 3800"
+                                    value="<?= escape((string) $values['energia_metabolizable_kcal_kg']) ?>"
+                                    <?= $selectedCategoryIsDryFood ? 'required' : 'disabled' ?>
+                                    <?= isset($errors['energia_metabolizable_kcal_kg']) ? 'aria-invalid="true" aria-describedby="energia-metabolizable-error"' : '' ?>
+                                >
+                                <span>kcal/kg</span>
+                            </div>
+
+                            <span class="admin-field__help">
+                                Ingresa las kcal por kilogramo indicadas por el fabricante. Este dato se utiliza en la calculadora de alimentación.
+                            </span>
+
+                            <?php if (isset($errors['energia_metabolizable_kcal_kg'])): ?>
+                                <span class="admin-field__error" id="energia-metabolizable-error">
+                                    <?= escape((string) $errors['energia_metabolizable_kcal_kg']) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
 
                         <div data-presentation-field="1" class="admin-field<?= isset($errors['peso_contenido'])
                             ? ' admin-field--invalid'
@@ -755,28 +873,147 @@ require dirname(__DIR__, 3) . '/shared/admin-sidebar.php';
 
     <script>
         (() => {
+            const form = document.querySelector('.admin-product-images__upload');
+            const input = document.getElementById('imagen-producto');
+            const help = document.getElementById('imagenes-producto-ayuda');
+
+            if (!(form instanceof HTMLFormElement)
+                || !(input instanceof HTMLInputElement)
+                || !(help instanceof HTMLElement)
+            ) {
+                return;
+            }
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            const maxFiles = Number.parseInt(input.dataset.maxFiles ?? '0', 10);
+
+            input.addEventListener('change', () => {
+                const selected = input.files?.length ?? 0;
+
+                if (selected > maxFiles) {
+                    input.value = '';
+                    help.textContent = `Solo puedes seleccionar ${maxFiles} imagen(es) porque el producto admite un máximo de 5.`;
+                    input.setCustomValidity('Seleccionaste más imágenes de las permitidas.');
+                    input.reportValidity();
+                    return;
+                }
+
+                input.setCustomValidity('');
+                help.textContent = selected > 0
+                    ? `${selected} imagen(es) seleccionada(s). Máximo 2 MB por archivo.`
+                    : `Puedes seleccionar hasta ${maxFiles} imagen(es). JPG, PNG o WEBP; máximo 2 MB por archivo.`;
+            });
+
+            form.addEventListener('submit', (event) => {
+                const selected = input.files?.length ?? 0;
+
+                if (selected < 1 || selected > maxFiles) {
+                    event.preventDefault();
+                    input.setCustomValidity(
+                        selected < 1
+                            ? 'Selecciona al menos una imagen.'
+                            : `Selecciona como máximo ${maxFiles} imagen(es).`
+                    );
+                    input.reportValidity();
+                    return;
+                }
+
+                input.setCustomValidity('');
+
+                if (submitButton instanceof HTMLButtonElement) {
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Subiendo imágenes…';
+                }
+            });
+        })();
+    </script>
+
+    <script>
+        (() => {
             const category = document.getElementById('id_categoria');
             const subcategory = document.getElementById('subcategoria');
             const subcategoryField = document.getElementById('subcategoria-field');
             const priceField = document.getElementById('precio-venta-field');
             const price = document.getElementById('precio_venta');
             const fractionableInfo = document.getElementById('fractionable-info');
-            if (!category || !subcategory || !subcategoryField || !priceField || !price || !fractionableInfo) return;
+            const energyField = document.getElementById('energia-metabolizable-field');
+            const energy = document.getElementById('energia_metabolizable_kcal_kg');
+            if (!category || !subcategory || !subcategoryField || !priceField || !price || !fractionableInfo || !energyField || !energy) return;
+
+            let initialized = false;
 
             const updateProductType = () => {
-                const foods = category.selectedOptions[0]?.dataset.categoriaSlug === 'alimentos';
-                subcategoryField.hidden = !foods;
-                subcategory.disabled = !foods;
-                subcategory.required = foods;
-                if (!foods) subcategory.value = '';
-                const code = subcategory.value.trim().toLocaleLowerCase('es').normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-                const fractionable = foods && code === 'alimento-seco';
+                const selectedCategory = category.selectedOptions[0];
+                const foods = selectedCategory?.dataset.categoriaSlug === 'alimentos';
+                const categoryId = category.value;
+                const hasSubcategories = [...subcategory.options].some(
+                    (option) => option.value !== '' && option.dataset.categoryId === categoryId
+                );
+
+                subcategoryField.hidden = !hasSubcategories;
+                subcategoryField.style.setProperty(
+                    'display',
+                    hasSubcategories ? '' : 'none',
+                    hasSubcategories ? '' : 'important'
+                );
+                subcategoryField.toggleAttribute('inert', !hasSubcategories);
+                subcategoryField.setAttribute('aria-hidden', hasSubcategories ? 'false' : 'true');
+
+                subcategory.disabled = !hasSubcategories;
+                subcategory.required = hasSubcategories;
+
+                for (const option of subcategory.options) {
+                    if (option.value === '') {
+                        option.hidden = false;
+                        option.disabled = false;
+                        continue;
+                    }
+                    const belongsToCategory = option.dataset.categoryId === categoryId;
+                    option.hidden = hasSubcategories ? !belongsToCategory : true;
+                    option.disabled = hasSubcategories ? !belongsToCategory : true;
+                }
+
+                if (!hasSubcategories) {
+                    subcategory.value = '';
+                } else if (
+                    subcategory.value !== ''
+                    && subcategory.selectedOptions[0]?.dataset.categoryId !== categoryId
+                ) {
+                    subcategory.value = '';
+                }
+
+                const code = subcategory.value
+                    .trim()
+                    .toLocaleLowerCase('es')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '');
+
+                const dryFood = foods && code === 'alimento-seco';
+
+                energyField.hidden = !dryFood;
+                energyField.style.display = dryFood ? '' : 'none';
+                energy.disabled = !dryFood;
+                energy.required = dryFood;
+
+                if (initialized && !dryFood) {
+                    energy.value = '';
+                }
+                const fractionable = dryFood;
+
                 priceField.hidden = fractionable;
                 price.disabled = fractionable;
                 price.required = !fractionable;
                 fractionableInfo.hidden = !fractionable;
-                document.querySelectorAll('[data-presentation-field="1"]').forEach((field) => { field.hidden = fractionable; });
+
+                document
+                    .querySelectorAll('[data-presentation-field="1"]')
+                    .forEach((field) => {
+                        field.hidden = fractionable;
+                    });
+
+                initialized = true;
             };
             category.addEventListener('change', updateProductType);
             subcategory.addEventListener('change', updateProductType);

@@ -66,7 +66,7 @@ require dirname(__DIR__, 2) . '/shared/admin-sidebar.php'; ?>
         </dl>
     </section>
     <section class="admin-dashboard-metrics" aria-label="Métricas principales">
-        <?php foreach ([['ventas_mes', 'Ventas del mes', true, 'Pagos confirmados'], ['pedidos_mes', 'Pedidos del mes', false, 'Compras registradas'], ['pedidos_pendientes', 'Pedidos pendientes', false, 'En gestión'], ['pagos_pendientes', 'Pagos pendientes', false, 'Por confirmar'], ['clientes_registrados', 'Clientes registrados', false, 'Base comercial'], ['productos_activos', 'Productos disponibles', false, 'Catálogo vigente'], ['stock_bajo', 'Stock bajo', false, 'Requieren atención'], ['sin_stock', 'Sin stock', false, 'No disponibles']] as [$key, $label, $money, $detail]): ?>
+        <?php foreach ([['ventas_mes', 'Ventas del mes', true, 'Pagos confirmados'], ['pedidos_mes', 'Pedidos del mes', false, 'Compras registradas'], ['pedidos_pendientes', 'Pedidos pendientes', false, 'En gestión'], ['pagos_pendientes', 'Pedidos sin pago', false, 'Pendientes de completar'], ['clientes_registrados', 'Cuentas de clientes', false, 'Con acceso al portal'], ['productos_activos', 'Productos activos', false, 'Visibles para la venta'], ['stock_bajo', 'Stock bajo', false, 'Requieren atención'], ['sin_stock', 'Sin stock', false, 'No disponibles']] as [$key, $label, $money, $detail]): ?>
             <article class="admin-dashboard-metric admin-dashboard-metric--<?= escape($key) ?>">
                 <span><?= escape($label) ?></span><strong><?= escape($money ? formatearDineroCliente($metrics[$key]) : number_format((int) $metrics[$key], 0, ',', '.')) ?></strong><small><?= escape($detail) ?></small>
             </article><?php endforeach; ?>

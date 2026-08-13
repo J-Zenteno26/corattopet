@@ -224,10 +224,17 @@ function cargarCatalogosImportacion(PDO $connection): array
 {
     $categories = $connection->query('SELECT id_categoria, nombre, slug, maneja_fraccionamiento FROM categorias WHERE activo = TRUE')->fetchAll();
     $brands = $connection->query('SELECT id_marca, nombre FROM marcas WHERE activo = TRUE')->fetchAll();
+    $subcategories = $connection->query(
+        'SELECT s.id_subcategoria, s.id_categoria, s.nombre, s.slug
+        FROM subcategorias s
+        INNER JOIN categorias c ON c.id_categoria = s.id_categoria
+        WHERE s.activo = TRUE AND c.activo = TRUE
+        ORDER BY s.id_categoria, s.orden, s.nombre'
+    )->fetchAll();
     $products = $connection->query('SELECT p.id_producto, p.sku, p.codigo_barras, p.detalles_opcionales, c.slug AS categoria_slug FROM productos p INNER JOIN categorias c ON c.id_categoria = p.id_categoria')->fetchAll();
     $presentationSkus = $connection->query("SELECT sku FROM producto_presentaciones WHERE sku IS NOT NULL AND TRIM(sku) <> ''")->fetchAll(PDO::FETCH_COLUMN);
 
-    $catalogs = ['categorias' => [], 'marcas' => [], 'productos_sku' => [], 'codigos' => [], 'presentaciones_sku' => []];
+    $catalogs = ['categorias' => [], 'marcas' => [], 'subcategorias_por_categoria' => [], 'productos_sku' => [], 'codigos' => [], 'presentaciones_sku' => []];
     foreach ($categories as $category) {
         foreach ([$category['nombre'], $category['slug']] as $key) {
             $catalogs['categorias'][normalizarClaveImportacion((string) $key)] = $category;
@@ -235,6 +242,20 @@ function cargarCatalogosImportacion(PDO $connection): array
     }
     foreach ($brands as $brand) {
         $catalogs['marcas'][normalizarClaveImportacion((string) $brand['nombre'])] = $brand;
+    }
+    foreach ($subcategories as $subcategory) {
+        $categoryId = (int) $subcategory['id_categoria'];
+        foreach ([$subcategory['slug'], $subcategory['nombre']] as $value) {
+            $key = normalizarClaveImportacion((string) $value);
+            if (!array_key_exists($key, $catalogs['subcategorias_por_categoria'][$categoryId] ?? [])) {
+                $catalogs['subcategorias_por_categoria'][$categoryId][$key] = $subcategory;
+            } elseif (
+                !is_array($catalogs['subcategorias_por_categoria'][$categoryId][$key])
+                || (int) $catalogs['subcategorias_por_categoria'][$categoryId][$key]['id_subcategoria'] !== (int) $subcategory['id_subcategoria']
+            ) {
+                $catalogs['subcategorias_por_categoria'][$categoryId][$key] = false;
+            }
+        }
     }
     foreach ($products as $product) {
         $product['fraccionable'] = esProductoFraccionable($product);
@@ -300,11 +321,31 @@ function validarLibroImportacion(PDO $connection, array $sheets): array
         if ($stock === null)
             $errors[] = 'stock_inicial debe ser un entero mayor o igual a 0, expresado sin unidades.';
         $categoryIsFoods = $category !== null && esCategoriaAlimentos($category);
-        if ($categoryIsFoods && $data['subcategoria'] === '')
-            $errors[] = 'subcategoria es obligatoria para la categoria Alimentos.';
+        $subcategory = null;
+        $categorySubcategories = $category === null
+            ? []
+            : ($catalogs['subcategorias_por_categoria'][(int) $category['id_categoria']] ?? []);
+        if ($categorySubcategories !== []) {
+            if ($data['subcategoria'] === '') {
+                $errors[] = 'subcategoria es obligatoria para la categoria indicada.';
+            } else {
+                $subcategory = $categorySubcategories[normalizarClaveImportacion($data['subcategoria'])] ?? null;
+                if (!is_array($subcategory)) {
+                    $errors[] = 'subcategoria no existe, esta inactiva o no pertenece a la categoria indicada.';
+                }
+            }
+        } elseif ($data['subcategoria'] !== '') {
+            $errors[] = 'subcategoria debe quedar vacia porque la categoria indicada no tiene subcategorias activas.';
+        }
+        if (is_array($subcategory)) {
+            $data['subcategoria'] = (string) $subcategory['nombre'];
+            $data['subcategoria_codigo'] = (string) $subcategory['slug'];
+        } else {
+            $data['subcategoria_codigo'] = '';
+        }
         $fractionable = $categoryIsFoods && esProductoFraccionable([
             'categoria_slug' => $category['slug'] ?? '',
-            'subcategoria' => $data['subcategoria'],
+            'subcategoria' => $data['subcategoria_codigo'],
         ]);
         $price = $fractionable ? 0 : enteroImportacion($data['precio_venta']);
         if (!$fractionable && $price === null)

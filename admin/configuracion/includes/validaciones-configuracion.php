@@ -7,13 +7,14 @@ function validarConfiguracion(array $input): array
 {
     $textLimits = [
         'nombre_tienda' => 120, 'razon_social' => 160, 'rut_empresa' => 20,
-        'descripcion_breve' => 1000, 'mensaje_principal' => 1500, 'mensaje_secundario' => 1500,
+        'descripcion_breve' => 1000,
         'email_contacto' => 160, 'whatsapp_principal' => 40, 'telefono_secundario' => 40,
         'direccion' => 500, 'comuna' => 100, 'region' => 100, 'horario_atencion' => 1000,
-        'texto_retiro' => 1500, 'texto_despacho' => 1500, 'tiempo_preparacion' => 500,
-        'instagram' => 255, 'facebook' => 255, 'tiktok' => 255, 'sitio_externo' => 255,
-        'mensaje_banner' => 1000, 'mensaje_home' => 2000, 'mensaje_checkout' => 1500,
-        'mensaje_post_compra' => 2000, 'mensaje_fraccionados' => 2000, 'moneda' => 10,
+        'instagram' => 255,
+        'facebook' => 255,
+        'tiktok' => 255,
+        'sitio_externo' => 255,
+        'moneda' => 10,
     ];
     $values = [];
     $errors = [];
@@ -29,7 +30,10 @@ function validarConfiguracion(array $input): array
     if ($values['email_contacto'] !== '' && filter_var($values['email_contacto'], FILTER_VALIDATE_EMAIL) === false) {
         $errors['email_contacto'] = 'Ingresa un email válido.';
     }
-    foreach (['monto_minimo_compra', 'costo_despacho_base', 'despacho_gratis_desde'] as $field) {
+    foreach ([
+        'monto_minimo_despacho',
+        'monto_minimo_retiro',
+    ] as $field) {
         $raw = is_scalar($input[$field] ?? null) ? trim((string) $input[$field]) : '';
         if ($raw === '') {
             $values[$field] = 0;

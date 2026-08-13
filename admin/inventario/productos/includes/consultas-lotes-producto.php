@@ -18,3 +18,26 @@ function obtenerLotesDetalleProducto(PDO $pdo, int $productId): array
         WHERE sl.id_producto=:id AND sl.activo=TRUE ORDER BY sl.fecha_vencimiento ASC,sl.id_lote ASC");
     $st->execute(['id'=>$productId]);return $st->fetchAll();
 }
+
+function obtenerLoteEditable(PDO $pdo, int $lotId): ?array
+{
+    $st = $pdo->prepare('SELECT sl.*, p.nombre AS producto
+        FROM stock_lotes sl INNER JOIN productos p ON p.id_producto=sl.id_producto
+        WHERE sl.id_lote=:id');
+    $st->execute(['id' => $lotId]);
+    $row = $st->fetch();
+    return is_array($row) ? $row : null;
+}
+
+function obtenerProveedoresParaLote(PDO $pdo): array
+{
+    return $pdo->query('SELECT id_proveedor,nombre,rut,activo FROM proveedores ORDER BY activo DESC,nombre ASC')->fetchAll();
+}
+
+function existeCodigoLoteProducto(PDO $pdo, int $productId, string $code, int $excludeLotId): bool
+{
+    $st = $pdo->prepare('SELECT 1 FROM stock_lotes
+        WHERE id_producto=:producto AND codigo_lote=:codigo AND id_lote<>:lote LIMIT 1');
+    $st->execute(['producto' => $productId, 'codigo' => $code, 'lote' => $excludeLotId]);
+    return (bool) $st->fetchColumn();
+}

@@ -42,15 +42,31 @@ try {
         if (esProductoFraccionable($product)) $fractionableProductIds[(int) $product['id_producto']] = true;
     }
     $productStatement = $connection->prepare("INSERT INTO productos (id_categoria, id_marca, nombre, slug, tipo_mascota, precio_venta, sku, codigo_barras, detalles_opcionales, estado) VALUES (:id_categoria, :id_marca, :nombre, :slug, :tipo_mascota, :precio_venta, :sku, :codigo_barras, CAST(:detalles AS jsonb), :estado) RETURNING id_producto");
+    $subcategoryCountStatement = $connection->prepare('SELECT COUNT(*) FROM subcategorias WHERE id_categoria = :id_categoria AND activo = TRUE');
+    $subcategoryStatement = $connection->prepare('SELECT nombre, slug FROM subcategorias WHERE id_categoria = :id_categoria AND slug = :slug AND activo = TRUE LIMIT 1');
     $stockStatement = $connection->prepare('INSERT INTO stock (id_producto, cantidad_actual, cantidad_reservada, stock_minimo) VALUES (:id_producto, :cantidad, 0, :stock_minimo)');
     $movementStatement = $connection->prepare("INSERT INTO movimientos_stock (id_producto, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_final, origen, motivo) VALUES (:id_producto, :id_usuario, 'carga_inicial', :cantidad, 0, :cantidad_final, 'manual', 'Importación Excel')");
     foreach ($result['productos'] as $product) {
         $category = $activeCategories[(int) $product['id_categoria']] ?? null;
         if ($category === null) throw new RuntimeException('La categoria del producto ya no existe o esta inactiva.');
-        if (esCategoriaAlimentos($category) && trim((string) $product['subcategoria']) === '') {
-            throw new RuntimeException('La subcategoria es obligatoria para los productos de Alimentos.');
+        $subcategoryCountStatement->execute(['id_categoria' => (int) $product['id_categoria']]);
+        $hasSubcategories = (int) $subcategoryCountStatement->fetchColumn() > 0;
+        $subcategory = null;
+        if ($hasSubcategories) {
+            $subcategoryStatement->execute([
+                'id_categoria' => (int) $product['id_categoria'],
+                'slug' => trim((string) ($product['subcategoria_codigo'] ?? '')),
+            ]);
+            $subcategory = $subcategoryStatement->fetch();
+            if (!is_array($subcategory)) {
+                throw new RuntimeException('La subcategoria ya no existe, esta inactiva o no pertenece a la categoria del producto.');
+            }
+        } elseif (trim((string) ($product['subcategoria'] ?? '')) !== '' || trim((string) ($product['subcategoria_codigo'] ?? '')) !== '') {
+            throw new RuntimeException('La categoria del producto no admite subcategoria.');
         }
-        $fractionable = esProductoFraccionable(['categoria_slug' => $category['slug'], 'subcategoria' => $product['subcategoria']]);
+        $subcategoryName = is_array($subcategory) ? (string) $subcategory['nombre'] : '';
+        $subcategoryCode = is_array($subcategory) ? (string) $subcategory['slug'] : '';
+        $fractionable = esProductoFraccionable(['categoria_slug' => $category['slug'], 'subcategoria' => $subcategoryCode]);
         $petType = mb_strtolower(trim((string) ($product['tipo_mascota'] ?? '')));
         if (!in_array($petType, ['perro', 'gato', 'ambos', 'otro'], true)) {
             throw new RuntimeException('tipo_mascota inválido para el producto ' . (string) ($product['nombre'] ?? 'sin nombre'));
@@ -60,11 +76,12 @@ try {
         for ($suffix = 2; isset($existingSlugs[strtolower($slug)]); $suffix++) $slug = $baseSlug . '-' . $suffix;
         $existingSlugs[strtolower($slug)] = true;
         $details = [];
-        foreach (['subcategoria', 'descripcion', 'ingredientes_materiales', 'analisis_caracteristicas', 'etapa_vida_tamano', 'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios'] as $field) {
+        foreach (['descripcion', 'ingredientes_materiales', 'analisis_caracteristicas', 'etapa_vida_tamano', 'pais_origen', 'fraccionadora_importador', 'datos_reglamentarios'] as $field) {
             if ((string) $product[$field] !== '') $details[$field] = (string) $product[$field];
         }
-        if (isset($details['subcategoria'])) {
-            $details['subcategoria_codigo'] = codigoSubcategoriaProducto($details['subcategoria']);
+        if ($subcategoryName !== '') {
+            $details['subcategoria'] = $subcategoryName;
+            $details['subcategoria_codigo'] = $subcategoryCode;
         }
         $productStatement->execute([
             'id_categoria' => (int) $product['id_categoria'], 'id_marca' => (int) $product['id_marca'],

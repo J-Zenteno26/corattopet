@@ -19,13 +19,19 @@ if (!is_writable($sessionPath)) {
 }
 
 session_save_path($sessionPath);
-session_start();
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     $sessionConfig = require dirname(__DIR__) . '/config/session.php';
 
-    ini_set('session.use_strict_mode', $sessionConfig['use_strict_mode'] ? '1' : '0');
+    ini_set(
+        'session.use_strict_mode',
+        $sessionConfig['use_strict_mode'] ? '1' : '0'
+    );
+
     ini_set('session.use_only_cookies', '1');
+
     session_name((string) $sessionConfig['name']);
+
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',

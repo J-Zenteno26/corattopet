@@ -788,7 +788,74 @@
     font-weight: 700;
 }
 
+/* =========================================================
+   SIDEBAR — SUBMENÚ DE DESPACHOS
+   ========================================================= */
 
+.admin-nav-submenu {
+    margin: 0;
+}
+
+.admin-nav-submenu > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.admin-nav-submenu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-nav-submenu__arrow {
+    margin-left: auto;
+    font-size: 0.72rem;
+    transition: transform 180ms ease;
+}
+
+.admin-nav-submenu[open] .admin-nav-submenu__arrow {
+    transform: rotate(180deg);
+}
+
+.admin-nav-submenu__list {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0.35rem 0 0.3rem;
+    padding: 0 0 0 2.15rem;
+    list-style: none;
+}
+
+.admin-nav-submenu__link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 2.45rem;
+    padding: 0.55rem 0.7rem;
+    border-left: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0 0.55rem 0.55rem 0;
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 0.95rem;
+    font-weight: 650;
+    text-decoration: none;
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease,
+        color 160ms ease;
+}
+
+.admin-nav-submenu__link i {
+    font-size: 0.88rem;
+}
+
+.admin-nav-submenu__link:hover {
+    border-left-color: #5e9186;
+    background: rgba(79, 127, 115, 0.16);
+    color: #ffffff;
+}
+
+.admin-nav-submenu__link.is-active {
+    border-left-color: #6fa699;
+    background: rgba(79, 127, 115, 0.28);
+    color: #ffffff;
+}
 /* =========================================================
    CONTENIDO PRINCIPAL
    ========================================================= */
@@ -4702,7 +4769,7 @@ body.admin-modal-open {
     }
 }
 
-@media (max-width: 70rem) {
+@media (max-width: 56rem) {
     .admin-product-edit-layout {
         grid-template-columns: 1fr;
     }

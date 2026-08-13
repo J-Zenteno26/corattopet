@@ -1,0 +1,1395 @@
+/* =========================================================
+   GESTIÓN DE STOCK — CORATTO PET
+   Estilos exclusivos de admin/inventario/stock/index.php
+   Ajustado a la estructura funcional vigente.
+   ========================================================= */
+
+.admin-stock-page {
+    --stock-blue: #2f6f8e;
+    --stock-blue-deep: #173f57;
+    --stock-blue-soft: #eef5f8;
+    --stock-brown: #5f4335;
+    --stock-brown-deep: #3a2a23;
+    --stock-black: #211f1d;
+    --stock-text: #30444f;
+    --stock-muted: #6a7980;
+    --stock-border: #d7dfe3;
+    --stock-surface: #f6f8f9;
+    --stock-white: #ffffff;
+    --stock-danger: #93443c;
+    --stock-danger-soft: #faecea;
+    --stock-success: #376750;
+    --stock-success-soft: #edf5f0;
+    --stock-warning: #7a5a3d;
+    --stock-warning-soft: #f6f0eb;
+}
+
+/* =========================================================
+   CABECERA
+   ========================================================= */
+
+.admin-stock-page__top {
+    margin-bottom: 1rem;
+}
+
+.admin-stock-page__top > div {
+    min-width: 0;
+}
+
+.admin-stock-page .admin-back-link {
+    display: inline-flex;
+    margin-bottom: .6rem;
+    color: #536872;
+    font-size: .9rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.admin-stock-page .admin-back-link:hover,
+.admin-stock-page .admin-back-link:focus-visible {
+    color: var(--stock-blue);
+}
+
+.admin-stock-eyebrow {
+    display: block;
+    margin-bottom: .18rem;
+    color: var(--stock-brown);
+    font-size: .84rem;
+    font-weight: 650;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.admin-stock-page .admin-page-title {
+    margin: 0;
+    color: var(--stock-black);
+    font-size: clamp(1.75rem, 2.6vw, 2.3rem);
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.admin-stock-page__top p {
+    max-width: 62rem;
+    margin: .38rem 0 0;
+    color: var(--stock-muted);
+    font-size: .95rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+/* =========================================================
+   ALERTA STOCK HISTÓRICO
+   ========================================================= */
+
+.admin-stock-warning {
+    margin-bottom: 1rem;
+    padding: .95rem 1rem;
+    border: 1px solid #c9b09f;
+    border-left: 4px solid var(--stock-brown);
+    border-radius: 12px;
+    color: #5f4639;
+    background: #f7f2ee;
+}
+
+.admin-stock-warning strong {
+    display: block;
+    font-size: .92rem;
+    font-weight: 700;
+}
+
+.admin-stock-warning p {
+    margin: .28rem 0 0;
+    font-size: .84rem;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+/* =========================================================
+   PRODUCTO
+   ========================================================= */
+
+.admin-stock-product {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .85rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid #cdd8dd;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #ffffff, #f4f8fa);
+    box-shadow: 0 .25rem .8rem rgb(23 63 87 / 5%);
+}
+
+.admin-stock-product > div {
+    min-width: 0;
+}
+
+.admin-stock-product > div > span {
+    display: block;
+    margin-bottom: .14rem;
+    color: var(--stock-brown);
+    font-size: .82rem;
+    font-weight: 650;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.admin-stock-product h2 {
+    margin: 0;
+    color: var(--stock-blue-deep);
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.admin-stock-product p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem .48rem;
+    align-items: center;
+    margin: .35rem 0 0;
+    color: var(--stock-muted);
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+.admin-stock-product p strong {
+    color: #40545f;
+    font-weight: 650;
+}
+
+.admin-stock-product p i {
+    color: #9aa7ad;
+    font-style: normal;
+}
+
+.admin-stock-kind {
+    flex: 0 0 auto;
+    padding: .48rem .7rem;
+    border: 1px solid #b9ced9;
+    border-radius: 999px;
+    color: var(--stock-blue-deep);
+    background: var(--stock-blue-soft);
+    font-size: .84rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   MÉTRICAS
+   ========================================================= */
+
+.admin-stock-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .7rem;
+    margin-bottom: .9rem;
+}
+
+.admin-stock-metrics article {
+    position: relative;
+    min-width: 0;
+    min-height: 6.1rem;
+    padding: .9rem .95rem .85rem 1rem;
+    overflow: hidden;
+    border: 1px solid #d5dde1;
+    border-radius: 13px;
+    background: #ffffff;
+    box-shadow: 0 .2rem .65rem rgb(23 63 87 / 4%);
+}
+
+.admin-stock-metrics article::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: .25rem;
+    background: var(--stock-brown);
+}
+
+.admin-stock-metrics article.is-reserved::before {
+    background: #6a7c85;
+}
+
+.admin-stock-metrics article.is-available::before {
+    background: var(--stock-blue);
+}
+
+.admin-stock-metrics article > span {
+    display: block;
+    color: #63747d;
+    font-size: .82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.admin-stock-metrics article > strong {
+    display: block;
+    margin-top: .42rem;
+    color: var(--stock-blue-deep);
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.admin-stock-metrics article small {
+    display: block;
+    margin-top: .34rem;
+    color: var(--stock-muted);
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+/* =========================================================
+   TARJETAS GENERALES
+   ========================================================= */
+
+.admin-stock-card {
+    margin-bottom: .9rem;
+    overflow: hidden;
+    border: 1px solid var(--stock-border);
+    border-radius: 14px;
+    background: var(--stock-white);
+    box-shadow: 0 .3rem .9rem rgb(23 63 87 / 5%);
+}
+
+.admin-stock-card > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .92rem 1rem;
+    border-bottom: 1px solid #dce3e6;
+    background: #ffffff;
+}
+
+.admin-stock-card > header > div {
+    min-width: 0;
+}
+
+.admin-stock-card > header span {
+    display: block;
+    margin-bottom: .15rem;
+    color: var(--stock-brown);
+    font-size: .82rem;
+    font-weight: 650;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+
+.admin-stock-card > header h2 {
+    margin: 0;
+    color: var(--stock-black);
+    font-size: 1.08rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.admin-stock-card > header p {
+    margin: .24rem 0 0;
+    color: var(--stock-muted);
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* =========================================================
+   LOTES ACTIVOS
+   ========================================================= */
+
+.admin-stock-lots__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+    padding: .9rem 1rem 1rem;
+    background: #f8fafb;
+}
+
+.admin-stock-lot {
+    min-width: 0;
+    padding: .82rem .85rem;
+    border: 1px solid #d5dfe3;
+    border-radius: 11px;
+    background: #ffffff;
+}
+
+.admin-stock-lot.is-ok {
+    border-left: 4px solid var(--stock-success);
+}
+
+.admin-stock-lot.is-near {
+    border-left: 4px solid #6c8794;
+}
+
+.admin-stock-lot.is-warning {
+    border-left: 4px solid var(--stock-warning);
+    background: #fbf7f3;
+}
+
+.admin-stock-lot.is-expired {
+    border-left: 4px solid var(--stock-danger);
+    background: #fcf2f1;
+}
+
+.admin-stock-lot > div > span {
+    display: block;
+    color: #718087;
+    font-size: .82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.admin-stock-lot > div > strong {
+    display: block;
+    margin-top: .08rem;
+    color: var(--stock-blue-deep);
+    font-size: .9rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.admin-stock-lot dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .55rem;
+    margin: .7rem 0 0;
+}
+
+.admin-stock-lot dl > div {
+    min-width: 0;
+}
+
+.admin-stock-lot dt {
+    color: #7b8990;
+    font-size: .82rem;
+    font-weight: 600;
+}
+
+.admin-stock-lot dd {
+    margin: .12rem 0 0;
+    color: #3c515b;
+    font-size: .84rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.admin-stock-lot > small {
+    display: block;
+    margin-top: .65rem;
+    padding-top: .55rem;
+    border-top: 1px solid #e4e9eb;
+    color: var(--stock-muted);
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+.admin-stock-empty {
+    padding: 1rem;
+    color: var(--stock-muted);
+    font-size: .85rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* =========================================================
+   OPERACIÓN
+   ========================================================= */
+
+.admin-stock-operation > header {
+    background: #f7f9fa;
+}
+
+.admin-stock-operation form {
+    padding: .95rem 1rem 1rem;
+}
+
+.admin-stock-operation__selector {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .7rem;
+    margin-bottom: .9rem;
+}
+
+.admin-stock-operation__selector label {
+    position: relative;
+    cursor: pointer;
+}
+
+.admin-stock-operation__selector input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-stock-operation__selector label > span {
+    display: grid;
+    min-height: 5rem;
+    align-content: start;
+    gap: .25rem;
+    padding: .82rem .88rem;
+    border: 1px solid #ccd7dc;
+    border-radius: 11px;
+    color: #40555f;
+    background: #ffffff;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease,
+        box-shadow 150ms ease,
+        transform 150ms ease;
+}
+
+.admin-stock-operation__selector label:hover > span {
+    border-color: #aebfc7;
+    transform: translateY(-1px);
+}
+
+.admin-stock-operation__selector input:checked + span {
+    border-color: var(--stock-blue);
+    background: var(--stock-blue-soft);
+    box-shadow: 0 0 0 2px rgb(47 111 142 / 9%);
+}
+
+.admin-stock-operation__selector input:focus-visible + span {
+    outline: 3px solid rgb(47 111 142 / 18%);
+    outline-offset: 2px;
+}
+
+.admin-stock-operation__selector strong {
+    color: var(--stock-black);
+    font-size: .9rem;
+    font-weight: 700;
+}
+
+.admin-stock-operation__selector small {
+    color: var(--stock-muted);
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.admin-stock-operation__body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .8rem .9rem;
+}
+
+.admin-stock-dynamic {
+    grid-column: 1 / -1;
+    padding: .85rem;
+    border: 1px solid #d8e1e5;
+    border-radius: 12px;
+    background: #f8fafb;
+}
+
+.admin-stock-dynamic[hidden] {
+    display: none !important;
+}
+
+.admin-stock-section-note {
+    margin-bottom: .75rem;
+    padding: .72rem .78rem;
+    border-left: 4px solid var(--stock-blue);
+    border-radius: 0 9px 9px 0;
+    background: #eef5f8;
+}
+
+.admin-stock-section-note.is-secondary {
+    margin-top: .3rem;
+    border-left-color: var(--stock-brown);
+    background: #f7f2ef;
+}
+
+.admin-stock-section-note strong {
+    display: block;
+    color: var(--stock-blue-deep);
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.admin-stock-section-note span {
+    display: block;
+    margin-top: .15rem;
+    color: #5e7078;
+    font-size: .84rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* =========================================================
+   CAMPOS
+   ========================================================= */
+
+.admin-stock-page .admin-field {
+    display: grid;
+    gap: .35rem;
+    min-width: 0;
+}
+
+.admin-stock-page .admin-field label,
+.admin-stock-page label.admin-field {
+    color: #3d535e;
+    font-size: .84rem;
+    font-weight: 600;
+}
+
+.admin-stock-page .admin-field label span,
+.admin-stock-page label.admin-field > span {
+    color: #79878e;
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+.admin-stock-page .admin-field input,
+.admin-stock-page .admin-field select,
+.admin-stock-page .admin-field textarea {
+    width: 100%;
+    min-height: 2.75rem;
+    border: 1px solid #c8d3d8;
+    border-radius: 9px;
+    color: var(--stock-text);
+    background: #ffffff;
+    font-family: inherit;
+    font-size: .9rem;
+    font-weight: 500;
+}
+
+.admin-stock-page .admin-field input,
+.admin-stock-page .admin-field select {
+    padding-inline: .7rem;
+}
+
+.admin-stock-page .admin-field textarea {
+    min-height: 5.5rem;
+    padding: .7rem;
+    resize: vertical;
+}
+
+.admin-stock-page .admin-field input:focus,
+.admin-stock-page .admin-field select:focus,
+.admin-stock-page .admin-field textarea:focus {
+    border-color: var(--stock-blue);
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(47 111 142 / 11%);
+}
+
+.admin-stock-page .admin-field__help {
+    display: block;
+    color: #728087;
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.admin-stock-page .admin-field__error {
+    display: block;
+    color: var(--stock-danger);
+    font-size: .84rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.admin-stock-page .admin-field--invalid input,
+.admin-stock-page .admin-field--invalid select,
+.admin-stock-page .admin-field--invalid textarea {
+    border-color: #c58a84;
+    background: #fffafa;
+}
+
+.admin-stock-unit-input {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+}
+
+.admin-stock-unit-input input {
+    border-radius: 9px 0 0 9px !important;
+}
+
+.admin-stock-unit-input > span {
+    display: grid;
+    min-width: 3rem;
+    place-items: center;
+    border: 1px solid #c8d3d8;
+    border-left: 0;
+    border-radius: 0 9px 9px 0;
+    color: #536a75;
+    background: #f1f4f5;
+    font-size: .82rem;
+    font-weight: 600;
+}
+
+.admin-stock-observation {
+    grid-column: 1 / -1;
+}
+
+/* =========================================================
+   SALIDA
+   ========================================================= */
+
+.admin-stock-output-mode {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .8rem;
+    margin-top: .75rem;
+}
+
+.admin-stock-output-mode[hidden] {
+    display: none !important;
+}
+
+/* =========================================================
+   REGULARIZACIÓN
+   ========================================================= */
+
+.admin-stock-difference {
+    margin-top: .25rem;
+    padding: .62rem .7rem;
+    border: 1px solid #d5dde1;
+    border-radius: 8px;
+    color: #596c76;
+    background: #f5f7f8;
+    font-size: .84rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.admin-stock-difference.is-positive {
+    border-color: #b8d0c2;
+    color: var(--stock-success);
+    background: var(--stock-success-soft);
+}
+
+.admin-stock-difference.is-negative {
+    border-color: #d8b3af;
+    color: var(--stock-danger);
+    background: var(--stock-danger-soft);
+}
+
+.admin-stock-difference.is-warning {
+    border-color: #d0baa7;
+    color: var(--stock-warning);
+    background: var(--stock-warning-soft);
+}
+
+.admin-stock-positive-adjustment[hidden] {
+    display: none !important;
+}
+
+/* =========================================================
+   NUEVOS LOTES EN FORMULARIO
+   ========================================================= */
+
+.admin-stock-lot-form {
+    display: grid;
+    gap: .7rem;
+    margin-top: .8rem;
+}
+
+.admin-stock-lot-form__list {
+    display: grid;
+    gap: .7rem;
+}
+
+.admin-stock-new-lot {
+    min-width: 0;
+    margin: 0;
+    padding: .78rem;
+    border: 1px solid #d0dbe0;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.admin-stock-new-lot__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .7rem;
+    margin-bottom: .65rem;
+}
+
+.admin-stock-new-lot__header strong {
+    color: var(--stock-brown-deep);
+    font-size: .84rem;
+    font-weight: 700;
+}
+
+.admin-stock-new-lot__header button {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 1px solid #d2b3ae;
+    border-radius: 8px;
+    color: var(--stock-danger);
+    background: #fff7f6;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.admin-stock-new-lot__grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr .8fr;
+    gap: .7rem;
+}
+
+.admin-stock-add-lot {
+    justify-self: start;
+    min-height: 2.5rem;
+    border: 1px solid #aebfc8 !important;
+    color: var(--stock-blue-deep) !important;
+    background: #ffffff !important;
+    font-size: .8rem !important;
+    font-weight: 650 !important;
+}
+
+.admin-stock-add-lot:hover,
+.admin-stock-add-lot:focus-visible {
+    border-color: var(--stock-blue) !important;
+    background: var(--stock-blue-soft) !important;
+}
+
+/* =========================================================
+   PIE FORMULARIO
+   ========================================================= */
+
+.admin-stock-operation__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: .95rem;
+    padding-top: .85rem;
+    border-top: 1px solid #dce3e6;
+}
+
+.admin-stock-operation__footer > div {
+    min-width: 0;
+}
+
+.admin-stock-operation__footer strong {
+    display: block;
+    color: var(--stock-brown-deep);
+    font-size: .82rem;
+    font-weight: 700;
+}
+
+.admin-stock-operation__footer span {
+    display: block;
+    margin-top: .14rem;
+    color: var(--stock-muted);
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.admin-stock-operation__footer .admin-button--primary {
+    flex: 0 0 auto;
+    min-height: 2.7rem;
+    border-color: #205975;
+    color: #ffffff;
+    background: var(--stock-blue);
+    font-size: .84rem;
+    font-weight: 700;
+}
+
+/* =========================================================
+   HISTORIAL
+   ========================================================= */
+
+.admin-stock-history__wrap {
+    overflow-x: auto;
+}
+
+.admin-stock-history table {
+    width: 100%;
+    min-width: 70rem;
+    border-collapse: collapse;
+}
+
+.admin-stock-history thead {
+    background: var(--stock-brown-deep);
+}
+
+.admin-stock-history th {
+    padding: .76rem .78rem;
+    border-right: 1px solid rgb(255 255 255 / 7%);
+    color: #ffffff;
+    background: transparent;
+    font-size: .82rem;
+    font-weight: 650;
+    letter-spacing: .02em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-stock-history td {
+    padding: .8rem .78rem;
+    border-bottom: 1px solid #e1e6e8;
+    color: #3a4f59;
+    background: #ffffff;
+    font-size: .83rem;
+    font-weight: 500;
+    line-height: 1.35;
+    vertical-align: top;
+}
+
+.admin-stock-history tbody tr:nth-child(even) td {
+    background: #f8fafb;
+}
+
+.admin-stock-history tbody tr:hover td {
+    background: #f1f5f7;
+}
+
+.admin-stock-history td strong {
+    font-weight: 650;
+}
+
+.admin-stock-history td.is-positive strong {
+    color: var(--stock-success);
+}
+
+.admin-stock-history td.is-negative strong {
+    color: var(--stock-danger);
+}
+
+/* Movimiento */
+
+.admin-stock-movement {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.9rem;
+    padding: .32rem .56rem;
+    border: 1px solid #ccd7dc;
+    border-radius: 999px;
+    color: #455b65;
+    background: #f5f7f8;
+    font-size: .82rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.admin-stock-movement--entrada,
+.admin-stock-movement.is-entry {
+    border-color: #b9d0c4;
+    color: var(--stock-success);
+    background: var(--stock-success-soft);
+}
+
+.admin-stock-movement--salida,
+.admin-stock-movement--ajuste-negativo,
+.admin-stock-movement.is-output {
+    border-color: #d6b6b2;
+    color: var(--stock-danger);
+    background: var(--stock-danger-soft);
+}
+
+.admin-stock-movement--venta,
+.admin-stock-movement.is-sale {
+    border-color: #a9c7d5;
+    color: var(--stock-blue-deep);
+    background: var(--stock-blue-soft);
+}
+
+.admin-stock-movement--ajuste-positivo,
+.admin-stock-movement.is-adjustment {
+    border-color: #c8b5a6;
+    color: var(--stock-brown);
+    background: #f6f1ed;
+}
+
+/* =========================================================
+   IDENTIDAD OPERATIVA — STOCK
+   ========================================================= */
+
+.admin-stock-page {
+    --stock-copper: #a66b3f;
+    --stock-copper-soft: #f5ebe3;
+    --stock-ink: #24333b;
+}
+
+/* Producto: encabezado de ficha con más presencia */
+.admin-stock-product {
+    border-color: #b9cbd4;
+    background:
+        linear-gradient(90deg, rgba(95, 67, 53, .07), transparent 30%),
+        linear-gradient(135deg, #ffffff, #eef5f8);
+}
+
+.admin-stock-product::before {
+    content: "";
+    width: .34rem;
+    align-self: stretch;
+    flex: 0 0 .34rem;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--stock-brown), var(--stock-blue));
+}
+
+/* Métricas: cada dato tiene una función visual propia */
+.admin-stock-metrics article {
+    min-height: 7rem;
+    padding: 1rem 1rem .95rem 1.08rem;
+    border-width: 1px;
+    box-shadow: 0 .35rem 1rem rgb(35 55 66 / 7%);
+}
+
+.admin-stock-metrics article:nth-child(1) {
+    border-color: #c5ab9c;
+    background: linear-gradient(145deg, #fff, #f7efea);
+}
+
+.admin-stock-metrics article:nth-child(1)::before {
+    width: .36rem;
+    background: var(--stock-brown);
+}
+
+.admin-stock-metrics article:nth-child(2) {
+    border-color: #c7d0d5;
+    background: linear-gradient(145deg, #fff, #f1f4f5);
+}
+
+.admin-stock-metrics article:nth-child(2)::before {
+    width: .36rem;
+    background: #56646b;
+}
+
+.admin-stock-metrics article:nth-child(3) {
+    border-color: #9fc1d0;
+    background: linear-gradient(145deg, #fff, #eaf5f9);
+}
+
+.admin-stock-metrics article:nth-child(3)::before {
+    width: .36rem;
+    background: var(--stock-blue);
+}
+
+.admin-stock-metrics article:nth-child(4) {
+    border-color: #c7a985;
+    background: linear-gradient(145deg, #fff, #f5ede4);
+}
+
+.admin-stock-metrics article:nth-child(4)::before {
+    width: .36rem;
+    background: var(--stock-copper);
+}
+
+.admin-stock-metrics article > span {
+    font-size: .82rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+}
+
+.admin-stock-metrics article > strong {
+    margin-top: .52rem;
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.admin-stock-metrics article small {
+    margin-top: .42rem;
+    font-size: .82rem;
+    line-height: 1.4;
+}
+
+/* Secciones: diferenciación clara entre consulta, acción e historial */
+.admin-stock-lots {
+    border-color: #b8cad3;
+    background: #f4f8fa;
+}
+
+.admin-stock-lots > header {
+    border-bottom-color: #c7d8df;
+    background: linear-gradient(90deg, #edf5f8, #ffffff 58%);
+}
+
+.admin-stock-lots__grid {
+    background:
+        linear-gradient(135deg, rgba(47, 111, 142, .04), transparent 45%),
+        #f5f8f9;
+}
+
+.admin-stock-lot {
+    position: relative;
+    padding: 1rem;
+    border-color: #cad8de;
+    box-shadow: 0 .25rem .75rem rgb(27 62 78 / 6%);
+}
+
+.admin-stock-lot > div > strong {
+    margin-top: .16rem;
+    font-size: 1rem;
+}
+
+.admin-stock-lot dt,
+.admin-stock-lot > div > span {
+    font-size: .84rem;
+}
+
+.admin-stock-lot dd {
+    font-size: .86rem;
+}
+
+.admin-stock-operation {
+    border-color: #bd9f8e;
+    box-shadow: 0 .55rem 1.35rem rgb(74 49 37 / 8%);
+}
+
+.admin-stock-operation > header {
+    padding: 1.05rem 1.1rem;
+    border-bottom-color: #d3bbb0;
+    background:
+        linear-gradient(90deg, #f5ebe5, #fff 60%);
+}
+
+.admin-stock-operation > header span {
+    color: #76513d;
+    font-size: .84rem;
+}
+
+.admin-stock-operation > header h2 {
+    font-size: 1.2rem;
+}
+
+.admin-stock-operation > header p {
+    font-size: .88rem;
+}
+
+.admin-stock-operation form {
+    background: #fffdfc;
+}
+
+.admin-stock-operation__selector label > span {
+    min-height: 6rem;
+    padding: 1rem;
+    border-width: 1px;
+    background: #fff;
+}
+
+.admin-stock-operation__selector label:nth-child(1) input:checked + span {
+    border-color: #9e806e;
+    background: #f7efe9;
+    box-shadow: inset 0 0 0 1px rgba(95, 67, 53, .1);
+}
+
+.admin-stock-operation__selector label:nth-child(2) input:checked + span {
+    border-color: #759bad;
+    background: #edf6fa;
+    box-shadow: inset 0 0 0 1px rgba(47, 111, 142, .1);
+}
+
+.admin-stock-operation__selector label:nth-child(3) input:checked + span {
+    border-color: #a17655;
+    background: #f5ebe3;
+    box-shadow: inset 0 0 0 1px rgba(166, 107, 63, .1);
+}
+
+.admin-stock-operation__selector strong {
+    font-size: .98rem;
+    font-weight: 700;
+}
+
+.admin-stock-operation__selector small {
+    font-size: .82rem;
+    line-height: 1.45;
+}
+
+.admin-stock-dynamic {
+    padding: 1rem;
+    border-color: #c5d4da;
+    background: #f4f8fa;
+}
+
+.admin-stock-section-note strong {
+    font-size: .92rem;
+}
+
+.admin-stock-section-note span {
+    font-size: .82rem;
+}
+
+.admin-stock-page .admin-field label,
+.admin-stock-page label.admin-field {
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+.admin-stock-page .admin-field input,
+.admin-stock-page .admin-field select,
+.admin-stock-page .admin-field textarea {
+    min-height: 3rem;
+    font-size: .94rem;
+}
+
+.admin-stock-page .admin-field__help,
+.admin-stock-page .admin-field__error {
+    font-size: .82rem;
+}
+
+/* Selector de lotes existentes para regularización */
+.admin-stock-existing-lots {
+    margin-top: .85rem;
+    padding: .9rem;
+    border: 1px solid #b9ccd5;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.admin-stock-existing-lots__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .8rem;
+}
+
+.admin-stock-existing-lots__heading strong {
+    display: block;
+    color: var(--stock-blue-deep);
+    font-size: .96rem;
+    font-weight: 700;
+}
+
+.admin-stock-existing-lots__heading span {
+    display: block;
+    margin-top: .14rem;
+    color: var(--stock-muted);
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+.admin-stock-existing-lots__add {
+    flex: 0 0 auto;
+    min-height: 2.6rem;
+    border: 1px solid #8eb0bf !important;
+    color: var(--stock-blue-deep) !important;
+    background: #eef6f9 !important;
+    font-size: .82rem !important;
+    font-weight: 650 !important;
+}
+
+.admin-stock-existing-lots__list {
+    display: grid;
+    gap: .65rem;
+}
+
+.admin-stock-existing-lot {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(15rem, 1.7fr) minmax(9rem, .7fr) minmax(14rem, 1fr) auto;
+    gap: .75rem;
+    align-items: end;
+    padding: .8rem;
+    border: 1px solid #d1dde2;
+    border-radius: 10px;
+    background: #f8fafb;
+}
+
+.admin-stock-existing-lot__summary {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    padding: .65rem .75rem;
+    border-left: 3px solid var(--stock-blue);
+    border-radius: 0 8px 8px 0;
+    color: #536873;
+    background: #edf5f8;
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.admin-stock-existing-lot__remove {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid #d1aba6;
+    border-radius: 8px;
+    color: var(--stock-danger);
+    background: #fff7f6;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.admin-stock-new-lot-option {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px dashed #c9d3d7;
+}
+
+.admin-stock-new-lot-option__button {
+    flex: 0 0 auto;
+    min-height: 2.55rem;
+    border: 1px solid #b89a87 !important;
+    color: var(--stock-brown-deep) !important;
+    background: #fff !important;
+    font-size: .82rem !important;
+    font-weight: 650 !important;
+}
+
+.admin-stock-new-lot-option > span {
+    color: var(--stock-muted);
+    font-size: .84rem;
+    font-weight: 500;
+}
+
+.admin-stock-new-lot-panel {
+    margin-top: .8rem;
+    padding: .85rem;
+    border: 1px solid #cfb9aa;
+    border-radius: 11px;
+    background: #faf5f1;
+}
+
+.admin-stock-new-lot-panel[hidden] {
+    display: none !important;
+}
+
+/* Historial: más administrativo y menos clínico */
+.admin-stock-history {
+    border-color: #b7c4ca;
+}
+
+.admin-stock-history > header {
+    border-bottom-color: #52636b;
+    background: linear-gradient(90deg, #3d2d26, #4c3a31 50%, #34444c);
+}
+
+.admin-stock-history > header span,
+.admin-stock-history > header h2,
+.admin-stock-history > header p {
+    color: #fff;
+}
+
+.admin-stock-history > header span {
+    opacity: .82;
+}
+
+.admin-stock-history thead {
+    background: #5a4033;
+}
+
+.admin-stock-history th {
+    padding-block: .86rem;
+    font-size: .84rem;
+}
+
+.admin-stock-history td {
+    padding-block: .9rem;
+    font-size: .87rem;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1180px) {
+    .admin-stock-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-stock-lots__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-stock-new-lot__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .admin-stock-product {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-stock-kind {
+        white-space: normal;
+    }
+
+    .admin-stock-metrics,
+    .admin-stock-lots__grid,
+    .admin-stock-operation__selector,
+    .admin-stock-operation__body,
+    .admin-stock-output-mode,
+    .admin-stock-new-lot__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-stock-dynamic,
+    .admin-stock-observation {
+        grid-column: auto;
+    }
+
+    .admin-stock-operation__footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-stock-operation__footer .admin-button--primary {
+        width: 100%;
+    }
+
+    .admin-stock-card > header {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 460px) {
+    .admin-stock-page .admin-page-title {
+        font-size: 1.65rem;
+    }
+
+    .admin-stock-product,
+    .admin-stock-card > header,
+    .admin-stock-operation form,
+    .admin-stock-lots__grid {
+        padding-inline: .78rem;
+    }
+
+    .admin-stock-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-stock-operation__selector label > span {
+        min-height: auto;
+    }
+}
+
+
+@media (max-width: 980px) {
+    .admin-stock-existing-lot {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-stock-existing-lot__summary {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 760px) {
+    .admin-stock-existing-lots__heading,
+    .admin-stock-new-lot-option {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-stock-existing-lots__add,
+    .admin-stock-new-lot-option__button {
+        width: 100%;
+    }
+
+    .admin-stock-existing-lot {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-stock-existing-lot__summary {
+        grid-column: auto;
+    }
+}
