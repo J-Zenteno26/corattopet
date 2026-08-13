@@ -69,6 +69,7 @@ try {
 
 $whatsappUrl = obtenerWhatsappPublico($config);
 $currentPage = 'inicio';
+$csrfToken = csrfToken();
 
 /**
  * Renderiza un recurso visual de la home.
