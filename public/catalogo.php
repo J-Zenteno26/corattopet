@@ -221,6 +221,193 @@ $cartMessages = [
 $cartMessage = $cartMessages[$cartResult] ?? null;
 
 
+/* =========================================================
+   SEO · FICHA DE PRODUCTO
+   ========================================================= */
+
+$seoTitle = 'Catálogo Coratto Pet';
+$seoDescription = 'Catálogo público de Coratto Pet: productos, ingredientes y presentaciones disponibles.';
+$seoCanonical = '';
+$seoImageUrl = '';
+$productStructuredData = null;
+
+if ($modoFicha && $product !== null) {
+    $seoProductName = trim((string) $product['nombre']);
+    $seoBrandName = trim((string) $product['marca']);
+
+    /*
+     * Evita repetir la marca si el nombre del producto ya la contiene.
+     * Ejemplo:
+     * "ACANA Adult Dog" no termina como "ACANA ACANA Adult Dog".
+     */
+    $seoProductLabel = $seoProductName;
+
+    if (
+        $seoBrandName !== ''
+        && mb_strtolower($seoBrandName) !== 'sin marca'
+        && !str_contains(
+            mb_strtolower($seoProductName),
+            mb_strtolower($seoBrandName)
+        )
+    ) {
+        $seoProductLabel = $seoBrandName . ' ' . $seoProductName;
+    }
+
+    $seoTitle = $seoProductLabel . ' | Coratto Pet';
+
+    $seoSummary = trim(
+        preg_replace(
+            '/\s+/u',
+            ' ',
+            strip_tags($summary($product))
+        ) ?? ''
+    );
+
+    $seoDescription = $seoProductLabel . ' en Coratto Pet. ' . $seoSummary;
+
+    if (mb_strlen($seoDescription) > 165) {
+        $seoDescription = mb_substr($seoDescription, 0, 162) . '…';
+    }
+
+    /*
+     * Siempre usamos el SKU del producto padre como URL canónica.
+     * Si se entra mediante el SKU de una presentación, ambos terminan
+     * apuntando a una única URL SEO.
+     */
+    $seoCanonical = 'https://corattopet.cl/public/catalogo.php?sku='
+        . rawurlencode((string) $product['sku']);
+
+    /*
+     * Imágenes públicas del producto.
+     */
+    $seoImageUrls = [];
+
+    foreach ($productImages as $image) {
+        $imageUrl = $resolveProductImageUrl($image['archivo'] ?? '');
+
+        if (
+            $imageUrl !== ''
+            && !in_array($imageUrl, $seoImageUrls, true)
+        ) {
+            $seoImageUrls[] = $imageUrl;
+        }
+    }
+
+    if ($seoImageUrls === []) {
+        $fallbackImageUrl = $resolveProductImageUrl(
+            $product['imagen'] ?? ''
+        );
+
+        if ($fallbackImageUrl !== '') {
+            $seoImageUrls[] = $fallbackImageUrl;
+        }
+    }
+
+    $seoImageUrl = $seoImageUrls[0] ?? '';
+
+    /*
+     * Oferta utilizada por los datos estructurados.
+     *
+     * Si existen presentaciones:
+     * - prioriza las que están disponibles;
+     * - usa el precio más bajo disponible.
+     *
+     * Si no existen presentaciones:
+     * - usa el precio del producto base.
+     */
+    $availablePresentationOffers = [];
+    $allPresentationOffers = [];
+
+    foreach ($presentations as $presentation) {
+        $presentationPrice = (float) (
+            $presentation['precio_venta'] ?? 0
+        );
+
+        if ($presentationPrice <= 0) {
+            continue;
+        }
+
+        $presentationAvailable = valorBooleanoPublico(
+            $presentation['disponible'] ?? false
+        );
+
+        $offer = [
+            '@type' => 'Offer',
+            'url' => $seoCanonical,
+            'priceCurrency' => 'CLP',
+            'price' => (int) round($presentationPrice),
+            'availability' => $presentationAvailable
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+            'itemCondition' => 'https://schema.org/NewCondition',
+        ];
+
+        $allPresentationOffers[] = $offer;
+
+        if ($presentationAvailable) {
+            $availablePresentationOffers[] = $offer;
+        }
+    }
+
+    $seoOffer = null;
+
+    $offerPool = $availablePresentationOffers !== []
+        ? $availablePresentationOffers
+        : $allPresentationOffers;
+
+    if ($offerPool !== []) {
+        usort(
+            $offerPool,
+            static fn(array $left, array $right): int =>
+            $left['price'] <=> $right['price']
+        );
+
+        $seoOffer = $offerPool[0];
+    } elseif ((float) ($product['precio_venta'] ?? 0) > 0) {
+        $seoOffer = [
+            '@type' => 'Offer',
+            'url' => $seoCanonical,
+            'priceCurrency' => 'CLP',
+            'price' => (int) round(
+                (float) $product['precio_venta']
+            ),
+            'availability' => !empty($product['disponible'])
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+            'itemCondition' => 'https://schema.org/NewCondition',
+        ];
+    }
+
+    /*
+     * Solo publicamos Product si tenemos los datos mínimos reales
+     * necesarios: imagen y oferta con precio válido.
+     */
+    if ($seoImageUrls !== [] && $seoOffer !== null) {
+        $productStructuredData = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            '@id' => $seoCanonical . '#product',
+            'name' => $seoProductLabel,
+            'image' => $seoImageUrls,
+            'description' => $seoSummary,
+            'sku' => (string) $product['sku'],
+            'category' => (string) $product['categoria'],
+            'offers' => $seoOffer,
+        ];
+
+        if (
+            $seoBrandName !== ''
+            && mb_strtolower($seoBrandName) !== 'sin marca'
+        ) {
+            $productStructuredData['brand'] = [
+                '@type' => 'Brand',
+                'name' => $seoBrandName,
+            ];
+        }
+    }
+}
+
+
 $catalogFilterUrl = static function (array $changes = [], array $remove = []) use ($filters): string {
     $parameters = array_filter(
         $filters,
@@ -274,9 +461,76 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description"
-        content="Catálogo público de Coratto Pet: productos, ingredientes y presentaciones disponibles.">
-    <title><?= $modoFicha && $product ? e($product['nombre']) . ' | ' : '' ?>Catálogo Coratto Pet</title>
+    <meta name="description" content="<?= e($seoDescription) ?>">
+
+    <title><?= e($seoTitle) ?></title>
+
+    <?php if ($seoCanonical !== ''): ?>
+        <link rel="canonical" href="<?= e($seoCanonical) ?>">
+    <?php endif; ?>
+
+    <?php if ($modoFicha && $product !== null): ?>
+        <meta property="og:title" content="<?= e($seoTitle) ?>">
+
+        <meta property="og:description" content="<?= e($seoDescription) ?>">
+
+        <meta property="og:type" content="website">
+
+        <meta property="og:url" content="<?= e($seoCanonical) ?>">
+
+        <?php if ($seoImageUrl !== ''): ?>
+            <meta property="og:image" content="<?= e($seoImageUrl) ?>">
+        <?php endif; ?>
+    <?php endif; ?>
+
+    <?php if ($productStructuredData !== null): ?>
+        <script type="application/ld+json">
+            <?= json_encode(
+                $productStructuredData,
+                JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT
+            ) ?>
+        </script>
+    <?php endif; ?>
+    <meta name="description" content="<?= e($seoDescription) ?>">
+
+    <title><?= e($seoTitle) ?></title>
+
+    <?php if ($seoCanonical !== ''): ?>
+        <link rel="canonical" href="<?= e($seoCanonical) ?>">
+    <?php endif; ?>
+
+    <?php if ($modoFicha && $product !== null): ?>
+        <meta property="og:title" content="<?= e($seoTitle) ?>">
+
+        <meta property="og:description" content="<?= e($seoDescription) ?>">
+
+        <meta property="og:type" content="website">
+
+        <meta property="og:url" content="<?= e($seoCanonical) ?>">
+
+        <?php if ($seoImageUrl !== ''): ?>
+            <meta property="og:image" content="<?= e($seoImageUrl) ?>">
+        <?php endif; ?>
+    <?php endif; ?>
+
+    <?php if ($productStructuredData !== null): ?>
+        <script type="application/ld+json">
+            <?= json_encode(
+                $productStructuredData,
+                JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT
+            ) ?>
+        </script>
+    <?php endif; ?>
     <link rel="stylesheet" href="assets/css/home.css?v=<?= filemtime(__DIR__ . '/assets/css/home.css') ?>">
     <link rel="stylesheet"
         href="assets/css/public-pages.css?v=<?= filemtime(__DIR__ . '/assets/css/public-pages.css') ?>">
@@ -382,60 +636,42 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                     </div>
                 <?php endif; ?>
                 <section class="product-hero">
-                    <div
-                        class="detail-image<?= count($galleryImages) > 1 ? ' detail-image--gallery' : '' ?>"
-                        data-product-gallery
-                        data-gallery-count="<?= count($galleryImages) ?>"
-                    >
+                    <div class="detail-image<?= count($galleryImages) > 1 ? ' detail-image--gallery' : '' ?>"
+                        data-product-gallery data-gallery-count="<?= count($galleryImages) ?>">
                         <?php if ($galleryImages !== []): ?>
                             <div class="product-gallery__viewport" aria-live="polite">
                                 <?php foreach ($galleryImages as $imageIndex => $galleryImage): ?>
-                                    <figure
-                                        class="product-gallery__slide<?= $imageIndex === 0 ? ' is-active' : '' ?>"
-                                        data-gallery-slide
-                                        aria-hidden="<?= $imageIndex === 0 ? 'false' : 'true' ?>"
-                                    >
-                                        <img
-                                            src="<?= e($galleryImage['url']) ?>"
-                                            alt="<?= e($galleryImage['alt']) ?>"
-                                            <?= $imageIndex === 0 ? 'fetchpriority="high"' : 'loading="lazy"' ?>
-                                        >
+                                    <figure class="product-gallery__slide<?= $imageIndex === 0 ? ' is-active' : '' ?>"
+                                        data-gallery-slide aria-hidden="<?= $imageIndex === 0 ? 'false' : 'true' ?>">
+                                        <img src="<?= e($galleryImage['url']) ?>" alt="<?= e($galleryImage['alt']) ?>"
+                                            <?= $imageIndex === 0 ? 'fetchpriority="high"' : 'loading="lazy"' ?>>
                                     </figure>
                                 <?php endforeach; ?>
                             </div>
 
                             <?php if (count($galleryImages) > 1): ?>
-                                <button
-                                    class="product-gallery__arrow product-gallery__arrow--prev"
-                                    type="button"
-                                    data-gallery-prev
-                                    aria-label="Ver imagen anterior"
-                                >
+                                <button class="product-gallery__arrow product-gallery__arrow--prev" type="button" data-gallery-prev
+                                    aria-label="Ver imagen anterior">
                                     <span aria-hidden="true">‹</span>
                                 </button>
 
-                                <button
-                                    class="product-gallery__arrow product-gallery__arrow--next"
-                                    type="button"
-                                    data-gallery-next
-                                    aria-label="Ver imagen siguiente"
-                                >
+                                <button class="product-gallery__arrow product-gallery__arrow--next" type="button" data-gallery-next
+                                    aria-label="Ver imagen siguiente">
                                     <span aria-hidden="true">›</span>
                                 </button>
 
                                 <div class="product-gallery__footer">
                                     <div class="product-gallery__dots" aria-label="Imágenes del producto">
                                         <?php foreach ($galleryImages as $imageIndex => $galleryImage): ?>
-                                            <button
-                                                type="button"
+                                            <button type="button"
                                                 class="product-gallery__dot<?= $imageIndex === 0 ? ' is-active' : '' ?>"
                                                 data-gallery-dot="<?= $imageIndex ?>"
                                                 aria-label="Ver imagen <?= $imageIndex + 1 ?> de <?= count($galleryImages) ?>"
-                                                aria-current="<?= $imageIndex === 0 ? 'true' : 'false' ?>"
-                                            ></button>
+                                                aria-current="<?= $imageIndex === 0 ? 'true' : 'false' ?>"></button>
                                         <?php endforeach; ?>
                                     </div>
-                                    <span class="product-gallery__counter" data-gallery-counter>1 / <?= count($galleryImages) ?></span>
+                                    <span class="product-gallery__counter" data-gallery-counter>1 /
+                                        <?= count($galleryImages) ?></span>
                                 </div>
                             <?php endif; ?>
                         <?php else: ?>
@@ -477,130 +713,109 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                 mascota.</small></div>
                     </div>
                 </section>
-            <?php if (!empty($product['fraccionable'])): ?>                           
-                <section
-                    class="nutrition-product-panel"
-                    id="nutrition-product-panel"
-                    data-product-id="<?= e((string) $product['id_producto']) ?>"
-                >
-                    <div class="nutrition-product-panel__default" data-nutrition-default>
-                        <span class="eyebrow">Guía personalizada</span>
+                <?php if (!empty($product['fraccionable'])): ?>
+                    <section class="nutrition-product-panel" id="nutrition-product-panel"
+                        data-product-id="<?= e((string) $product['id_producto']) ?>">
+                        <div class="nutrition-product-panel__default" data-nutrition-default>
+                            <span class="eyebrow">Guía personalizada</span>
 
-                        <div class="nutrition-product-panel__copy">
-                            <h2>¿Cuánto debería comer tu mascota?</h2>
-                            <p>
-                                Obtén una pauta estimada según su edad, peso, actividad y condición corporal,
-                                y descubre qué alimentos pueden ajustarse mejor a su perfil.
-                            </p>
-                        </div>
-
-                        <a class="button" href="<?= e(appUrl('public/calculadora.php')) ?>">
-                            Calcular su porción
-                        </a>
-                    </div>
-
-                    <div class="nutrition-product-panel__result" data-nutrition-result hidden>
-                        <div>
-                            <span class="eyebrow">Pauta personalizada</span>
-                            <h2 data-nutrition-title>Tu pauta estimada</h2>
-                            <p data-nutrition-description>
-                                Esta pauta fue calculada con los datos que ingresaste anteriormente.
-                            </p>
-                        </div>
-
-                        <div class="nutrition-product-panel__numbers">
-                            <div>
-                                <strong data-nutrition-grams-day>—</strong>
-                                <span>g al día</span>
+                            <div class="nutrition-product-panel__copy">
+                                <h2>¿Cuánto debería comer tu mascota?</h2>
+                                <p>
+                                    Obtén una pauta estimada según su edad, peso, actividad y condición corporal,
+                                    y descubre qué alimentos pueden ajustarse mejor a su perfil.
+                                </p>
                             </div>
 
-                            <div>
-                                <strong data-nutrition-meals>—</strong>
-                                <span>comidas</span>
-                            </div>
-
-                            <div>
-                                <strong data-nutrition-grams-meal>—</strong>
-                                <span>g por comida</span>
-                            </div>
-                        </div>
-
-                        <div class="nutrition-product-panel__actions">
-                            <button type="button" class="button" data-feeding-sheet-open>
-                                Ver ficha de alimentación
-                            </button>
-
-                            <a class="button button-light" href="<?= e(appUrl('public/calculadora.php')) ?>">
-                                Recalcular
+                            <a class="button" href="<?= e(appUrl('public/calculadora.php')) ?>">
+                                Calcular su porción
                             </a>
                         </div>
-                    </div>
-                </section>
-            <?php endif; ?>
+
+                        <div class="nutrition-product-panel__result" data-nutrition-result hidden>
+                            <div>
+                                <span class="eyebrow">Pauta personalizada</span>
+                                <h2 data-nutrition-title>Tu pauta estimada</h2>
+                                <p data-nutrition-description>
+                                    Esta pauta fue calculada con los datos que ingresaste anteriormente.
+                                </p>
+                            </div>
+
+                            <div class="nutrition-product-panel__numbers">
+                                <div>
+                                    <strong data-nutrition-grams-day>—</strong>
+                                    <span>g al día</span>
+                                </div>
+
+                                <div>
+                                    <strong data-nutrition-meals>—</strong>
+                                    <span>comidas</span>
+                                </div>
+
+                                <div>
+                                    <strong data-nutrition-grams-meal>—</strong>
+                                    <span>g por comida</span>
+                                </div>
+                            </div>
+
+                            <div class="nutrition-product-panel__actions">
+                                <button type="button" class="button" data-feeding-sheet-open>
+                                    Ver ficha de alimentación
+                                </button>
+
+                                <a class="button button-light" href="<?= e(appUrl('public/calculadora.php')) ?>">
+                                    Recalcular
+                                </a>
+                            </div>
+                        </div>
+                    </section>
+                <?php endif; ?>
 
                 <?php if ($showPresentationFlow): ?>
-                <section class="why-block" data-presentation-quick-block>
-                    <div class="why-icon"><svg>
-                            <use href="#i-paw" />
-                        </svg></div>
-                    <div class="why-content">
-                        <span class="eyebrow">Una mirada rápida</span>
+                    <section class="why-block" data-presentation-quick-block>
+                        <div class="why-icon"><svg>
+                                <use href="#i-paw" />
+                            </svg></div>
+                        <div class="why-content">
+                            <span class="eyebrow">Una mirada rápida</span>
 
-                        <h2>
-                            <span data-presentation-quick-title>
-                                Elige el formato que mejor se adapte a tu rutina
-                            </span>
+                            <h2>
+                                <span data-presentation-quick-title>
+                                    Elige el formato que mejor se adapte a tu rutina
+                                </span>
 
-                            <span
-                                class="quick-format-badge"
-                                data-presentation-quick-badge
-                                hidden
-                            ></span>
-                        </h2>
+                                <span class="quick-format-badge" data-presentation-quick-badge hidden></span>
+                            </h2>
 
-                        <p data-presentation-quick-message>
-                            Selecciona una presentación y te contamos qué ventajas puede ofrecerte según el tamaño que elijas.
-                        </p>
+                            <p data-presentation-quick-message>
+                                Selecciona una presentación y te contamos qué ventajas puede ofrecerte según el tamaño que
+                                elijas.
+                            </p>
 
-                        <div class="quick-format-ideal" data-presentation-quick-ideal hidden>
-                            <span>Ideal para</span>
-                            <strong data-presentation-quick-ideal-text></strong>
+                            <div class="quick-format-ideal" data-presentation-quick-ideal hidden>
+                                <span>Ideal para</span>
+                                <strong data-presentation-quick-ideal-text></strong>
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
                 <?php endif; ?>
                 <section class="presentations<?= $showPresentationFlow ? '' : ' presentations--standard' ?>">
                     <?php if ($showPresentationFlow): ?>
-                    <div>
-                        <span class="eyebrow">Formatos Coratto</span>
-                        <h2>Presentaciones disponibles</h2>
-                        <p>El código QR siempre abre esta ficha del producto original.</p>
-                    </div>
+                        <div>
+                            <span class="eyebrow">Formatos Coratto</span>
+                            <h2>Presentaciones disponibles</h2>
+                            <p>El código QR siempre abre esta ficha del producto original.</p>
+                        </div>
                     <?php endif; ?>
 
                     <?php if ($presentations): ?>
-                        <form
-                            class="product-purchase-form"
-                            method="post"
-                            action="<?= e(appUrl('public/acciones-carrito/agregar.php')) ?>"
-                        >
-                            <input
-                                type="hidden"
-                                name="csrf_token"
-                                value="<?= e(csrfToken()) ?>"
-                            >
+                        <form class="product-purchase-form" method="post"
+                            action="<?= e(appUrl('public/acciones-carrito/agregar.php')) ?>">
+                            <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
 
-                            <input
-                                type="hidden"
-                                name="id_producto"
-                                value="<?= e($product['id_producto']) ?>"
-                            >
+                            <input type="hidden" name="id_producto" value="<?= e($product['id_producto']) ?>">
 
-                            <input
-                                type="hidden"
-                                name="sku_retorno"
-                                value="<?= e($product['sku']) ?>"
-                            >
+                            <input type="hidden" name="sku_retorno" value="<?= e($product['sku']) ?>">
 
                             <fieldset class="presentation-fieldset">
                                 <legend>Selecciona una presentación</legend>
@@ -615,12 +830,12 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                         $scanned = !empty(
                                             $product['presentacion_detectada_sku']
                                         ) && mb_strtolower(
-                                            trim(
-                                                (string) $product['presentacion_detectada_sku']
-                                            )
-                                        ) === mb_strtolower(
-                                            trim((string) $presentation['sku'])
-                                        );
+                                                trim(
+                                                    (string) $product['presentacion_detectada_sku']
+                                                )
+                                            ) === mb_strtolower(
+                                                trim((string) $presentation['sku'])
+                                            );
 
                                         $presentationClasses = [];
 
@@ -658,38 +873,25 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
 
                                         <div class="<?= e($presentationClass) ?>">
                                             <?php if ($presentationAvailable && $scanned): ?>
-                                                <input
-                                                    id="<?= e($presentationInputId) ?>"
-                                                    type="radio"
-                                                    name="id_presentacion"
+                                                <input id="<?= e($presentationInputId) ?>" type="radio" name="id_presentacion"
                                                     value="<?= e($presentation['id_presentacion']) ?>"
-                                                    data-presentation-grams="<?= e((int) $presentation['cantidad_gramos']) ?>"
-                                                    checked
-                                                    required
-                                                >
+                                                    data-presentation-grams="<?= e((int) $presentation['cantidad_gramos']) ?>" checked
+                                                    required>
                                             <?php elseif ($presentationAvailable): ?>
-                                                <input
-                                                    id="<?= e($presentationInputId) ?>"
-                                                    type="radio"
-                                                    name="id_presentacion"
+                                                <input id="<?= e($presentationInputId) ?>" type="radio" name="id_presentacion"
                                                     value="<?= e($presentation['id_presentacion']) ?>"
-                                                    data-presentation-grams="<?= e((int) $presentation['cantidad_gramos']) ?>"
-                                                    required
-                                                >
+                                                    data-presentation-grams="<?= e((int) $presentation['cantidad_gramos']) ?>" required>
                                             <?php else: ?>
-                                                <input
-                                                    id="<?= e($presentationInputId) ?>"
-                                                    type="radio"
-                                                    name="id_presentacion"
+                                                <input id="<?= e($presentationInputId) ?>" type="radio" name="id_presentacion"
                                                     value="<?= e($presentation['id_presentacion']) ?>"
-                                                    data-presentation-grams="<?= e((int) $presentation['cantidad_gramos']) ?>"
-                                                    disabled
-                                                >
+                                                    data-presentation-grams="<?= e((int) $presentation['cantidad_gramos']) ?>" disabled>
                                             <?php endif; ?>
 
                                             <label for="<?= e($presentationInputId) ?>">
                                                 <span class="presentation-format-icon" aria-hidden="true">
-                                                    <svg><use href="<?= e($presentationIcon) ?>" /></svg>
+                                                    <svg>
+                                                        <use href="<?= e($presentationIcon) ?>" />
+                                                    </svg>
                                                 </span>
 
                                                 <span class="presentation-content">
@@ -731,7 +933,9 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                                 </span>
 
                                                 <span class="presentation-selected">
-                                                    <svg><use href="#i-check" /></svg>
+                                                    <svg>
+                                                        <use href="#i-check" />
+                                                    </svg>
                                                     Seleccionado
                                                 </span>
                                             </label>
@@ -745,28 +949,14 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                     <label for="purchase-quantity">Cantidad</label>
 
                                     <div class="purchase-quantity__control">
-                                        <button
-                                            type="button"
-                                            data-purchase-quantity="decrease"
-                                            aria-label="Disminuir cantidad"
-                                        >−</button>
+                                        <button type="button" data-purchase-quantity="decrease"
+                                            aria-label="Disminuir cantidad">−</button>
 
-                                        <input
-                                            id="purchase-quantity"
-                                            type="number"
-                                            name="cantidad"
-                                            value="1"
-                                            min="1"
-                                            max="<?= e(CARRITO_CANTIDAD_MAXIMA) ?>"
-                                            inputmode="numeric"
-                                            required
-                                        >
+                                        <input id="purchase-quantity" type="number" name="cantidad" value="1" min="1"
+                                            max="<?= e(CARRITO_CANTIDAD_MAXIMA) ?>" inputmode="numeric" required>
 
-                                        <button
-                                            type="button"
-                                            data-purchase-quantity="increase"
-                                            aria-label="Aumentar cantidad"
-                                        >+</button>
+                                        <button type="button" data-purchase-quantity="increase"
+                                            aria-label="Aumentar cantidad">+</button>
                                     </div>
                                 </div>
 
@@ -780,9 +970,9 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                         </form>
                     <?php else: ?>
                         <?php if ($showPresentationFlow): ?>
-                        <p class="empty-note">
-                            No hay presentaciones adicionales publicadas.
-                        </p>
+                            <p class="empty-note">
+                                No hay presentaciones adicionales publicadas.
+                            </p>
                         <?php endif; ?>
                         <?php if ((float) $product['precio_venta'] > 0): ?>
                             <div class="single-product-purchase__info">
@@ -791,58 +981,29 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                     <?= e($money($product['precio_venta'])) ?>
                                 </strong>
                             </div>
-                        <?php endif; ?>    
+                        <?php endif; ?>
                         <?php if ($product['disponible']): ?>
-                            <form
-                                class="product-purchase-form"
-                                method="post"
-                                action="<?= e(appUrl('public/acciones-carrito/agregar.php')) ?>"
-                            >
-                                <input
-                                    type="hidden"
-                                    name="csrf_token"
-                                    value="<?= e(csrfToken()) ?>"
-                                >
+                            <form class="product-purchase-form" method="post"
+                                action="<?= e(appUrl('public/acciones-carrito/agregar.php')) ?>">
+                                <input type="hidden" name="csrf_token" value="<?= e(csrfToken()) ?>">
 
-                                <input
-                                    type="hidden"
-                                    name="id_producto"
-                                    value="<?= e($product['id_producto']) ?>"
-                                >
+                                <input type="hidden" name="id_producto" value="<?= e($product['id_producto']) ?>">
 
-                                <input
-                                    type="hidden"
-                                    name="sku_retorno"
-                                    value="<?= e($product['sku']) ?>"
-                                >
+                                <input type="hidden" name="sku_retorno" value="<?= e($product['sku']) ?>">
 
                                 <div class="purchase-controls">
                                     <div class="purchase-quantity">
                                         <label for="purchase-quantity">Cantidad</label>
 
                                         <div class="purchase-quantity__control">
-                                            <button
-                                                type="button"
-                                                data-purchase-quantity="decrease"
-                                                aria-label="Disminuir cantidad"
-                                            >−</button>
+                                            <button type="button" data-purchase-quantity="decrease"
+                                                aria-label="Disminuir cantidad">−</button>
 
-                                            <input
-                                                id="purchase-quantity"
-                                                type="number"
-                                                name="cantidad"
-                                                value="1"
-                                                min="1"
-                                                max="<?= e(CARRITO_CANTIDAD_MAXIMA) ?>"
-                                                inputmode="numeric"
-                                                required
-                                            >
+                                            <input id="purchase-quantity" type="number" name="cantidad" value="1" min="1"
+                                                max="<?= e(CARRITO_CANTIDAD_MAXIMA) ?>" inputmode="numeric" required>
 
-                                            <button
-                                                type="button"
-                                                data-purchase-quantity="increase"
-                                                aria-label="Aumentar cantidad"
-                                            >+</button>
+                                            <button type="button" data-purchase-quantity="increase"
+                                                aria-label="Aumentar cantidad">+</button>
                                         </div>
                                     </div>
 
@@ -898,16 +1059,6 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                     </div>
 
                     <form class="catalog-search" method="get" action="catalogo.php" role="search">
-                        <?php foreach (['tipo_mascota', 'categoria', 'subcategoria', 'marca', 'fraccionable', 'disponibilidad'] as $filterKey): ?>
-                            <?php if ($filters[$filterKey] !== ''): ?>
-                                <input
-                                    type="hidden"
-                                    name="<?= e($filterKey) ?>"
-                                    value="<?= e($filters[$filterKey]) ?>"
-                                >
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-
                         <label for="catalog-search-input">Buscar en el catálogo</label>
 
                         <div class="catalog-search__control">
@@ -915,13 +1066,8 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                 <use href="#i-search" />
                             </svg>
 
-                            <input
-                                id="catalog-search-input"
-                                type="search"
-                                name="buscar"
-                                value="<?= e($filters['buscar']) ?>"
-                                placeholder="¿Qué estás buscando para tu mascota?"
-                            >
+                            <input id="catalog-search-input" type="search" name="buscar"
+                                value="<?= e($filters['buscar']) ?>" placeholder="¿Qué estás buscando para tu mascota?">
 
                             <button type="submit">Buscar</button>
                         </div>
@@ -930,45 +1076,27 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
             </section>
 
             <div class="catalog-shop-shell">
-                <button
-                    class="catalog-mobile-filter-trigger"
-                    type="button"
-                    data-catalog-filter-open
-                    aria-controls="catalog-sidebar"
-                    aria-expanded="false"
-                >
+                <button class="catalog-mobile-filter-trigger" type="button" data-catalog-filter-open
+                    aria-controls="catalog-sidebar" aria-expanded="false">
                     <svg aria-hidden="true">
                         <use href="#i-filter" />
                     </svg>
                     Filtrar catálogo
                 </button>
 
-                <button
-                    class="catalog-sidebar-backdrop"
-                    type="button"
-                    data-catalog-filter-close
-                    aria-label="Cerrar filtros"
-                    hidden
-                ></button>
+                <button class="catalog-sidebar-backdrop" type="button" data-catalog-filter-close aria-label="Cerrar filtros"
+                    hidden></button>
 
                 <div class="catalog-shop-layout">
-                    <aside
-                        class="catalog-sidebar"
-                        id="catalog-sidebar"
-                        aria-label="Filtros del catálogo"
-                    >
+                    <aside class="catalog-sidebar" id="catalog-sidebar" aria-label="Filtros del catálogo">
                         <div class="catalog-sidebar__top">
                             <div>
                                 <span class="catalog-sidebar__eyebrow">Explora</span>
                                 <h2>Filtrar catálogo</h2>
                             </div>
 
-                            <button
-                                class="catalog-sidebar__close"
-                                type="button"
-                                data-catalog-filter-close
-                                aria-label="Cerrar filtros"
-                            >
+                            <button class="catalog-sidebar__close" type="button" data-catalog-filter-close
+                                aria-label="Cerrar filtros">
                                 ×
                             </button>
                         </div>
@@ -983,11 +1111,9 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                             </div>
 
                             <nav class="catalog-sidebar__categories" aria-label="Categorías del catálogo">
-                                <a
-                                    href="<?= e($categoryUrl('')) ?>"
+                                <a href="<?= e($categoryUrl('')) ?>"
                                     class="catalog-sidebar__category<?= $filters['categoria'] === '' ? ' is-active' : '' ?>"
-                                    <?= $filters['categoria'] === '' ? 'aria-current="page"' : '' ?>
-                                >
+                                    <?= $filters['categoria'] === '' ? 'aria-current="page"' : '' ?>>
                                     <span>Todo el catálogo</span>
                                 </a>
 
@@ -997,37 +1123,29 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                         $filters['categoria'] === (string) $option['id'];
                                     ?>
 
-                                    <a
-                                        href="<?= e($categoryUrl((string) $option['id'])) ?>"
+                                    <a href="<?= e($categoryUrl((string) $option['id'])) ?>"
                                         class="catalog-sidebar__category<?= $categoryIsActive ? ' is-active' : '' ?>"
-                                        <?= $categoryIsActive ? 'aria-current="page"' : '' ?>
-                                    >
+                                        <?= $categoryIsActive ? 'aria-current="page"' : '' ?>>
                                         <span><?= e((string) $option['nombre']) ?></span>
                                     </a>
 
                                     <?php if ($categoryIsActive && $selectedSubcategories !== []): ?>
-                                        <div
-                                            class="catalog-sidebar__subcategories"
-                                            aria-label="Subcategorías de <?= e((string) $option['nombre']) ?>"
-                                        >
+                                        <div class="catalog-sidebar__subcategories"
+                                            aria-label="Subcategorías de <?= e((string) $option['nombre']) ?>">
                                             <span class="catalog-sidebar__subcategories-title">
                                                 Dentro de <?= e((string) $option['nombre']) ?>
                                             </span>
 
-                                            <a
-                                                href="<?= e($subcategoryUrl('')) ?>"
+                                            <a href="<?= e($subcategoryUrl('')) ?>"
                                                 class="<?= $filters['subcategoria'] === '' ? 'is-active' : '' ?>"
-                                                <?= $filters['subcategoria'] === '' ? 'aria-current="page"' : '' ?>
-                                            >
+                                                <?= $filters['subcategoria'] === '' ? 'aria-current="page"' : '' ?>>
                                                 Todas
                                             </a>
 
                                             <?php foreach ($selectedSubcategories as $subcategory): ?>
-                                                <a
-                                                    href="<?= e($subcategoryUrl((string) $subcategory['slug'])) ?>"
+                                                <a href="<?= e($subcategoryUrl((string) $subcategory['slug'])) ?>"
                                                     class="<?= $filters['subcategoria'] === (string) $subcategory['slug'] ? 'is-active' : '' ?>"
-                                                    <?= $filters['subcategoria'] === (string) $subcategory['slug'] ? 'aria-current="page"' : '' ?>
-                                                >
+                                                    <?= $filters['subcategoria'] === (string) $subcategory['slug'] ? 'aria-current="page"' : '' ?>>
                                                     <?= e((string) $subcategory['nombre']) ?>
                                                 </a>
                                             <?php endforeach; ?>
@@ -1047,27 +1165,21 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                             </div>
 
                             <nav class="catalog-sidebar__pets" aria-label="Filtrar por tipo de mascota">
-                                <a
-                                    href="<?= e($petUrl('')) ?>"
+                                <a href="<?= e($petUrl('')) ?>"
                                     class="<?= $filters['tipo_mascota'] === '' ? 'is-active' : '' ?>"
-                                    <?= $filters['tipo_mascota'] === '' ? 'aria-current="page"' : '' ?>
-                                >
+                                    <?= $filters['tipo_mascota'] === '' ? 'aria-current="page"' : '' ?>>
                                     Todos
                                 </a>
 
-                                <a
-                                    href="<?= e($petUrl('perro')) ?>"
+                                <a href="<?= e($petUrl('perro')) ?>"
                                     class="<?= $filters['tipo_mascota'] === 'perro' ? 'is-active' : '' ?>"
-                                    <?= $filters['tipo_mascota'] === 'perro' ? 'aria-current="page"' : '' ?>
-                                >
+                                    <?= $filters['tipo_mascota'] === 'perro' ? 'aria-current="page"' : '' ?>>
                                     Perros
                                 </a>
 
-                                <a
-                                    href="<?= e($petUrl('gato')) ?>"
+                                <a href="<?= e($petUrl('gato')) ?>"
                                     class="<?= $filters['tipo_mascota'] === 'gato' ? 'is-active' : '' ?>"
-                                    <?= $filters['tipo_mascota'] === 'gato' ? 'aria-current="page"' : '' ?>
-                                >
+                                    <?= $filters['tipo_mascota'] === 'gato' ? 'aria-current="page"' : '' ?>>
                                     Gatos
                                 </a>
                             </nav>
@@ -1085,11 +1197,7 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                             <form class="catalog-sidebar__form" method="get" action="catalogo.php">
                                 <?php foreach (['buscar', 'tipo_mascota', 'categoria', 'subcategoria'] as $filterKey): ?>
                                     <?php if ($filters[$filterKey] !== ''): ?>
-                                        <input
-                                            type="hidden"
-                                            name="<?= e($filterKey) ?>"
-                                            value="<?= e($filters[$filterKey]) ?>"
-                                        >
+                                        <input type="hidden" name="<?= e($filterKey) ?>" value="<?= e($filters[$filterKey]) ?>">
                                     <?php endif; ?>
                                 <?php endforeach; ?>
 
@@ -1100,10 +1208,7 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                         <option value="">Todas las marcas</option>
 
                                         <?php foreach ($filterOptions['marcas'] as $option): ?>
-                                            <option
-                                                value="<?= e($option['id']) ?>"
-                                                <?= $filters['marca'] === (string) $option['id'] ? 'selected' : '' ?>
-                                            >
+                                            <option value="<?= e($option['id']) ?>" <?= $filters['marca'] === (string) $option['id'] ? 'selected' : '' ?>>
                                                 <?= e($option['nombre']) ?>
                                             </option>
                                         <?php endforeach; ?>
@@ -1111,12 +1216,7 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                 </label>
 
                                 <label class="catalog-sidebar__check">
-                                    <input
-                                        type="checkbox"
-                                        name="fraccionable"
-                                        value="si"
-                                        <?= $filters['fraccionable'] === 'si' ? 'checked' : '' ?>
-                                    >
+                                    <input type="checkbox" name="fraccionable" value="si" <?= $filters['fraccionable'] === 'si' ? 'checked' : '' ?>>
 
                                     <span>
                                         <strong>Fraccionables</strong>
@@ -1125,12 +1225,8 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                 </label>
 
                                 <label class="catalog-sidebar__check">
-                                    <input
-                                        type="checkbox"
-                                        name="disponibilidad"
-                                        value="disponible"
-                                        <?= $filters['disponibilidad'] === 'disponible' ? 'checked' : '' ?>
-                                    >
+                                    <input type="checkbox" name="disponibilidad" value="disponible"
+                                        <?= $filters['disponibilidad'] === 'disponible' ? 'checked' : '' ?>>
 
                                     <span>
                                         <strong>Solo disponibles</strong>
@@ -1147,10 +1243,8 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                     || $filters['fraccionable'] !== ''
                                     || $filters['disponibilidad'] !== ''
                                 ): ?>
-                                    <a
-                                        class="catalog-sidebar__clear"
-                                        href="<?= e($catalogFilterUrl([], ['marca', 'fraccionable', 'disponibilidad'])) ?>"
-                                    >
+                                    <a class="catalog-sidebar__clear"
+                                        href="<?= e($catalogFilterUrl([], ['marca', 'fraccionable', 'disponibilidad'])) ?>">
                                         Limpiar filtros adicionales
                                     </a>
                                 <?php endif; ?>
@@ -1226,19 +1320,13 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                         }
                                         ?>
 
-                                        <article class="catalog-card catalog-card--<?= e($petClass) ?> <?= e($categoryCardClass) ?>">
-                                            <a
-                                                class="card-image"
-                                                href="<?= e($productUrl) ?>"
-                                                aria-label="Ver <?= e($item['nombre']) ?>"
-                                            >
+                                        <article
+                                            class="catalog-card catalog-card--<?= e($petClass) ?> <?= e($categoryCardClass) ?>">
+                                            <a class="card-image" href="<?= e($productUrl) ?>"
+                                                aria-label="Ver <?= e($item['nombre']) ?>">
                                                 <?php if ($itemImageUrl !== ''): ?>
-                                                    <img
-                                                        src="<?= e($itemImageUrl) ?>"
-                                                        alt="<?= e($item['nombre']) ?>"
-                                                        loading="lazy"
-                                                        decoding="async"
-                                                    >
+                                                    <img src="<?= e($itemImageUrl) ?>" alt="<?= e($item['nombre']) ?>" loading="lazy"
+                                                        decoding="async">
                                                 <?php else: ?>
                                                     <div class="image-placeholder">
                                                         Coratto Pet
@@ -1277,7 +1365,7 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                                         <?= e($item['presentaciones_resumen']) ?>
                                                     </small>
                                                 <?php endif; ?>
-<br>
+                                                <br>
                                                 <a class="card-link" href="<?= e($productUrl) ?>">
                                                     Ver detalles y opciones
 
@@ -1293,27 +1381,21 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                                 <?php if ($totalCatalogPages > 1): ?>
                                     <nav class="quick-filters" aria-label="Paginación del catálogo">
                                         <?php if ($currentCatalogPage > 1): ?>
-                                            <a
-                                                href="<?= e($catalogFilterUrl(['pagina' => (string) ($currentCatalogPage - 1)])) ?>"
-                                            >
+                                            <a href="<?= e($catalogFilterUrl(['pagina' => (string) ($currentCatalogPage - 1)])) ?>">
                                                 Anterior
                                             </a>
                                         <?php endif; ?>
 
                                         <?php for ($page = max(1, $currentCatalogPage - 2); $page <= min($totalCatalogPages, $currentCatalogPage + 2); $page++): ?>
-                                            <a
-                                                href="<?= e($catalogFilterUrl(['pagina' => (string) $page])) ?>"
+                                            <a href="<?= e($catalogFilterUrl(['pagina' => (string) $page])) ?>"
                                                 class="<?= $page === $currentCatalogPage ? 'is-active' : '' ?>"
-                                                <?= $page === $currentCatalogPage ? 'aria-current="page"' : '' ?>
-                                            >
+                                                <?= $page === $currentCatalogPage ? 'aria-current="page"' : '' ?>>
                                                 <?= $page ?>
                                             </a>
                                         <?php endfor; ?>
 
                                         <?php if ($currentCatalogPage < $totalCatalogPages): ?>
-                                            <a
-                                                href="<?= e($catalogFilterUrl(['pagina' => (string) ($currentCatalogPage + 1)])) ?>"
-                                            >
+                                            <a href="<?= e($catalogFilterUrl(['pagina' => (string) ($currentCatalogPage + 1)])) ?>">
                                                 Siguiente
                                             </a>
                                         <?php endif; ?>
@@ -1627,9 +1709,8 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
 
                 const kcalKg = Number(recommendation.kcalKg);
                 const energyLabel = Number.isFinite(kcalKg) && kcalKg > 0
-                    ? `${Math.round(kcalKg).toLocaleString('es-CL')} kcal/kg${
-                        recommendation.energiaVerificada === false ? ' · Energía referencial' : ''
-                    }`
+                    ? `${Math.round(kcalKg).toLocaleString('es-CL')} kcal/kg${recommendation.energiaVerificada === false ? ' · Energía referencial' : ''
+                }`
                     : '';
 
                 const kcalDayLabel = Number.isFinite(Number(result.kcalDay))
@@ -1664,19 +1745,18 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
 
                         <div class="feeding-sheet__heading">
                             <span>GUÍA PERSONALIZADA</span>
-                            <h2 id="feeding-sheet-title">${
-                                escapeNutritionHtml(
-                                    petName
-                                        ? `Pauta de alimentación de ${petName}`
-                                        : 'Pauta de alimentación'
-                                )
-                            }</h2>
+                            <h2 id="feeding-sheet-title">${escapeNutritionHtml(
+                petName
+                    ? `Pauta de alimentación de ${petName}`
+                    : 'Pauta de alimentación'
+            )
+                }</h2>
                             <p>
                                 ${escapeNutritionHtml(
-                                    petName
-                                        ? `Una referencia diaria preparada con los datos ingresados para ${petName}.`
-                                        : 'Una referencia diaria preparada con los datos ingresados en la calculadora.'
-                                )}
+                    petName
+                        ? `Una referencia diaria preparada con los datos ingresados para ${petName}.`
+                        : 'Una referencia diaria preparada con los datos ingresados en la calculadora.'
+                )}
                             </p>
                         </div>
                     </header>
@@ -1741,14 +1821,13 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
 
                     <div class="feeding-sheet__footer-info">
                         <p class="feeding-sheet__date">
-                            Calculado el ${
-                                escapeNutritionHtml(
-                                    calculatedDate.toLocaleString('es-CL', {
-                                        dateStyle: 'long',
-                                        timeStyle: 'short'
-                                    })
-                                )
-                            }
+                            Calculado el ${escapeNutritionHtml(
+                    calculatedDate.toLocaleString('es-CL', {
+                        dateStyle: 'long',
+                        timeStyle: 'short'
+                    })
+                )
+                }
                         </p>
 
                         <aside>
@@ -1811,13 +1890,13 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                             : 'Tu pauta estimada para este alimento';
 
                     const nutritionDescription = nutritionPanel.querySelector(
-                            '[data-nutrition-description]'
+                        '[data-nutrition-description]'
                     );
 
                     if (nutritionDescription) {
-                            nutritionDescription.textContent = petName
-                                ? `Esta pauta fue calculada con los datos que ingresaste para ${petName}.`
-                                : 'Esta pauta fue calculada con los datos que ingresaste anteriormente.';
+                        nutritionDescription.textContent = petName
+                            ? `Esta pauta fue calculada con los datos que ingresaste para ${petName}.`
+                            : 'Esta pauta fue calculada con los datos que ingresaste anteriormente.';
                     }
 
                     nutritionPanel.querySelector('[data-nutrition-grams-day]').textContent =
@@ -1898,11 +1977,10 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                 const lookup = (map, value) => map[value] || value || '';
                 const age = Number(profile.age);
                 const ageText = Number.isFinite(age) && age > 0
-                    ? `${age} ${
-                        profile.ageUnit === 'months'
-                            ? (age === 1 ? 'mes' : 'meses')
-                            : (age === 1 ? 'año' : 'años')
-                    }`
+                    ? `${age} ${profile.ageUnit === 'months'
+                    ? (age === 1 ? 'mes' : 'meses')
+                    : (age === 1 ? 'año' : 'años')
+                }`
                     : '';
 
                 const gramsDay = Number.isFinite(Number(recommendation.gramsDay))
@@ -2072,9 +2150,8 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                 rightY = drawKeyValue(
                     'Energía',
                     recommendation.kcalKg
-                        ? `${Math.round(Number(recommendation.kcalKg)).toLocaleString('es-CL')} kcal/kg${
-                            recommendation.energiaVerificada === false ? ' · referencial' : ''
-                        }`
+                        ? `${Math.round(Number(recommendation.kcalKg)).toLocaleString('es-CL')} kcal/kg${recommendation.energiaVerificada === false ? ' · referencial' : ''
+                    }`
                         : '',
                     rightX,
                     rightY,
@@ -2133,9 +2210,9 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
                     doc.setFontSize(7.5);
                     doc.text(
                         `Calculado el ${calculatedDate.toLocaleString('es-CL', {
-                            dateStyle: 'long',
-                            timeStyle: 'short'
-                        })}`,
+                        dateStyle: 'long',
+                        timeStyle: 'short'
+                    })}`,
                         18,
                         250
                     );
@@ -2339,4 +2416,5 @@ $subcategoryUrl = static function (string $slug) use ($catalogFilterUrl): string
         </script>
     <?php endif; ?>
 </body>
+
 </html>

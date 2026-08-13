@@ -200,25 +200,25 @@ function construirFiltrosCatalogoPublico(array $filters): array
     $search = trim((string) ($filters['buscar'] ?? ''));
     if ($search !== '') {
         $where[] = "(
-            p.nombre ILIKE :buscar_nombre ESCAPE '\\'
-            OR p.sku ILIKE :buscar_sku ESCAPE '\\'
-            OR c.nombre ILIKE :buscar_categoria ESCAPE '\\'
-            OR m.nombre ILIKE :buscar_marca ESCAPE '\\'
-            OR EXISTS (
-                SELECT 1
-                FROM subcategorias sc_busqueda
-                WHERE sc_busqueda.id_categoria = p.id_categoria
-                  AND sc_busqueda.activo = TRUE
-                  AND (
-                    p.detalles_opcionales->>'subcategoria_codigo' = sc_busqueda.slug
-                    OR LOWER(TRIM(p.detalles_opcionales->>'subcategoria')) = LOWER(TRIM(sc_busqueda.nombre))
-                  )
-                  AND (
-                    sc_busqueda.nombre ILIKE :buscar_subcategoria_nombre ESCAPE '\\'
-                    OR sc_busqueda.slug ILIKE :buscar_subcategoria_slug ESCAPE '\\'
-                  )
+        p.nombre ILIKE :buscar_nombre
+        OR p.sku ILIKE :buscar_sku
+        OR c.nombre ILIKE :buscar_categoria
+        OR m.nombre ILIKE :buscar_marca
+        OR EXISTS (
+            SELECT 1
+            FROM subcategorias sc_busqueda
+            WHERE sc_busqueda.id_categoria = p.id_categoria
+            AND sc_busqueda.activo = TRUE
+            AND (
+                p.detalles_opcionales->>'subcategoria_codigo' = sc_busqueda.slug
+                OR LOWER(TRIM(p.detalles_opcionales->>'subcategoria')) = LOWER(TRIM(sc_busqueda.nombre))
             )
-        )";
+            AND (
+                sc_busqueda.nombre ILIKE :buscar_subcategoria_nombre
+                OR sc_busqueda.slug ILIKE :buscar_subcategoria_slug
+            )
+        )
+    )";
         $escapedSearch = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
         $searchPattern = '%' . $escapedSearch . '%';
         foreach ([
